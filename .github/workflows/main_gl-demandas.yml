@@ -96,6 +96,14 @@ jobs:
             Cors__Origins__1="http://localhost:5173" \
             Cors__Origins__2="http://127.0.0.1:5173"
 
+      - name: Deploy to Azure Web App
+        id: deploy-to-webapp
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: "gl-demandas"
+          slot-name: "Production"
+          package: api
+
       - name: Checkout SQL scripts
         uses: actions/checkout@v4
 
@@ -109,9 +117,9 @@ jobs:
             exit 1
           fi
           ip=$(curl -fsSL https://api.ipify.org)
-          rg=$(az sql server list --query "[?name=='smartezy'].resourceGroup | [0]" -o tsv)
+          rg=$(az webapp list --query "[?name=='gl-demandas'].resourceGroup | [0]" -o tsv)
           if [ -z "$rg" ]; then
-            echo "Servidor SQL smartezy não encontrado na assinatura."
+            echo "App Service gl-demandas não encontrado na assinatura."
             exit 1
           fi
           rule="gha-${{ github.run_id }}"
@@ -149,11 +157,3 @@ jobs:
                 -C -b \
                 -i "/sql/$script"
           done
-
-      - name: Deploy to Azure Web App
-        id: deploy-to-webapp
-        uses: azure/webapps-deploy@v3
-        with:
-          app-name: "gl-demandas"
-          slot-name: "Production"
-          package: api
