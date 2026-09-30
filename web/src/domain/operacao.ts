@@ -2,8 +2,15 @@ import { encerrada } from "./recorte";
 import type { FilaItem, Perfil } from "./types";
 
 export function emAtraso(item: FilaItem, agora = Date.now()) {
-  if (encerrada(item.situacao) || !item.previsaoAtendimento) return false;
-  return new Date(item.previsaoAtendimento).getTime() < agora;
+  if (encerrada(item.situacao)) return false;
+  if (item.previsaoAtendimento) return new Date(item.previsaoAtendimento).getTime() < agora;
+  if (!item.prazoCategoriaHoras || item.prazoCategoriaHoras < 1) return false;
+  return new Date(item.abertoEm).getTime() + item.prazoCategoriaHoras * 3_600_000 < agora;
+}
+
+export function marcoAtraso(item: FilaItem) {
+  if (item.previsaoAtendimento) return item.previsaoAtendimento;
+  return new Date(new Date(item.abertoEm).getTime() + (item.prazoCategoriaHoras ?? 0) * 3_600_000).toISOString();
 }
 
 export function motivosAcao(item: FilaItem, perfil: Perfil) {

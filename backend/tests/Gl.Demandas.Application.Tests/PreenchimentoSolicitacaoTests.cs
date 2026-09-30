@@ -2,7 +2,6 @@ using Gl.Demandas.Application;
 using Gl.Demandas.Domain;
 using Gl.Demandas.Infrastructure;
 using Gl.Demandas.Infrastructure.Persistence;
-using Microsoft.EntityFrameworkCore;
 
 namespace Gl.Demandas.Application.Tests;
 
@@ -12,17 +11,15 @@ public sealed class PreenchimentoSolicitacaoTests : IDisposable
         Tô com vazamento aqui na minha sala aqui que é do ar condicionado eu tô na sala 534 fico aqui próximo ao Instituto de incêndio Rosa né e cara tu puder vir aqui amanhã dia 29/09/2006 ele vai ajudar mas vem no período da manhã né aí meu telefone você pode ligar é 21 99468-4864 é infiltração ali eu acho que tem problema de elétrica também você tá ação do ar condicionado tá E a equipe toda tá autorizada a entrar aqui para fazer aqui o conserto aqui é só procurar aqui a Maria José
         """;
 
+    private readonly BancoDeTeste _banco;
     private readonly AppDbContext _db;
     private readonly AtendimentoAplicacao _atendimento;
     private readonly string _pasta;
 
     public PreenchimentoSolicitacaoTests()
     {
-        var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-        _db = new AppDbContext(options);
-        _db.Database.EnsureCreated();
+        _banco = new BancoDeTeste();
+        _db = _banco.Contexto;
         var agora = new DateTime(2026, 9, 28, 15, 0, 0, DateTimeKind.Utc);
         DemoSeed.Aplicar(_db, agora);
         var repo = new GlRepositorio(_db);
@@ -145,7 +142,7 @@ public sealed class PreenchimentoSolicitacaoTests : IDisposable
 
     public void Dispose()
     {
-        _db.Dispose();
+        _banco.Dispose();
         if (Directory.Exists(_pasta))
             Directory.Delete(_pasta, true);
     }

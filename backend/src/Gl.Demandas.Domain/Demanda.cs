@@ -424,7 +424,7 @@ public sealed class Demanda
             return new ResultadoAvanco(false, false);
         }
 
-        CadeiaAtendimento.ExigirCampos(destino, comentario, previsao, PrevisaoAtendimento);
+        CadeiaAtendimento.ExigirCampos(destino, comentario, previsao, PrevisaoAtendimento, _anexos.Count > 0);
         foreach (var automatica in CadeiaAtendimento.AutomaticasEntre(Situacao, destino, cadeia))
         {
             RegistrarHistorico(

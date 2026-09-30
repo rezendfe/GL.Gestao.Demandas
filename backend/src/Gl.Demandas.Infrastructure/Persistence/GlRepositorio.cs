@@ -351,7 +351,7 @@ public sealed class GlRepositorio(AppDbContext db) : IUsuarios, ICatalogo, IDema
         (await db.Subcategorias.Include(s => s.Categoria).Include(s => s.Area).ToListAsync(ct)).Select(Mapear).ToArray();
 
     public async Task<IReadOnlyList<Categoria>> ListarCategorias(CancellationToken ct) =>
-        (await db.Categorias.ToListAsync(ct)).Select(c => new Categoria(c.Id, c.Nome, c.Status == "ATIVO")).ToArray();
+        (await db.Categorias.ToListAsync(ct)).Select(c => new Categoria(c.Id, c.Nome, c.Status == "ATIVO", c.PrazoHoras)).ToArray();
 
     public async Task<IReadOnlyList<Area>> ListarAreas(CancellationToken ct) =>
         (await db.Areas.ToListAsync(ct)).Select(a => new Area(a.Id, a.Nome, a.Status == "ATIVO")).ToArray();
@@ -369,7 +369,7 @@ public sealed class GlRepositorio(AppDbContext db) : IUsuarios, ICatalogo, IDema
         return new Area(row.Id, row.Nome, ativa);
     }
 
-    public async Task<Categoria> SalvarCategoria(Guid? id, string nome, bool ativa, CancellationToken ct)
+    public async Task<Categoria> SalvarCategoria(Guid? id, string nome, bool ativa, int? prazoHoras, CancellationToken ct)
     {
         var row = id.HasValue
             ? await db.Categorias.FirstOrDefaultAsync(c => c.Id == id.Value, ct)
@@ -377,9 +377,10 @@ public sealed class GlRepositorio(AppDbContext db) : IUsuarios, ICatalogo, IDema
             : new CategoriaRegistro { Id = Guid.NewGuid() };
         row.Nome = nome;
         row.Status = ativa ? "ATIVO" : "INATIVO";
+        row.PrazoHoras = prazoHoras;
         if (!id.HasValue) db.Categorias.Add(row);
         await db.SaveChangesAsync(ct);
-        return new Categoria(row.Id, row.Nome, ativa);
+        return new Categoria(row.Id, row.Nome, ativa, prazoHoras);
     }
 
     public async Task<Subcategoria> SalvarSubcategoria(Guid? id, Guid categoriaId, Guid areaId, string nome, FluxoDemanda fluxo, bool ativa, CancellationToken ct)
@@ -746,16 +747,22 @@ public sealed class GlRepositorio(AppDbContext db) : IUsuarios, ICatalogo, IDema
             Nome = etapa.Nome,
             Ordem = etapa.Ordem,
             Automatica = etapa.Automatica,
-            Campos = string.Join(',', etapa.Campos)
+            Campos = string.Join(',', etapa.Tarefas.Select(tarefa => $"{tarefa.Codigo}:{(tarefa.Obrigatoria ? "1" : "0")}"))
         }));
         await db.SaveChangesAsync(ct);
     }
 
-    private static EtapaCadeia MapearEtapa(EtapaCadeiaRegistro row) =>
-        new(
-            row.Codigo,
-            row.Nome,
-            row.Ordem,
-            row.Automatica,
-            row.Campos.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+    private static EtapaCadeia MapearEtapa(EtapaCadeiaRegistro row)
+    {
+        var tarefas = row.Campos
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(parte =>
+            {
+                var pedacos = parte.Split(':', 2);
+                var obrigatoria = !row.Automatica && (pedacos.Length < 2 || pedacos[1] != "0");
+                return new TarefaCadeia(pedacos[0], obrigatoria);
+            })
+            .ToArray();
+        return new EtapaCadeia(row.Codigo, row.Nome, row.Ordem, row.Automatica, tarefas.Select(tarefa => tarefa.Codigo).ToArray(), tarefas);
+    }
 }

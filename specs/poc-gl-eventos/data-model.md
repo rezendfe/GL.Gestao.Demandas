@@ -4,7 +4,7 @@ Schema `app`. PK `ID_* BIGINT IDENTITY`, nunca exposta. API `id` = `CD_*`. Sem p
 
 | Tabela | Papel |
 |---|---|
-| Area, Categoria, Subcategoria | Catálogo e destino |
+| Area, Categoria, Subcategoria | Catálogo e destino. `Categoria.NR_Prazo_Horas` guarda a meta de prazo em horas, ou nulo quando a categoria não tem meta. |
 | Usuario | Três perfis e cessionários da fila |
 | Regra_Classificacao | Termos do classificador |
 | Demanda | Chamado, protocolo `GL-AAAA-NNNNN` |

@@ -34,6 +34,7 @@ export interface FilaItem {
   notaAvaliacao: number | null;
   comentarioAvaliacao: string | null;
   subcategoriaId: string;
+  prazoCategoriaHoras: number | null;
 }
 
 export interface Pessoa {
@@ -130,7 +131,7 @@ export interface Sugestao {
 }
 
 export interface Catalogo {
-  categorias: { id: string; nome: string; ativa: boolean; subcategorias: { id: string; nome: string; areaId: string; fluxo: string; ativa: boolean }[] }[];
+  categorias: { id: string; nome: string; ativa: boolean; prazoHoras: number | null; subcategorias: { id: string; nome: string; areaId: string; fluxo: string; ativa: boolean }[] }[];
   areas: { id: string; nome: string; ativa: boolean }[];
   responsaveis: { id: string; nome: string; email: string; areaId: string | null; ativo: boolean }[];
 }
@@ -224,12 +225,18 @@ export interface Notificacao {
   criadaEm: string;
 }
 
+export interface TarefaCadeia {
+  codigo: string;
+  obrigatoria: boolean;
+}
+
 export interface EtapaCadeia {
   codigo: string;
   nome: string;
   ordem: number;
   automatica: boolean;
   campos: string[];
+  tarefas: TarefaCadeia[];
 }
 
 export interface CadeiaTipo {

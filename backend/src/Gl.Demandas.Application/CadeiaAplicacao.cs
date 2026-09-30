@@ -28,12 +28,24 @@ public sealed class CadeiaAplicacao(ICadeia cadeia, ICatalogo catalogo)
             throw new RegraNegocioException("Selecione o tipo de atendimento.");
 
         var normalizada = CadeiaAtendimento.Configurar(etapas
-            .Select(etapa => new EtapaCadeia(etapa.Codigo, etapa.Nome, etapa.Ordem, etapa.Automatica, etapa.Campos))
+            .Select(etapa => new EtapaCadeia(
+                etapa.Codigo,
+                etapa.Nome,
+                etapa.Ordem,
+                etapa.Automatica,
+                etapa.Tarefas.Count > 0 ? etapa.Tarefas.Select(tarefa => tarefa.Codigo).ToArray() : etapa.Campos,
+                etapa.Tarefas.Select(tarefa => new TarefaCadeia(tarefa.Codigo, tarefa.Obrigatoria)).ToArray()))
             .ToArray());
         await cadeia.Salvar(subcategoriaId, normalizada, ct);
         return normalizada.Select(Mapear).ToArray();
     }
 
     private static EtapaCadeiaDto Mapear(EtapaCadeia etapa) =>
-        new(etapa.Codigo, etapa.Nome, etapa.Ordem, etapa.Automatica, etapa.Campos);
+        new(
+            etapa.Codigo,
+            etapa.Nome,
+            etapa.Ordem,
+            etapa.Automatica,
+            etapa.Campos,
+            etapa.Tarefas.Select(tarefa => new TarefaCadeiaDto(tarefa.Codigo, tarefa.Obrigatoria)).ToArray());
 }

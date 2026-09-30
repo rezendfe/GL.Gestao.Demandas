@@ -109,6 +109,7 @@ public sealed class AtendimentoAplicacao(
         if (ator.Perfil == Perfil.Cessionario && !Pode(ator, PermissaoCessionario.ConsultarEmpresa))
             throw new AcessoNegadoException("A função do representante não permite consultar demandas da empresa.");
         var pessoas = (await usuarios.Listar(ct)).ToDictionary(u => u.Id);
+        var prazos = (await catalogo.ListarCategorias(ct)).ToDictionary(c => c.Id, c => c.PrazoHoras);
         var itens = await demandas.Listar(ct);
         return itens
             .Where(d => Visivel(d, ator))
@@ -132,7 +133,8 @@ public sealed class AtendimentoAplicacao(
                 d.Natureza,
                 d.NotaAvaliacao,
                 d.ComentarioAvaliacao,
-                d.SubcategoriaId))
+                d.SubcategoriaId,
+                prazos.GetValueOrDefault(d.CategoriaId)))
             .ToArray();
     }
 

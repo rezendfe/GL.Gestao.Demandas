@@ -45,7 +45,9 @@ public sealed record AndamentoComando(string Comentario, string Situacao);
 
 public sealed record AvancarComando(string? Comentario, DateTime? Previsao, bool? Confirmacao);
 
-public sealed record EtapaCadeiaDto(string Codigo, string Nome, int Ordem, bool Automatica, IReadOnlyList<string> Campos);
+public sealed record TarefaCadeiaDto(string Codigo, bool Obrigatoria);
+
+public sealed record EtapaCadeiaDto(string Codigo, string Nome, int Ordem, bool Automatica, IReadOnlyList<string> Campos, IReadOnlyList<TarefaCadeiaDto> Tarefas);
 
 public sealed record CadeiaTipoDto(Guid SubcategoriaId, string Categoria, string Tipo, IReadOnlyList<EtapaCadeiaDto> Etapas);
 
@@ -77,7 +79,8 @@ public sealed record FilaItemDto(
     string Natureza,
     int? NotaAvaliacao,
     string? ComentarioAvaliacao,
-    Guid SubcategoriaId);
+    Guid SubcategoriaId,
+    int? PrazoCategoriaHoras);
 
 public sealed record PessoaDto(Guid Id, string Nome, string? Empresa, string? Sala);
 
@@ -125,7 +128,7 @@ public sealed record DetalheDemandaDto(
     int? NotaAvaliacao,
     string? ComentarioAvaliacao);
 
-public sealed record CategoriaDto(Guid Id, string Nome, bool Ativa, IReadOnlyList<SubcategoriaDto> Subcategorias);
+public sealed record CategoriaDto(Guid Id, string Nome, bool Ativa, int? PrazoHoras, IReadOnlyList<SubcategoriaDto> Subcategorias);
 
 public sealed record SubcategoriaDto(Guid Id, string Nome, Guid AreaId, string Fluxo, bool Ativa);
 

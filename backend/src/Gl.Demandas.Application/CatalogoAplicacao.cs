@@ -18,6 +18,7 @@ public sealed class CatalogoAplicacao(ICatalogo catalogo, IUsuarios usuarios)
                     c.Id,
                     c.Nome,
                     c.Ativa,
+                    c.PrazoHoras,
                     subcategorias
                         .Where(s => s.CategoriaId == c.Id)
                         .OrderBy(s => s.Nome)

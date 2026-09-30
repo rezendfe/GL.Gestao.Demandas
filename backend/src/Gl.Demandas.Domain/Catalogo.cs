@@ -16,16 +16,18 @@ public sealed class Area
 
 public sealed class Categoria
 {
-    public Categoria(Guid id, string nome, bool ativa = true)
+    public Categoria(Guid id, string nome, bool ativa = true, int? prazoHoras = null)
     {
         Id = id;
         Nome = nome;
         Ativa = ativa;
+        PrazoHoras = prazoHoras;
     }
 
     public Guid Id { get; }
     public string Nome { get; set; }
     public bool Ativa { get; set; }
+    public int? PrazoHoras { get; set; }
 }
 
 public sealed class Subcategoria

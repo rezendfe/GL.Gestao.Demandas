@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { emAtraso } from "../../domain/operacao";
+import { emAtraso, marcoAtraso } from "../../domain/operacao";
 import { tempoRelativo, type FilaItem } from "../../domain/types";
 import { Badge } from "./Badge";
 
@@ -26,7 +26,7 @@ export function ListaOperacao({ linhas }: { linhas: { item: FilaItem; motivos: s
               <td>{item.cessionario}</td>
               <td>{item.servico}</td>
               <td><Badge valor={item.situacao} /></td>
-              <td>{emAtraso(item) && item.previsaoAtendimento ? `atrasado ${tempoRelativo(item.previsaoAtendimento)}` : item.previsaoAtendimento ? "no prazo" : "sem previsão"}</td>
+              <td>{emAtraso(item) ? `atrasado ${tempoRelativo(marcoAtraso(item))}` : item.previsaoAtendimento ? "no prazo" : "sem previsão"}</td>
             </tr>
           ))}
         </tbody>

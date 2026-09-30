@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useCadeia, useFila } from "../../application/hooks";
 import { useSessao } from "../../application/session";
 import { COLUNAS_CADEIA, cadeiaDoTipo, podeAvancar, proximaEtapa } from "../../domain/cadeia";
-import { emAtraso } from "../../domain/operacao";
+import { emAtraso, marcoAtraso } from "../../domain/operacao";
 import { tempoRelativo, type EtapaCadeia, type FilaItem } from "../../domain/types";
 import { ApiError, api } from "../../infrastructure/api/client";
 import { Badge } from "../components/Badge";
@@ -130,7 +130,7 @@ export function QuadroPage() {
                           {emAtraso(item) && <Badge valor="Em atraso" />}
                           {item.natureza === "Reclamação" && <Badge valor="Reclamação" />}
                         </span>
-                        <em>{emAtraso(item) && item.previsaoAtendimento ? `atrasado ${tempoRelativo(item.previsaoAtendimento)}` : tempoRelativo(item.abertoEm)}</em>
+                        <em>{emAtraso(item) ? `atrasado ${tempoRelativo(marcoAtraso(item))}` : tempoRelativo(item.abertoEm)}</em>
                         {!libera && item.situacao === "Aguardando validação" && <span className="note">Aguarda o Cessionário</span>}
                         {!libera && item.situacao === "Aguardando ajuste" && <span className="note">Aguarda o ajuste do Cessionário</span>}
                         {!libera && destino?.codigo === "aprovacao" && <span className="note">Aguarda o GL / Administrador</span>}

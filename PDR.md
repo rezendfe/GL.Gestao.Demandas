@@ -214,7 +214,7 @@ As tarefas configuráveis usam componentes nativos e tipados, não texto livre i
 | RN-19 | O Cessionário é sempre uma empresa e pode ter vários representantes. A identificação visual usa o logo da empresa e, quando cadastrada, a imagem do contato principal. |
 | RN-20 | A visão do Cessionário resume os chamados ainda em aberto da empresa que o representante autenticado pode consultar conforme suas funções: situação, quem vai atender, previsão de atendimento, pendências e mensagens de complemento. Recorrência, prioridade agregada, ranking de cessionários e distribuição por serviço ficam com o GL / Administrador e o Responsável da Área. |
 | RN-21 | Mensagem do Responsável da Área ou do GL / Administrador em chamado ainda em aberto gera notificação no celular do Cessionário. A resposta dessa notificação, e a mensagem de quem atende ou da gestão, ficam no mesmo chamado. |
-| RN-22 | Chamado ainda em aberto está **em atraso** quando já existe previsão de atendimento e esse horário já passou. Sem previsão, o chamado não entra em atraso; a meta de prazo por categoria continua na parametrização (RN-16). |
+| RN-22 | Chamado ainda em aberto está **em atraso** quando a previsão de atendimento já passou, ou quando não há previsão e a categoria tem meta de prazo em horas já vencida desde a abertura. Previsão ainda no futuro não marca atraso, mesmo que a meta da categoria já tenha passado. Sem previsão e sem meta, o chamado não entra em atraso. A meta vigente vale na consulta, inclusive para chamados já abertos. |
 | RN-23 | **Ação agora**, na fila visível do GL / Administrador e do Responsável da Área, reúne o chamado em aberto que está em atraso, ainda não iniciado (Novo ou Recebido), com prioridade alta e sem previsão, ou aberto como reclamação. Decisão pendente (aguardando aprovação ou ajuste) entra na ação agora do GL / Administrador. |
 | RN-24 | O Cessionário pode abrir o chamado como **reclamação**. A reclamação segue o mesmo ciclo, a mesma área e os mesmos três perfis; não cria cargo novo. |
 | RN-25 | Serviço **concluído** pede ao Cessionário daquele chamado uma nota de 0 a 10 e um comentário opcional, uma vez. Promotor é 9 ou 10; neutro é 7 ou 8; detrator é 0 a 6. O índice é a diferença, em pontos percentuais, entre a fatia de promotores e a de detratores. GL / Administrador vê o índice da operação; Responsável da Área vê o da própria área. |
@@ -274,6 +274,7 @@ As tarefas configuráveis usam componentes nativos e tipados, não texto livre i
 - RF-07.1 CRUD administrativo (GL) de categorias, responsáveis, WhatsApp, documentos, prazos, status e regras de aprovação.
 - RF-07.2 O GL / Administrador escolhe o tipo de atendimento e configura a cadeia daquele tipo (RN-27): marca Aprovação, Atendimento ou Validação do cliente como automáticos. Solicitação e Conclusão permanecem na cadeia. Responsável da Área e Cessionário não gravam essa configuração. Trocar o tipo na tela mostra a configuração daquele tipo.
 - RF-07.3 Para cada nó e tipo de atendimento, o GL / Administrador compõe uma lista ordenada de tarefas usando os campos estruturados e as ações disponíveis no sistema. Cada tarefa declara rótulo/instrução, obrigatoriedade, responsável elegível, regra de aplicabilidade e validação; tarefas de dados declaram tipo (texto, número, data/hora, opção ou confirmação) e tarefas de anexo declaram tipo de arquivo/evidência. Ações disponíveis incluem decisão de aprovação, solicitação de ajuste/informação, previsão, registro de andamento e upload de documento/foto. Não há execução de código ou integração arbitrária configurável. Uma tarefa obrigatória pendente impede o avanço; uma opcional não. Nó automático não pode exigir input manual. A configuração de um tipo não altera os demais.
+- RF-07.4 O GL / Administrador grava, em cada categoria, a meta de prazo em horas inteiras de 1 a 8760, ou deixa em branco (RN-16, RN-22). Em branco, chamado sem previsão não entra em atraso. A meta de uma categoria não altera as demais. Responsável da Área e Cessionário não gravam essa meta.
 
 ### EF-08 Portal em dispositivo móvel
 
@@ -297,7 +298,7 @@ Na prova de conceito, foto, entrega e vistoria são dados de demonstração por 
 
 A primeira tela de cada perfil segue o padrão de painel de gestão de projetos do demonstrativo [CRMi — Project Management](https://crm-admin-dashboard-template.multipurposethemes.com/project_management/vertical/main/index.html): progresso, etapas, indicadores, lista do que pede atenção e atalhos. A identidade continua Riocentro / GL. Assets do tema comercial não são copiados.
 
-Os números saem somente da fila que o perfil já pode ver (RN-04, RN-05). O tempo em aberto é informativo. O prazo por categoria segue para a parametrização do GL (RN-16) e não é uma meta fechada nesta prova de conceito.
+Os números saem somente da fila que o perfil já pode ver (RN-04, RN-05). O tempo em aberto é informativo. A meta de prazo da categoria é a que o GL / Administrador grava em horas (RF-07.4, RN-22).
 
 - RF-10.1 Depois do login, Cessionário, GL / Administrador e Responsável da Área caem no próprio início.
 - RF-10.2 O início do GL / Administrador e do Responsável da Área mostra o progresso da fila visível no medidor de conclusão, as etapas Solicitação, Aprovação, Atendimento, Validação do cliente e Conclusão, a distribuição da fila visível pelas áreas de atuação de manutenção (Infiltração, Elétrica, Ar-condicionado, Vaga, Correspondência e Liberação de área), os itens em aberto mais antigos e atalhos para as jornadas daquele perfil.
@@ -359,7 +360,7 @@ Ponto de atenção é mais largo que a ação agora: inclui complemento ainda se
 
 - **Arquitetura hexagonal (ports & adapters)** em cada microsserviço.
 - **Microsserviços** com fronteiras claras e comunicação assíncrona preferencial via **Azure Service Bus / Queues**.
-- **SQL Server** como banco transacional por bounded context (databases ou schemas isolados na 1ª entrega). A 1ª entrega usa o catálogo existente `gl-demandas` em `smartezy.database.windows.net`, schema `app`, tanto na API publicada quanto na API local. O processo da API não mantém registro em memória. A credencial fica só no App Service, no Key Vault ou no user-secrets de desenvolvimento (RNF-04).
+- **SQL Server** como banco transacional por bounded context (databases ou schemas isolados na 1ª entrega). A 1ª entrega usa o catálogo existente `gl-demandas` em `smartezy.database.windows.net`, schema `app`, tanto na API publicada quanto na API local. O processo da API não mantém registro em memória. Os testes automatizados também não usam provedor em memória: gravam num catálogo SQL Server isolado, criado e removido na execução, e não no catálogo `gl-demandas`. A credencial fica só no App Service, no Key Vault ou no user-secrets de desenvolvimento (RNF-04).
 - **Segurança:** least privilege, secrets no Azure Key Vault, HTTPS, validação de entrada/anexos, RBAC alinhado aos 3 perfis.
 - **Identidade:** Azure AD / Entra ID (OIDC) no portal React (MSAL) e validação de JWT nas APIs.
 
@@ -476,6 +477,8 @@ Padrão recomendado: **Transactional Outbox** no serviço de origem antes de pub
 ### CA — Operação, quadro e avaliação
 
 - Dado GL / Administrador ou Responsável da Área, quando a previsão de um chamado em aberto já passou, então o início mostra esse chamado em atraso e na ação agora.
+- Dado categoria com meta de prazo e chamado em aberto dessa categoria sem previsão, quando o tempo desde a abertura já passou da meta, então o chamado aparece em atraso. Com previsão ainda no futuro, não aparece. Sem meta e sem previsão, não aparece.
+- Dado Responsável da Área ou Cessionário, quando tenta gravar a meta de prazo da categoria, então o sistema recusa.
 - Dado chamado Novo, Recebido, de prioridade alta sem previsão, ou aberto como reclamação, quando o perfil abre o início, então o chamado aparece na ação agora com o motivo.
 - Dado demanda aguardando aprovação, quando o GL / Administrador abre a ação agora, então a decisão aparece; o Responsável da Área a vê em pontos de atenção, sem poder aprová-la.
 - Dado GL / Administrador ou Responsável da Área, quando abre o Quadro, então os chamados da fila visível se distribuem em Solicitação, Aprovação, Atendimento, Validação do cliente e Conclusão, e o protocolo abre o detalhe.
@@ -612,7 +615,6 @@ Documentados em detalhe (Q-01 a Q-19) em `docs/Analise-Funcional-Pontos-Atencao.
 - Escopo de parametrização de status/fluxos na v1; abertura de demanda pelo GL.
 - Dono do cadastro de entrega do espaço e da vistoria fotográfica (interpretação atual: ficha de leitura do Cessionário, consulta do GL / Administrador e do Responsável da Área no contexto da demanda; gravação ainda não especificada).
 - Web Push com o portal fechado (a notificação desta versão aparece com o portal aberto no celular).
-- Meta de prazo por categoria (RN-16). Nesta versão, atraso é a previsão de atendimento já vencida (RN-22), não uma meta fechada por serviço.
 - Se a reclamação deve ser categoria própria ou permanecer uma marca na abertura (RN-24). Nesta versão, é uma marca do chamado, no mesmo fluxo e nos mesmos três perfis.
 - Se a nota de 0 a 10 e o índice promotor/detrator (RN-25) são a escala definitiva do cliente, ou se haverá outra pergunta por serviço.
 - Q-19 — Validar o limite da parametrização da cadeia: tarefas compostas apenas por campos e ações disponíveis no catálogo do sistema ou criação de ações/status livres; e se alterações na configuração passam a valer apenas para novas demandas ou também para demandas em andamento.

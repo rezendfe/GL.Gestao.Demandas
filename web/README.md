@@ -10,6 +10,8 @@ npm run dev
 
 Abre em http://localhost:5173 e espera a API em http://localhost:5090. Em outro host, defina `VITE_API_BASE_URL`.
 
+`npm run test:e2e` grava os prints em `web/playwright`.
+
 O build de produção:
 
 ```bash

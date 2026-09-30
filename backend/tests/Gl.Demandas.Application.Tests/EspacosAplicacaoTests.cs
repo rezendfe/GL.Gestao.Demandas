@@ -1,7 +1,6 @@
 using Gl.Demandas.Application;
 using Gl.Demandas.Domain;
 using Gl.Demandas.Infrastructure.Persistence;
-using Microsoft.EntityFrameworkCore;
 
 namespace Gl.Demandas.Application.Tests;
 
@@ -10,7 +9,8 @@ public sealed class EspacosAplicacaoTests
     [Fact]
     public async Task Locacao_e_encerramento_preservam_historico_e_atualizam_situacao()
     {
-        await using var db = NovoBanco();
+        await using var banco = new BancoDeTeste();
+        var db = banco.Contexto;
         DemoSeed.Aplicar(db, DateTime.UtcNow);
         Assert.All(db.Demandas, demanda => Assert.NotEqual(0, demanda.EmpresaCessionariaIdInterno));
         var aplicacao = new EspacosAplicacao(new GlRepositorio(db));
@@ -43,7 +43,8 @@ public sealed class EspacosAplicacaoTests
     [Fact]
     public async Task Cessionario_nao_consulta_inventario_administrativo()
     {
-        await using var db = NovoBanco();
+        await using var banco = new BancoDeTeste();
+        var db = banco.Contexto;
         DemoSeed.Aplicar(db, DateTime.UtcNow);
         var aplicacao = new EspacosAplicacao(new GlRepositorio(db));
 
@@ -55,7 +56,8 @@ public sealed class EspacosAplicacaoTests
     [Fact]
     public async Task Espaco_com_locacao_vigente_nao_pode_ser_inativado()
     {
-        await using var db = NovoBanco();
+        await using var banco = new BancoDeTeste();
+        var db = banco.Contexto;
         DemoSeed.Aplicar(db, DateTime.UtcNow);
         var aplicacao = new EspacosAplicacao(new GlRepositorio(db));
         var gl = new Ator(DemoIds.Gl, Perfil.GlAdministrador, null);
@@ -66,8 +68,4 @@ public sealed class EspacosAplicacaoTests
             CancellationToken.None));
     }
 
-    private static AppDbContext NovoBanco() => new(
-        new DbContextOptionsBuilder<AppDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options);
 }

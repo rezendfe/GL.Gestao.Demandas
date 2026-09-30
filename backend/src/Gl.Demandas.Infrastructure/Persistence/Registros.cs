@@ -13,6 +13,7 @@ internal sealed class CategoriaRegistro
     public long IdInterno { get; set; }
     public Guid Id { get; set; }
     public string Nome { get; set; } = "";
+    public int? PrazoHoras { get; set; }
     public string Status { get; set; } = "ATIVO";
 }
 

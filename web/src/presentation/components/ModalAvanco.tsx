@@ -1,5 +1,5 @@
 import { useEffect, useId, useState } from "react";
-import { rotuloCampo } from "../../domain/cadeia";
+import { rotuloCampo, tarefasDa } from "../../domain/cadeia";
 import type { EtapaCadeia } from "../../domain/types";
 
 export function ModalAvanco({
@@ -29,9 +29,14 @@ export function ModalAvanco({
   const [comentario, setComentario] = useState("");
   const [previsao, setPrevisao] = useState("");
   const [confirmacao, setConfirmacao] = useState<boolean | null>(null);
+  const tarefas = tarefasDa(destino);
+  const comentarioTarefa = tarefas.find((tarefa) => tarefa.codigo === "comentario");
+  const previsaoTarefa = tarefas.find((tarefa) => tarefa.codigo === "previsao");
+  const anexoTarefa = tarefas.find((tarefa) => tarefa.codigo === "anexo");
   const pedeConfirmacao = situacao === "Aguardando validação" && destino.codigo === "conclusao";
-  const pedeComentario = destino.campos.includes("comentario") || (pedeConfirmacao && confirmacao === false);
-  const pedePrevisao = destino.campos.includes("previsao") && !jaTemPrevisao && confirmacao !== false;
+  const pedeComentario = comentarioTarefa != null || (pedeConfirmacao && confirmacao === false);
+  const comentarioObrigatorio = (comentarioTarefa?.obrigatoria ?? false) || (pedeConfirmacao && confirmacao === false);
+  const pedePrevisao = previsaoTarefa != null && !jaTemPrevisao && confirmacao !== false;
 
   useEffect(() => {
     function fechar(event: KeyboardEvent) {
@@ -74,14 +79,23 @@ export function ModalAvanco({
         {pedeComentario && (
           <label>
             {pedeConfirmacao && confirmacao === false ? "O que ainda falta" : rotuloCampo(destino.codigo, "comentario")}
-            <textarea value={comentario} onChange={(event) => setComentario(event.target.value)} required />
+            {comentarioObrigatorio ? "" : " (opcional)"}
+            <textarea value={comentario} onChange={(event) => setComentario(event.target.value)} required={comentarioObrigatorio} />
           </label>
         )}
         {pedePrevisao && (
           <label>
             {rotuloCampo(destino.codigo, "previsao")}
-            <input type="datetime-local" value={previsao} onChange={(event) => setPrevisao(event.target.value)} required />
+            {previsaoTarefa?.obrigatoria ? "" : " (opcional)"}
+            <input type="datetime-local" value={previsao} onChange={(event) => setPrevisao(event.target.value)} required={previsaoTarefa?.obrigatoria ?? false} />
           </label>
+        )}
+        {anexoTarefa && (
+          <p className="note">
+            {anexoTarefa.obrigatoria
+              ? "Esta etapa exige um anexo no chamado antes de confirmar."
+              : "O anexo nesta etapa é opcional."}
+          </p>
         )}
         {erro && <p className="erro">{erro}</p>}
         <div className="row">

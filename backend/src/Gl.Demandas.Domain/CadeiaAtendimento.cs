@@ -4,22 +4,33 @@ public sealed record ResultadoAvanco(bool EntrouEmAtendimento, bool AguardaValid
 
 public sealed record CadeiaDoTipo(Guid SubcategoriaId, IReadOnlyList<EtapaCadeia> Etapas);
 
+public sealed record TarefaCadeia(string Codigo, bool Obrigatoria);
+
 public sealed class EtapaCadeia
 {
-    public EtapaCadeia(string codigo, string nome, int ordem, bool automatica, IReadOnlyList<string> campos)
+    public EtapaCadeia(
+        string codigo,
+        string nome,
+        int ordem,
+        bool automatica,
+        IReadOnlyList<string> campos,
+        IReadOnlyList<TarefaCadeia>? tarefas = null)
     {
         Codigo = codigo;
         Nome = nome;
         Ordem = ordem;
         Automatica = automatica;
-        Campos = campos;
+        Tarefas = tarefas is { Count: > 0 }
+            ? tarefas
+            : campos.Select(campo => new TarefaCadeia(campo, true)).ToArray();
     }
 
     public string Codigo { get; }
     public string Nome { get; }
     public int Ordem { get; }
     public bool Automatica { get; }
-    public IReadOnlyList<string> Campos { get; }
+    public IReadOnlyList<TarefaCadeia> Tarefas { get; }
+    public IReadOnlyList<string> Campos => Tarefas.Select(tarefa => tarefa.Codigo).ToArray();
 }
 
 public static class CadeiaAtendimento
@@ -38,10 +49,10 @@ public static class CadeiaAtendimento
     private static readonly Dictionary<string, string[]> CamposPermitidos = new()
     {
         [Solicitacao] = [],
-        [Aprovacao] = ["comentario"],
-        [Atendimento] = ["comentario", "previsao"],
-        [Validacao] = ["comentario"],
-        [Conclusao] = ["comentario"]
+        [Aprovacao] = ["comentario", "anexo"],
+        [Atendimento] = ["comentario", "previsao", "anexo"],
+        [Validacao] = ["comentario", "anexo"],
+        [Conclusao] = ["comentario", "anexo"]
     };
 
     public static IReadOnlyList<EtapaCadeia> Padrao() =>
@@ -69,10 +80,16 @@ public static class CadeiaAtendimento
         {
             var etapa = porCodigo[codigo];
             var permitidos = CamposPermitidos[codigo];
-            var campos = etapa.Campos.Distinct().ToArray();
-            if (campos.Any(campo => !permitidos.Contains(campo)))
+            var tarefas = etapa.Tarefas
+                .GroupBy(tarefa => tarefa.Codigo)
+                .Select(grupo => grupo.First())
+                .ToArray();
+            if (tarefas.Any(tarefa => !permitidos.Contains(tarefa.Codigo)))
                 throw new RegraNegocioException($"A etapa {NomeDe(codigo)} não aceita esse campo.");
-            return new EtapaCadeia(codigo, NomeDe(codigo), indice + 1, etapa.Automatica, campos);
+            var exigida = tarefas.FirstOrDefault(tarefa => tarefa.Obrigatoria);
+            if (etapa.Automatica && exigida is not null)
+                throw new RegraNegocioException($"A etapa {NomeDe(codigo)} é automática e não pode exigir a tarefa {NomeTarefa(exigida.Codigo)}.");
+            return new EtapaCadeia(codigo, NomeDe(codigo), indice + 1, etapa.Automatica, tarefas.Select(tarefa => tarefa.Codigo).ToArray(), tarefas);
         }).ToArray();
     }
 
@@ -132,12 +149,17 @@ public static class CadeiaAtendimento
             throw new AcessoNegadoException("Quem avança o atendimento é o Responsável da Área ou o GL / Administrador.");
     }
 
-    public static void ExigirCampos(EtapaCadeia destino, string? comentario, DateTime? previsao, DateTime? previsaoAtual)
+    public static void ExigirCampos(EtapaCadeia destino, string? comentario, DateTime? previsao, DateTime? previsaoAtual, bool possuiAnexo)
     {
-        if (destino.Campos.Contains("comentario") && string.IsNullOrWhiteSpace(comentario))
-            throw new RegraNegocioException("Preencha o que esta etapa pede para mudar de status.");
-        if (destino.Campos.Contains("previsao") && previsao is null && previsaoAtual is null)
-            throw new RegraNegocioException("Informe a previsão de atendimento.");
+        foreach (var tarefa in destino.Tarefas.Where(tarefa => tarefa.Obrigatoria))
+        {
+            if (tarefa.Codigo == "comentario" && string.IsNullOrWhiteSpace(comentario))
+                throw new RegraNegocioException("Preencha o que esta etapa pede para mudar de status.");
+            if (tarefa.Codigo == "previsao" && previsao is null && previsaoAtual is null)
+                throw new RegraNegocioException("Informe a previsão de atendimento.");
+            if (tarefa.Codigo == "anexo" && !possuiAnexo)
+                throw new RegraNegocioException("Anexe o documento que esta etapa pede.");
+        }
     }
 
     public static SituacaoDemanda SituacaoAoEntrar(EtapaCadeia destino) => destino.Codigo switch
@@ -147,6 +169,14 @@ public static class CadeiaAtendimento
         Validacao => SituacaoDemanda.AguardandoValidacao,
         Conclusao => SituacaoDemanda.Concluido,
         _ => throw new TransicaoInvalidaException("Esta etapa não recebe chamado.")
+    };
+
+    public static string NomeTarefa(string codigo) => codigo switch
+    {
+        "comentario" => "Observação",
+        "previsao" => "Previsão de atendimento",
+        "anexo" => "Anexo",
+        _ => codigo
     };
 
     public static string NomeDe(string codigo) => codigo switch

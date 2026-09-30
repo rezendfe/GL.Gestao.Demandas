@@ -19,6 +19,7 @@ BEGIN
         ID_Categoria BIGINT IDENTITY(1, 1) NOT NULL,
         CD_Categoria UNIQUEIDENTIFIER NOT NULL,
         NM_Categoria NVARCHAR(120) NOT NULL,
+        NR_Prazo_Horas INT NULL,
         SG_Status NVARCHAR(20) NOT NULL,
         CONSTRAINT PK_Categoria PRIMARY KEY (ID_Categoria),
         CONSTRAINT UK_Categoria_CD_Categoria UNIQUE (CD_Categoria)

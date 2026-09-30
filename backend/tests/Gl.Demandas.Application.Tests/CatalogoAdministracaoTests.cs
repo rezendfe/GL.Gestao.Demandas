@@ -2,12 +2,12 @@ using Gl.Demandas.Application;
 using Gl.Demandas.Domain;
 using Gl.Demandas.Infrastructure;
 using Gl.Demandas.Infrastructure.Persistence;
-using Microsoft.EntityFrameworkCore;
 
 namespace Gl.Demandas.Application.Tests;
 
 public sealed class CatalogoAdministracaoTests : IDisposable
 {
+    private readonly BancoDeTeste _banco;
     private readonly AppDbContext _db;
     private readonly CatalogoAdministracaoAplicacao _admin;
     private readonly CatalogoAplicacao _catalogo;
@@ -15,11 +15,8 @@ public sealed class CatalogoAdministracaoTests : IDisposable
 
     public CatalogoAdministracaoTests()
     {
-        var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-        _db = new AppDbContext(options);
-        _db.Database.EnsureCreated();
+        _banco = new BancoDeTeste();
+        _db = _banco.Contexto;
         DemoSeed.Aplicar(_db, new DateTime(2026, 9, 28, 15, 0, 0, DateTimeKind.Utc));
         var repo = new GlRepositorio(_db);
         _admin = new CatalogoAdministracaoAplicacao(repo, repo);
@@ -27,7 +24,7 @@ public sealed class CatalogoAdministracaoTests : IDisposable
         _login = new LoginAplicacao(repo, new EmissorTokenDemo(TokenDemo.ChaveDesenvolvimento));
     }
 
-    public void Dispose() => _db.Dispose();
+    public void Dispose() => _banco.Dispose();
 
     [Fact]
     public async Task Gl_cadastra_area_e_responsavel()
@@ -56,5 +53,25 @@ public sealed class CatalogoAdministracaoTests : IDisposable
             _admin.SalvarArea(gl, DemoIds.AreaManutencao, "Manutenção", false, CancellationToken.None));
         await Assert.ThrowsAsync<AcessoNegadoException>(() =>
             _admin.SalvarArea(cessionario, null, "Outra área", true, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Gl_grava_meta_de_prazo_da_categoria()
+    {
+        var gl = new Ator(DemoIds.Gl, Perfil.GlAdministrador, null);
+        var agora = new DateTime(2026, 9, 28, 15, 0, 0, DateTimeKind.Utc);
+        await _admin.SalvarCategoria(gl, DemoIds.CatManutencao, "Manutenção", true, 2, CancellationToken.None);
+        var manutencao = (await _catalogo.Obter(CancellationToken.None)).Categorias.Single(c => c.Id == DemoIds.CatManutencao);
+        Assert.Equal(2, manutencao.PrazoHoras);
+
+        Assert.True(PrazoAtendimento.EmAtraso(true, agora.AddHours(-3), null, 2, agora));
+        Assert.False(PrazoAtendimento.EmAtraso(true, agora.AddHours(-3), agora.AddHours(1), 2, agora));
+        Assert.False(PrazoAtendimento.EmAtraso(true, agora.AddHours(-3), null, null, agora));
+        Assert.False(PrazoAtendimento.EmAtraso(false, agora.AddHours(-3), null, 2, agora));
+
+        await Assert.ThrowsAsync<AcessoNegadoException>(() =>
+            _admin.SalvarCategoria(new Ator(DemoIds.Resp01, Perfil.ResponsavelArea, DemoIds.AreaManutencao), DemoIds.CatManutencao, "Manutenção", true, 4, CancellationToken.None));
+        await Assert.ThrowsAsync<RegraNegocioException>(() =>
+            _admin.SalvarCategoria(gl, DemoIds.CatManutencao, "Manutenção", true, 0, CancellationToken.None));
     }
 }

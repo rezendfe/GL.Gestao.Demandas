@@ -1,7 +1,6 @@
 using Gl.Demandas.Application;
 using Gl.Demandas.Domain;
 using Gl.Demandas.Infrastructure.Persistence;
-using Microsoft.EntityFrameworkCore;
 
 namespace Gl.Demandas.Application.Tests;
 
@@ -10,7 +9,8 @@ public sealed class GestaoCessionariosTests
     [Fact]
     public async Task Funcao_e_representante_persistem_contatos_e_permissoes_efetivas()
     {
-        await using var db = NovoBanco();
+        await using var banco = new BancoDeTeste();
+        var db = banco.Contexto;
         DemoSeed.Aplicar(db, DateTime.UtcNow);
         var repo = new GlRepositorio(db);
         var app = new GestaoCessionariosAplicacao(repo);
@@ -49,7 +49,8 @@ public sealed class GestaoCessionariosTests
     [Fact]
     public async Task Login_nao_pode_ser_associado_a_outra_empresa()
     {
-        await using var db = NovoBanco();
+        await using var banco = new BancoDeTeste();
+        var db = banco.Contexto;
         DemoSeed.Aplicar(db, DateTime.UtcNow);
         var app = new GestaoCessionariosAplicacao(new GlRepositorio(db));
         var gl = new Ator(DemoIds.Gl, Perfil.GlAdministrador, null);
@@ -69,7 +70,8 @@ public sealed class GestaoCessionariosTests
     [Fact]
     public async Task Somente_gl_pode_manter_empresa_e_funcoes()
     {
-        await using var db = NovoBanco();
+        await using var banco = new BancoDeTeste();
+        var db = banco.Contexto;
         DemoSeed.Aplicar(db, DateTime.UtcNow);
         var app = new GestaoCessionariosAplicacao(new GlRepositorio(db));
 
@@ -79,8 +81,4 @@ public sealed class GestaoCessionariosTests
             CancellationToken.None));
     }
 
-    private static AppDbContext NovoBanco() => new(
-        new DbContextOptionsBuilder<AppDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options);
 }

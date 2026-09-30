@@ -17,7 +17,7 @@ const ABAS = [
 type Aba = (typeof ABAS)[number]["id"];
 
 const INTRO: Record<Aba, string> = {
-  categorias: "A categoria agrupa os tipos de atendimento.",
+  categorias: "A categoria agrupa os tipos de atendimento e pode ter uma meta de prazo em horas.",
   tipos: "Cada tipo direciona a demanda para uma área e um fluxo.",
   areas: "A área recebe as demandas do tipo de atendimento vinculado a ela.",
   responsaveis: "O responsável atua em uma área. O perfil permanece Responsável da Área.",
@@ -45,6 +45,7 @@ export function CadastrosPage() {
   const [categoriaId, setCategoriaId] = useState("");
   const [categoriaNome, setCategoriaNome] = useState("");
   const [categoriaAtiva, setCategoriaAtiva] = useState(true);
+  const [categoriaPrazo, setCategoriaPrazo] = useState("");
   const [tipoId, setTipoId] = useState("");
   const [tipoNome, setTipoNome] = useState("");
   const [tipoCategoriaId, setTipoCategoriaId] = useState("");
@@ -106,6 +107,7 @@ export function CadastrosPage() {
     setCategoriaId("");
     setCategoriaNome("");
     setCategoriaAtiva(true);
+    setCategoriaPrazo("");
     limparAviso();
   }
 
@@ -113,6 +115,7 @@ export function CadastrosPage() {
     setCategoriaId(categoria.id);
     setCategoriaNome(categoria.nome);
     setCategoriaAtiva(categoria.ativa);
+    setCategoriaPrazo(categoria.prazoHoras ? String(categoria.prazoHoras) : "");
     limparAviso();
   }
 
@@ -173,11 +176,19 @@ export function CadastrosPage() {
     setSalvando(true);
     limparAviso();
     try {
-      const atualizado = await api.salvarCategoria({ id: categoriaId || null, nome: categoriaNome, ativa: categoriaAtiva });
+      const prazo = categoriaPrazo.trim();
+      const prazoHoras = prazo === "" ? null : Number(prazo);
+      if (prazoHoras !== null && (!Number.isInteger(prazoHoras) || prazoHoras < 1 || prazoHoras > 8760)) {
+        setErro("A meta de prazo fica entre 1 e 8760 horas, ou em branco.");
+        setSalvando(false);
+        return;
+      }
+      const atualizado = await api.salvarCategoria({ id: categoriaId || null, nome: categoriaNome, ativa: categoriaAtiva, prazoHoras });
       setCatalogo(atualizado);
       setCategoriaId("");
       setCategoriaNome("");
       setCategoriaAtiva(true);
+      setCategoriaPrazo("");
       setMensagem("Categoria salva.");
     } catch (error) {
       setErro(error instanceof ApiError ? error.message : "Não foi possível salvar a categoria.");
@@ -290,10 +301,11 @@ export function CadastrosPage() {
                   <button className="btn secondary" type="button" onClick={novaCategoria}>Nova categoria</button>
                 </div>
                 <Tabela
-                  colunas={["Categoria", "Tipos", "Situação", "Ação"]}
+                  colunas={["Categoria", "Meta", "Tipos", "Situação", "Ação"]}
                   vazio={catalogo.categorias.length === 0 ? "Nenhuma categoria cadastrada." : "Nenhuma categoria encontrada na pesquisa."}
                   linhas={categoriasVisiveis.map((categoria) => [
                     categoria.nome,
+                    categoria.prazoHoras ? `${categoria.prazoHoras} h` : "Sem meta",
                     String(categoria.subcategorias.length),
                     <Situacao key={categoria.id} ativo={categoria.ativa} ativoTexto="Ativa" inativoTexto="Inativa" />,
                     <button key={`${categoria.id}-editar`} className="cadastro-editar" type="button" onClick={() => editarCategoria(categoria)}>Editar</button>,
@@ -303,6 +315,10 @@ export function CadastrosPage() {
               <Panel title={categoriaId ? "Editar categoria" : "Nova categoria"}>
                 <form id="cadastro-form" onSubmit={(event) => void enviarCategoria(event)}>
                   <label>Nome da categoria<input value={categoriaNome} onChange={(event) => setCategoriaNome(event.target.value)} maxLength={120} required /></label>
+                  <label>Meta de prazo (horas)
+                    <input inputMode="numeric" value={categoriaPrazo} onChange={(event) => setCategoriaPrazo(event.target.value)} placeholder="Em branco, sem meta" />
+                  </label>
+                  <p className="campo-ajuda">Chamado sem previsão entra em atraso quando passa dessa meta desde a abertura. Previsão ainda no futuro não marca atraso.</p>
                   <label className="cadastro-check"><input type="checkbox" checked={categoriaAtiva} onChange={(event) => setCategoriaAtiva(event.target.checked)} /><span>Categoria ativa</span></label>
                   <button className="btn" type="submit" disabled={salvando}>{salvando ? "Salvando..." : "Salvar categoria"}</button>
                 </form>

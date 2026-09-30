@@ -13,7 +13,7 @@ A API em execução usa somente `Database:Provider=SqlServer` e o catálogo `gl-
 
 A connection string fica em `ConnectionStrings__Sql` (RNF-04): App Service na entrega publicada e user-secrets no desenvolvimento. O firewall do servidor precisa liberar o IP de quem executa a API local e os IPs de saída do App Service, ou a regra `AllowAzureServices` (`0.0.0.0`).
 
-Os testes automatizados montam um `AppDbContext` isolado em memória. Esse banco não é o da API e não substitui o catálogo Azure.
+Os testes automatizados abrem um catálogo SQL Server isolado por execução (`GL_TEST_SQL`, ou LocalDB quando a variável não existe) e o apagam ao terminar. Esse catálogo não é `gl-demandas` e não substitui o banco da API. Não há provedor em memória.
 
 Auth: `Auth:Mode=Demo` emite JWT local. `Auth:Mode=Entra` valida o token do Entra ID e exige o usuário cadastrado pelo e-mail.
 

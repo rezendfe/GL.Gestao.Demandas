@@ -10,6 +10,7 @@ appsettings.*.local.json
 .env.*
 web/test-results/
 web/playwright-report/
+web/playwright/
 web/blob-report/
 .venv/
 .playwright-mcp/

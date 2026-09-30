@@ -1,6 +1,10 @@
 -- Colunas e tabela que o modelo EF já usa e os scripts 02/12 ainda não criavam.
 -- Idempotente. Roda depois de 12_espacos_locacoes.sql.
 
+IF COL_LENGTH(N'app.Categoria', N'NR_Prazo_Horas') IS NULL
+    ALTER TABLE app.Categoria ADD NR_Prazo_Horas INT NULL;
+GO
+
 IF COL_LENGTH(N'app.Usuario', N'DS_Logo_Empresa') IS NULL
     ALTER TABLE app.Usuario ADD DS_Logo_Empresa NVARCHAR(300) NULL;
 GO

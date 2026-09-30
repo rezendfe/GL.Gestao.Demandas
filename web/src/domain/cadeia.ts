@@ -1,4 +1,4 @@
-import type { CadeiaTipo, EtapaCadeia, Perfil } from "./types";
+import type { CadeiaTipo, EtapaCadeia, Perfil, TarefaCadeia } from "./types";
 
 export const COLUNAS_CADEIA = [
   { codigo: "solicitacao", nome: "Solicitação", detalhe: "Chegou e ainda vai começar", situacoes: ["Novo", "Recebido"] },
@@ -10,13 +10,23 @@ export const COLUNAS_CADEIA = [
 
 export const CAMPOS_DA_ETAPA: Record<string, { id: string; rotulo: string }[]> = {
   solicitacao: [],
-  aprovacao: [{ id: "comentario", rotulo: "Observação" }],
+  aprovacao: [
+    { id: "comentario", rotulo: "Observação" },
+    { id: "anexo", rotulo: "Anexo" },
+  ],
   atendimento: [
     { id: "comentario", rotulo: "Registro do atendimento" },
     { id: "previsao", rotulo: "Previsão de atendimento" },
+    { id: "anexo", rotulo: "Anexo" },
   ],
-  validacao: [{ id: "comentario", rotulo: "O que foi feito" }],
-  conclusao: [{ id: "comentario", rotulo: "Registro da conclusão" }],
+  validacao: [
+    { id: "comentario", rotulo: "O que foi feito" },
+    { id: "anexo", rotulo: "Anexo" },
+  ],
+  conclusao: [
+    { id: "comentario", rotulo: "Registro da conclusão" },
+    { id: "anexo", rotulo: "Anexo" },
+  ],
 };
 
 const CAMPOS_PADRAO: Record<string, string[]> = {
@@ -27,14 +37,23 @@ const CAMPOS_PADRAO: Record<string, string[]> = {
   conclusao: [],
 };
 
+export function tarefasDa(etapa: EtapaCadeia): TarefaCadeia[] {
+  if (etapa.tarefas?.length) return etapa.tarefas;
+  return (etapa.campos ?? []).map((codigo) => ({ codigo, obrigatoria: true }));
+}
+
 export function etapasPadrao(): EtapaCadeia[] {
-  return COLUNAS_CADEIA.map((coluna, indice) => ({
-    codigo: coluna.codigo,
-    nome: coluna.nome,
-    ordem: indice + 1,
-    automatica: false,
-    campos: CAMPOS_PADRAO[coluna.codigo] ?? [],
-  }));
+  return COLUNAS_CADEIA.map((coluna, indice) => {
+    const campos = CAMPOS_PADRAO[coluna.codigo] ?? [];
+    return {
+      codigo: coluna.codigo,
+      nome: coluna.nome,
+      ordem: indice + 1,
+      automatica: false,
+      campos,
+      tarefas: campos.map((codigo) => ({ codigo, obrigatoria: true })),
+    };
+  });
 }
 
 export function cadeiaDoTipo(cadeias: CadeiaTipo[] | null, subcategoriaId: string) {

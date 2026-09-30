@@ -75,7 +75,7 @@ export const api = {
   preencher: (texto: string) =>
     request<Preenchimento>("/api/solicitacoes/preencher", { method: "POST", body: JSON.stringify({ texto }) }, 40000),
   catalogo: () => request<Catalogo>("/api/catalogo"),
-  salvarCategoria: (payload: { id: string | null; nome: string; ativa: boolean }) =>
+  salvarCategoria: (payload: { id: string | null; nome: string; ativa: boolean; prazoHoras: number | null }) =>
     request<Catalogo>("/api/catalogo/categorias", { method: "POST", body: JSON.stringify(payload) }),
   salvarTipoAtendimento: (payload: { id: string | null; categoriaId: string; areaId: string; nome: string; fluxo: string; ativo: boolean }) =>
     request<Catalogo>("/api/catalogo/tipos-atendimento", { method: "POST", body: JSON.stringify(payload) }),
@@ -150,7 +150,7 @@ export const api = {
       body: JSON.stringify({ termino }),
     }),
   cadeia: () => request<CadeiaTipo[]>("/api/cadeia"),
-  salvarCadeia: (subcategoriaId: string, etapas: { codigo: string; automatica: boolean; campos: string[] }[]) =>
+  salvarCadeia: (subcategoriaId: string, etapas: { codigo: string; automatica: boolean; campos: string[]; tarefas: { codigo: string; obrigatoria: boolean }[] }[]) =>
     request<EtapaCadeia[]>("/api/cadeia", { method: "PUT", body: JSON.stringify({ subcategoriaId, etapas }) }),
   avancar: (id: string, payload: { comentario?: string | null; previsao?: string | null; confirmacao?: boolean | null }) =>
     request<DetalheDemanda>(`/api/demandas/${id}/avancar`, { method: "POST", body: JSON.stringify(payload) }),

@@ -430,7 +430,7 @@ public static class DemoSeed
                 Nome = etapa.Nome,
                 Ordem = etapa.Ordem,
                 Automatica = etapa.Codigo == CadeiaAtendimento.Aprovacao && sub.Id == DemoIds.SubRefrigeracao,
-                Campos = string.Join(',', etapa.Campos)
+                Campos = string.Join(',', etapa.Tarefas.Select(tarefa => $"{tarefa.Codigo}:{(tarefa.Obrigatoria ? "1" : "0")}"))
             }));
         }
 

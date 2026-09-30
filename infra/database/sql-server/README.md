@@ -10,7 +10,7 @@ Ordem de aplicação:
 4. `12_espacos_locacoes.sql`
 5. `13_alinhamento_modelo.sql`
 
-A API não executa `Database.Migrate()` nem `EnsureCreated()`. O provedor da API é sempre `SqlServer`, apontando para este catálogo. O seed de demonstração em `DemoSeed` existe só para os testes automatizados, que usam um banco em memória isolado e não gravam neste servidor.
+A API não executa `Database.Migrate()` nem `EnsureCreated()`. O provedor da API é sempre `SqlServer`, apontando para este catálogo. O seed de demonstração em `DemoSeed` existe para os testes automatizados. Cada teste cria o próprio catálogo SQL Server, pela variável `GL_TEST_SQL` ou pelo LocalDB, e o apaga ao terminar. Esses testes não gravam neste servidor.
 
 ```bash
 sqlcmd -S localhost -d GlDemandas -E -i 01_schema.sql

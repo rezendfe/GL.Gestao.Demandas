@@ -3,8 +3,8 @@ import { createPortal } from "react-dom";
 import { Navigate } from "react-router-dom";
 import { useCadeia } from "../../application/hooks";
 import { useSessao } from "../../application/session";
-import { CAMPOS_DA_ETAPA } from "../../domain/cadeia";
-import type { EtapaCadeia } from "../../domain/types";
+import { CAMPOS_DA_ETAPA, tarefasDa } from "../../domain/cadeia";
+import type { EtapaCadeia, TarefaCadeia } from "../../domain/types";
 import { ApiError, api } from "../../infrastructure/api/client";
 import { PageHeader } from "../components/PageHeader";
 import { Panel } from "../components/Panel";
@@ -19,6 +19,7 @@ type Rascunho = {
   fixa: boolean;
   obrigatoria: boolean;
   campos: string[];
+  tarefas: TarefaCadeia[];
   texto: string;
   aviso: string | null;
 };
@@ -93,7 +94,8 @@ export function CadeiaPage() {
       nome: etapa.nome,
       fixa,
       obrigatoria: fixa || !opcional,
-      campos: [...etapa.campos],
+      campos: tarefasDa(etapa).map((tarefa) => tarefa.codigo),
+      tarefas: tarefasDa(etapa).map((tarefa) => ({ ...tarefa })),
       texto: "",
       aviso: null,
     });
@@ -152,6 +154,9 @@ export function CadeiaPage() {
       texto: "",
       aviso: null,
       campos: rascunho.campos.includes(campo.id) ? rascunho.campos : [...rascunho.campos, campo.id],
+      tarefas: rascunho.tarefas.some((tarefa) => tarefa.codigo === campo.id)
+        ? rascunho.tarefas
+        : [...rascunho.tarefas, { codigo: campo.id, obrigatoria: rascunho.obrigatoria }],
     });
   }
 
@@ -171,8 +176,12 @@ export function CadeiaPage() {
     setAvisos((atual) => ({ ...atual, [codigo]: null }));
     setTextos((atual) => ({ ...atual, [codigo]: "" }));
     setEtapas((atual) => atual.map((etapa) => (
-      etapa.codigo === codigo && !etapa.campos.includes(campo.id)
-        ? { ...etapa, campos: [...etapa.campos, campo.id] }
+      etapa.codigo === codigo && !tarefasDa(etapa).some((tarefa) => tarefa.codigo === campo.id)
+        ? {
+            ...etapa,
+            tarefas: [...tarefasDa(etapa), { codigo: campo.id, obrigatoria: !etapa.automatica }],
+            campos: [...tarefasDa(etapa).map((tarefa) => tarefa.codigo), campo.id],
+          }
         : etapa
     )));
     setOk(false);
@@ -182,7 +191,8 @@ export function CadeiaPage() {
     if (!rascunho) return;
     alterar(rascunho.codigo, {
       automatica: rascunho.fixa ? false : !rascunho.obrigatoria,
-      campos: rascunho.campos,
+      campos: rascunho.tarefas.map((tarefa) => tarefa.codigo),
+      tarefas: rascunho.tarefas,
     });
     setRascunho(null);
   }
@@ -192,11 +202,15 @@ export function CadeiaPage() {
     setFalha(null);
     setOk(false);
     try {
-      const salva = await api.salvarCadeia(tipoId, etapas.map((etapa) => ({
-        codigo: etapa.codigo,
-        automatica: etapa.automatica,
-        campos: etapa.campos,
-      })));
+      const salva = await api.salvarCadeia(tipoId, etapas.map((etapa) => {
+        const tarefas = tarefasDa(etapa);
+        return {
+          codigo: etapa.codigo,
+          automatica: etapa.automatica,
+          campos: tarefas.map((tarefa) => tarefa.codigo),
+          tarefas,
+        };
+      }));
       setEtapas(salva);
       setOk(true);
       await recarregar();
@@ -241,7 +255,8 @@ export function CadeiaPage() {
           {etapas.map((etapa, indice) => {
             const tom = TONS[indice % TONS.length];
             const opcoes = CAMPOS_DA_ETAPA[etapa.codigo] ?? [];
-            const restantes = opcoes.filter((campo) => !etapa.campos.includes(campo.id));
+            const tarefas = tarefasDa(etapa);
+            const restantes = opcoes.filter((campo) => !tarefas.some((tarefa) => tarefa.codigo === campo.id));
             return (
               <article
                 key={etapa.codigo}
@@ -264,20 +279,35 @@ export function CadeiaPage() {
                     {etapa.automatica ? "Opcional" : "Obrigatória"}
                   </button>
                   <ul className="fluxo-itens">
-                    {etapa.campos.length === 0 && <li className="fluxo-vazio">Sem informação extra.</li>}
-                    {etapa.campos.map((id) => {
-                      const rotulo = opcoes.find((campo) => campo.id === id)?.rotulo ?? id;
+                    {tarefas.length === 0 && <li className="fluxo-vazio">Sem informação extra.</li>}
+                    {tarefas.map((tarefa) => {
+                      const rotulo = opcoes.find((campo) => campo.id === tarefa.codigo)?.rotulo ?? tarefa.codigo;
                       return (
-                        <li key={id}>
+                        <li key={tarefa.codigo}>
                           <span className="fluxo-bolinha" style={{ borderColor: tom }} />
                           <span>{rotulo}</span>
-                          <button
-                            type="button"
-                            className="fluxo-tirar"
-                            onClick={() => alterar(etapa.codigo, { campos: etapa.campos.filter((item) => item !== id) })}
-                          >
-                            Tirar
-                          </button>
+                          <span className="fluxo-acoes">
+                            <button
+                              type="button"
+                              className={tarefa.obrigatoria ? "fluxo-marca" : "fluxo-marca opcional"}
+                              onClick={() => {
+                                const novas = tarefas.map((item) => item.codigo === tarefa.codigo ? { ...item, obrigatoria: !item.obrigatoria } : item);
+                                alterar(etapa.codigo, { tarefas: novas, campos: novas.map((item) => item.codigo) });
+                              }}
+                            >
+                              {tarefa.obrigatoria ? "Obrigatória" : "Opcional"}
+                            </button>
+                            <button
+                              type="button"
+                              className="fluxo-tirar"
+                              onClick={() => {
+                                const novas = tarefas.filter((item) => item.codigo !== tarefa.codigo);
+                                alterar(etapa.codigo, { tarefas: novas, campos: novas.map((item) => item.codigo) });
+                              }}
+                            >
+                              Tirar
+                            </button>
+                          </span>
                         </li>
                       );
                     })}
@@ -290,8 +320,12 @@ export function CadeiaPage() {
                           setAvisos((atual) => ({ ...atual, [etapa.codigo]: null }));
                           setOk(false);
                           setEtapas((atual) => atual.map((item) => (
-                            item.codigo === etapa.codigo && !item.campos.includes(campo.id)
-                              ? { ...item, campos: [...item.campos, campo.id] }
+                            item.codigo === etapa.codigo && !tarefasDa(item).some((tarefa) => tarefa.codigo === campo.id)
+                              ? {
+                                  ...item,
+                                  tarefas: [...tarefasDa(item), { codigo: campo.id, obrigatoria: !item.automatica }],
+                                  campos: [...tarefasDa(item).map((tarefa) => tarefa.codigo), campo.id],
+                                }
                               : item
                           )));
                         }}
@@ -451,7 +485,12 @@ function PerguntaEtapa({
               name="exigencia"
               checked={!rascunho.obrigatoria}
               disabled={rascunho.fixa}
-              onChange={() => onChange({ ...rascunho, obrigatoria: false, aviso: null })}
+              onChange={() => onChange({
+                ...rascunho,
+                obrigatoria: false,
+                tarefas: rascunho.tarefas.map((tarefa) => ({ ...tarefa, obrigatoria: false })),
+                aviso: null,
+              })}
             />
             <span>
               <strong>Opcional</strong>
@@ -471,7 +510,11 @@ function PerguntaEtapa({
                 <button
                   type="button"
                   className="fluxo-tirar"
-                  onClick={() => onChange({ ...rascunho, campos: rascunho.campos.filter((item) => item !== id) })}
+                  onClick={() => onChange({
+                    ...rascunho,
+                    campos: rascunho.campos.filter((item) => item !== id),
+                    tarefas: rascunho.tarefas.filter((tarefa) => tarefa.codigo !== id),
+                  })}
                 >
                   Tirar
                 </button>

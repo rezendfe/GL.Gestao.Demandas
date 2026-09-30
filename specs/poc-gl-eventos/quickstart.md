@@ -1,6 +1,6 @@
 # Quickstart
 
-1. `dotnet test backend/Gl.Demandas.slnx`
+1. `dotnet test backend/Gl.Demandas.slnx` — usa `GL_TEST_SQL` ou o LocalDB; não grava em `gl-demandas`. Os prints do Playwright saem em `web/playwright`.
 2. `dotnet run --project backend/src/Gl.Demandas.Api --launch-profile http`
 3. `cd web && npm ci && npm run dev`
 4. Abrir http://localhost:5173 e entrar com `joao.silva@empresaexemplo.com.br` / `Demo@2026`

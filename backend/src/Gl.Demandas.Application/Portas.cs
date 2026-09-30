@@ -54,7 +54,7 @@ public interface ICatalogo
     Task<IReadOnlyList<Categoria>> ListarCategorias(CancellationToken ct);
     Task<IReadOnlyList<Area>> ListarAreas(CancellationToken ct);
     Task<Area> SalvarArea(Guid? id, string nome, bool ativa, CancellationToken ct);
-    Task<Categoria> SalvarCategoria(Guid? id, string nome, bool ativa, CancellationToken ct);
+    Task<Categoria> SalvarCategoria(Guid? id, string nome, bool ativa, int? prazoHoras, CancellationToken ct);
     Task<Subcategoria> SalvarSubcategoria(Guid? id, Guid categoriaId, Guid areaId, string nome, FluxoDemanda fluxo, bool ativa, CancellationToken ct);
 }
 

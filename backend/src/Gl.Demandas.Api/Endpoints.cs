@@ -45,7 +45,7 @@ public static class Endpoints
         var catalogoAdmin = app.MapGroup("/api/catalogo").WithTags("Catálogo").RequireAuthorization();
         catalogoAdmin.MapPost("/categorias", async (CategoriaCadastroPedido pedido, ClaimsPrincipal user, IUsuarios usuarios, IConfiguration config, CatalogoAdministracaoAplicacao appCaso, CatalogoAplicacao catalogo, CancellationToken ct) =>
         {
-            await appCaso.SalvarCategoria(await AtorAtual(user, usuarios, config, ct), pedido.Id, pedido.Nome, pedido.Ativa, ct);
+            await appCaso.SalvarCategoria(await AtorAtual(user, usuarios, config, ct), pedido.Id, pedido.Nome, pedido.Ativa, pedido.PrazoHoras, ct);
             return Results.Ok(await catalogo.Obter(ct));
         })
             .WithName("SalvarCategoriaCatalogo")
@@ -191,7 +191,13 @@ public static class Endpoints
             Results.Ok(await cadeiaApp.Salvar(
                 await AtorAtual(user, usuarios, config, ct),
                 pedido.SubcategoriaId,
-                pedido.Etapas.Select(etapa => new EtapaCadeiaDto(etapa.Codigo, etapa.Codigo, 0, etapa.Automatica, etapa.Campos ?? [])).ToArray(),
+                pedido.Etapas.Select(etapa =>
+                {
+                    var tarefas = etapa.Tarefas is { Count: > 0 }
+                        ? etapa.Tarefas.Select(tarefa => new TarefaCadeiaDto(tarefa.Codigo, tarefa.Obrigatoria)).ToArray()
+                        : (etapa.Campos ?? []).Select(campo => new TarefaCadeiaDto(campo, true)).ToArray();
+                    return new EtapaCadeiaDto(etapa.Codigo, etapa.Codigo, 0, etapa.Automatica, tarefas.Select(tarefa => tarefa.Codigo).ToArray(), tarefas);
+                }).ToArray(),
                 ct)))
             .WithName("SalvarCadeia")
             .WithSummary("GL / Administrador configura a cadeia de um tipo de atendimento.");
@@ -329,11 +335,12 @@ public sealed record ClassificacaoPedido(Guid SubcategoriaId);
 public sealed record RedirecionarPedido(Guid AreaId, Guid? ResponsavelId);
 public sealed record AndamentoPedido(string Comentario, string Situacao);
 public sealed record AvancarPedido(string? Comentario, DateTime? Previsao, bool? Confirmacao);
-public sealed record EtapaCadeiaPedido(string Codigo, bool Automatica, IReadOnlyList<string>? Campos);
+public sealed record TarefaCadeiaPedido(string Codigo, bool Obrigatoria);
+public sealed record EtapaCadeiaPedido(string Codigo, bool Automatica, IReadOnlyList<string>? Campos, IReadOnlyList<TarefaCadeiaPedido>? Tarefas);
 public sealed record CadeiaPedido(Guid SubcategoriaId, IReadOnlyList<EtapaCadeiaPedido> Etapas);
 public sealed record AreaCadastroPedido(Guid? Id, string Nome, bool Ativa);
 public sealed record ResponsavelCadastroPedido(Guid? Id, string Nome, string Email, Guid AreaId, bool Ativo);
-public sealed record CategoriaCadastroPedido(Guid? Id, string Nome, bool Ativa);
+public sealed record CategoriaCadastroPedido(Guid? Id, string Nome, bool Ativa, int? PrazoHoras);
 public sealed record TipoAtendimentoCadastroPedido(Guid? Id, Guid CategoriaId, Guid AreaId, string Nome, string Fluxo, bool Ativo);
 public sealed record MensagemPedido(string Texto, bool Complemento = false);
 public sealed record PrevisaoPedido(DateTime Quando);

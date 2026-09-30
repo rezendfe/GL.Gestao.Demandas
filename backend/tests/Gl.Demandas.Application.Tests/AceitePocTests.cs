@@ -2,12 +2,12 @@ using Gl.Demandas.Application;
 using Gl.Demandas.Domain;
 using Gl.Demandas.Infrastructure;
 using Gl.Demandas.Infrastructure.Persistence;
-using Microsoft.EntityFrameworkCore;
 
 namespace Gl.Demandas.Application.Tests;
 
 public sealed class AceitePocTests : IDisposable
 {
+    private readonly BancoDeTeste _banco;
     private readonly AppDbContext _db;
     private readonly AtendimentoAplicacao _atendimento;
     private readonly ObrasAplicacao _obras;
@@ -17,11 +17,8 @@ public sealed class AceitePocTests : IDisposable
 
     public AceitePocTests()
     {
-        var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-        _db = new AppDbContext(options);
-        _db.Database.EnsureCreated();
+        _banco = new BancoDeTeste();
+        _db = _banco.Contexto;
         var agora = new DateTime(2026, 9, 28, 15, 0, 0, DateTimeKind.Utc);
         DemoSeed.Aplicar(_db, agora);
         var repo = new GlRepositorio(_db);
@@ -195,6 +192,7 @@ public sealed class AceitePocTests : IDisposable
         var reclamacao = fila.Single(item => item.Protocolo == "GL-2026-00121");
 
         Assert.True(atraso.PrevisaoAtendimento < agora);
+        Assert.Null(atraso.PrazoCategoriaHoras);
         Assert.Equal("Em andamento", atraso.Situacao);
         Assert.Equal("Reclamação", reclamacao.Natureza);
         Assert.True(reclamacao.PrevisaoAtendimento < agora);
@@ -325,7 +323,18 @@ public sealed class AceitePocTests : IDisposable
         Assert.Equal("Concluído", concluida.Situacao);
         Assert.Contains(concluida.Historico, h => h.Tipo == "VALIDACAO" && h.Autor == "Marina Costa");
 
-        var automatica = fibra.Etapas.Select(etapa => etapa with { Automatica = etapa.Codigo == "aprovacao" || etapa.Automatica }).ToArray();
+        var invalida = fibra.Etapas.Select(etapa => etapa.Codigo == "aprovacao" ? etapa with { Automatica = true } : etapa).ToArray();
+        var recusa = await Assert.ThrowsAsync<RegraNegocioException>(() => cadeiaApp.Salvar(gl, DemoIds.SubFibra, invalida, CancellationToken.None));
+        Assert.Contains("não pode exigir", recusa.Message);
+
+        var automatica = fibra.Etapas.Select(etapa =>
+        {
+            var salta = etapa.Codigo == "aprovacao" || etapa.Automatica;
+            var tarefas = salta
+                ? etapa.Tarefas.Select(tarefa => tarefa with { Obrigatoria = false }).ToArray()
+                : etapa.Tarefas.ToArray();
+            return etapa with { Automatica = salta, Tarefas = tarefas, Campos = tarefas.Select(tarefa => tarefa.Codigo).ToArray() };
+        }).ToArray();
         await Assert.ThrowsAsync<AcessoNegadoException>(() => cadeiaApp.Salvar(responsavel, DemoIds.SubFibra, automatica, CancellationToken.None));
         var salva = await cadeiaApp.Salvar(gl, DemoIds.SubFibra, automatica, CancellationToken.None);
         Assert.Contains(salva, etapa => etapa.Codigo == "aprovacao" && etapa.Automatica);
@@ -337,6 +346,33 @@ public sealed class AceitePocTests : IDisposable
         Assert.Contains(
             depois.Single(tipo => tipo.SubcategoriaId == DemoIds.SubRefrigeracao).Etapas,
             etapa => etapa.Codigo == "aprovacao" && etapa.Automatica);
+
+        var comPrevisaoOpcional = salva.Select(etapa =>
+        {
+            if (etapa.Codigo != "atendimento") return etapa;
+            var tarefas = new[]
+            {
+                new TarefaCadeiaDto("comentario", true),
+                new TarefaCadeiaDto("previsao", false)
+            };
+            return etapa with { Tarefas = tarefas, Campos = tarefas.Select(tarefa => tarefa.Codigo).ToArray() };
+        }).ToArray();
+        await cadeiaApp.Salvar(gl, DemoIds.SubFibra, comPrevisaoOpcional, CancellationToken.None);
+        var fibraDepois = (await cadeiaApp.Listar(CancellationToken.None)).Single(tipo => tipo.SubcategoriaId == DemoIds.SubFibra);
+        var atendimento = fibraDepois.Etapas.Single(etapa => etapa.Codigo == "atendimento");
+        Assert.Contains(atendimento.Tarefas, tarefa => tarefa.Codigo == "previsao" && tarefa.Obrigatoria == false);
+        Assert.Contains(atendimento.Tarefas, tarefa => tarefa.Codigo == "comentario" && tarefa.Obrigatoria);
+        var etapaAtendimento = new EtapaCadeia(
+            "atendimento",
+            "Atendimento",
+            3,
+            false,
+            ["comentario", "previsao"],
+            [new TarefaCadeia("comentario", true), new TarefaCadeia("previsao", false)]);
+        CadeiaAtendimento.ExigirCampos(etapaAtendimento, "Fibra conferida.", null, null, false);
+        Assert.Contains(
+            (await cadeiaApp.Listar(CancellationToken.None)).Single(tipo => tipo.SubcategoriaId == DemoIds.SubEletrica).Etapas.Single(etapa => etapa.Codigo == "atendimento").Tarefas,
+            tarefa => tarefa.Codigo == "previsao" && tarefa.Obrigatoria);
     }
 
     private static Ator Cessionario(Guid usuarioId)
@@ -362,9 +398,21 @@ public sealed class AceitePocTests : IDisposable
             CancellationToken.None);
     }
 
+    [Fact]
+    public async Task Fila_recebe_a_meta_de_prazo_da_categoria()
+    {
+        var gl = new Ator(DemoIds.Gl, Perfil.GlAdministrador, null);
+        var admin = new CatalogoAdministracaoAplicacao(new GlRepositorio(_db), new GlRepositorio(_db));
+        await admin.SalvarCategoria(gl, DemoIds.CatManutencao, "Manutenção", true, 48, CancellationToken.None);
+
+        var fila = await _atendimento.Listar(gl, CancellationToken.None);
+        Assert.Contains(fila, item => item.SubcategoriaId == DemoIds.SubCivil && item.PrazoCategoriaHoras == 48);
+        Assert.Contains(fila, item => item.SubcategoriaId == DemoIds.SubFibra && item.PrazoCategoriaHoras is null);
+    }
+
     public void Dispose()
     {
-        _db.Dispose();
+        _banco.Dispose();
         if (Directory.Exists(_pasta))
             Directory.Delete(_pasta, true);
     }
