@@ -1,6 +1,8 @@
 # API GL Demandas
 
-.NET 10, arquitetura hexagonal. Swagger: http://localhost:5090/swagger
+.NET 10, arquitetura hexagonal. Swagger local: http://localhost:5090/swagger
+
+Swagger publicado: https://gl-demandas-cfffckaaa2cvd5fa.westus-01.azurewebsites.net/swagger
 
 ```bash
 dotnet test backend/Gl.Demandas.slnx

@@ -2,7 +2,7 @@
 
 Swagger local: http://localhost:5090/swagger
 
-Swagger publicado: `https://{apiHost}/swagger`
+Swagger publicado: https://gl-demandas-cfffckaaa2cvd5fa.westus-01.azurewebsites.net/swagger
 
 JSON em camelCase. Erros: `{ "codigo", "mensagem" }` com 400, 403, 404 ou 422.
 

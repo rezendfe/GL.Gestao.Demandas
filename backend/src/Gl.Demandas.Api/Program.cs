@@ -7,8 +7,11 @@ using Gl.Demandas.Domain;
 using Gl.Demandas.Infrastructure;
 using Gl.Demandas.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
+using Swashbuckle.AspNetCore.SwaggerGen;
 
 var builder = WebApplication.CreateBuilder(args);
 var desenvolvimento = builder.Environment.IsDevelopment();
@@ -79,8 +82,13 @@ builder.Services.AddSwaggerGen(c =>
     {
         Title = "GL Demandas — POC Riocentro",
         Version = "v1",
-        Description = "API da prova de conceito de gestão de demandas GL Eventos / Riocentro."
+        Description = """
+            API da prova de conceito de gestão de demandas GL Eventos / Riocentro.
+            Rotas autenticadas usam o JWT devolvido por POST /api/auth/login. No botão Authorize, informe só o token.
+            Contas de demonstração, senha Demo@2026: joao.silva@empresaexemplo.com.br (Cessionário), patricia.lima@gleventos.com.br (GL / Administrador) e responsavel.01@gleventos.com.br (Responsável da Área).
+            """
     });
+    c.OperationFilter<SegurancaAnonimaFilter>();
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Name = "Authorization",
@@ -133,9 +141,20 @@ app.UseSwaggerUI(c =>
 {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "GL Demandas v1");
     c.RoutePrefix = "swagger";
+    c.EnablePersistAuthorization();
 });
 
-app.MapHealthChecks("/health").WithName("Health").WithTags("Sistema").WithSummary("Verifica se a API está no ar.");
+app.MapGet("/", () => Results.Redirect("/swagger")).ExcludeFromDescription();
+app.MapGet("/health", async (HealthCheckService health, CancellationToken ct) =>
+{
+    var relatorio = await health.CheckHealthAsync(ct);
+    var saudavel = relatorio.Status == HealthStatus.Healthy;
+    return Results.Text(relatorio.Status.ToString(), "text/plain", statusCode: saudavel ? StatusCodes.Status200OK : StatusCodes.Status503ServiceUnavailable);
+})
+    .WithName("Health")
+    .WithTags("Sistema")
+    .WithSummary("Verifica se a API está no ar.")
+    .AllowAnonymous();
 app.MapGlEndpoints();
 
 await PrepararDadosAsync(app);
@@ -166,5 +185,15 @@ static async Task PrepararDadosAsync(WebApplication app)
     if (!File.Exists(pdf))
     {
         await File.WriteAllTextAsync(pdf, "%PDF-1.1\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n");
+    }
+}
+
+file sealed class SegurancaAnonimaFilter : IOperationFilter
+{
+    public void Apply(OpenApiOperation operation, OperationFilterContext context)
+    {
+        var anonima = context.ApiDescription.ActionDescriptor.EndpointMetadata.OfType<IAllowAnonymous>().Any();
+        if (anonima)
+            operation.Security = [];
     }
 }
