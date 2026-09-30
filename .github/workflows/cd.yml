@@ -82,7 +82,7 @@ jobs:
               -S "${{ steps.infra.outputs.sql_server }}" \
               -d GlDemandas \
               -U "${{ secrets.SQL_ADMIN_LOGIN }}" \
-              -C -b \
+              -I -C -b \
               -i "$PWD/infra/database/sql-server/$script"
           done
 

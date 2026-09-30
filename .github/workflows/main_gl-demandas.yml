@@ -153,6 +153,6 @@ jobs:
               -S smartezy.database.windows.net \
               -d gl-demandas \
               -U usr.smartezy \
-              -C -b \
+              -I -C -b \
               -i "$PWD/infra/database/sql-server/$script"
           done
