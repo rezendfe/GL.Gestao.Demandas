@@ -1,0 +1,15 @@
+bin/
+obj/
+dist/
+node_modules/
+anexos-dev/
+.vs/
+*.user
+appsettings.*.local.json
+.env
+.env.*
+web/test-results/
+web/playwright-report/
+web/blob-report/
+.venv/
+.playwright-mcp/

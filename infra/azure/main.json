@@ -1,0 +1,331 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.46.1.21595",
+      "templateHash": "18378609127415965128"
+    }
+  },
+  "parameters": {
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Região dos recursos."
+      }
+    },
+    "namePrefix": {
+      "type": "string",
+      "defaultValue": "glpoc",
+      "metadata": {
+        "description": "Prefixo curto. O template acrescenta um sufixo único."
+      }
+    },
+    "sqlAdminLogin": {
+      "type": "string",
+      "metadata": {
+        "description": "Login administrador do Azure SQL. Senha vai só para o Key Vault."
+      }
+    },
+    "sqlAdminPassword": {
+      "type": "securestring"
+    },
+    "jwtSigningKey": {
+      "type": "securestring"
+    },
+    "deployerPrincipalId": {
+      "type": "string",
+      "metadata": {
+        "description": "Object id do principal que executa o deploy (app registration do GitHub OIDC)."
+      }
+    }
+  },
+  "variables": {
+    "suffix": "[take(uniqueString(resourceGroup().id), 6)]",
+    "prefix": "[format('{0}{1}', parameters('namePrefix'), variables('suffix'))]",
+    "storageName": "[take(toLower(replace(format('{0}st', variables('prefix')), '-', '')), 24)]",
+    "vaultName": "[take(format('{0}-kv', variables('prefix')), 24)]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Sql/servers",
+      "apiVersion": "2023-08-01-preview",
+      "name": "[format('{0}-sql', variables('prefix'))]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "administratorLogin": "[parameters('sqlAdminLogin')]",
+        "administratorLoginPassword": "[parameters('sqlAdminPassword')]",
+        "minimalTlsVersion": "1.2",
+        "publicNetworkAccess": "Enabled"
+      }
+    },
+    {
+      "type": "Microsoft.Sql/servers/firewallRules",
+      "apiVersion": "2023-08-01-preview",
+      "name": "[format('{0}/{1}', format('{0}-sql', variables('prefix')), 'AllowAzureServices')]",
+      "properties": {
+        "startIpAddress": "0.0.0.0",
+        "endIpAddress": "0.0.0.0"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Sql/servers', format('{0}-sql', variables('prefix')))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Sql/servers/databases",
+      "apiVersion": "2023-08-01-preview",
+      "name": "[format('{0}/{1}', format('{0}-sql', variables('prefix')), 'GlDemandas')]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "Basic",
+        "tier": "Basic"
+      },
+      "properties": {
+        "collation": "SQL_Latin1_General_CP1_CI_AS"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Sql/servers', format('{0}-sql', variables('prefix')))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "apiVersion": "2023-05-01",
+      "name": "[variables('storageName')]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "Standard_LRS"
+      },
+      "kind": "StorageV2",
+      "properties": {
+        "allowBlobPublicAccess": false,
+        "minimumTlsVersion": "TLS1_2"
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/blobServices",
+      "apiVersion": "2023-05-01",
+      "name": "[format('{0}/{1}', variables('storageName'), 'default')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+      "apiVersion": "2023-05-01",
+      "name": "[format('{0}/{1}/{2}', variables('storageName'), 'default', 'anexos')]",
+      "properties": {
+        "publicAccess": "None"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts/blobServices', variables('storageName'), 'default')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Web/serverfarms",
+      "apiVersion": "2023-12-01",
+      "name": "[format('{0}-plan', variables('prefix'))]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "B1",
+        "tier": "Basic"
+      },
+      "kind": "linux",
+      "properties": {
+        "reserved": true
+      }
+    },
+    {
+      "type": "Microsoft.Web/sites",
+      "apiVersion": "2023-12-01",
+      "name": "[format('{0}-api', variables('prefix'))]",
+      "location": "[parameters('location')]",
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": {
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', format('{0}-plan', variables('prefix')))]",
+        "httpsOnly": true,
+        "siteConfig": {
+          "linuxFxVersion": "DOTNETCORE|10.0",
+          "appSettings": [
+            {
+              "name": "Database__Provider",
+              "value": "SqlServer"
+            },
+            {
+              "name": "ConnectionStrings__Sql",
+              "value": "[format('@Microsoft.KeyVault(VaultName={0};SecretName=sql-connection)', variables('vaultName'))]"
+            },
+            {
+              "name": "Auth__Mode",
+              "value": "Demo"
+            },
+            {
+              "name": "Auth__SigningKey",
+              "value": "[format('@Microsoft.KeyVault(VaultName={0};SecretName=jwt-signing-key)', variables('vaultName'))]"
+            },
+            {
+              "name": "ASPNETCORE_ENVIRONMENT",
+              "value": "Production"
+            },
+            {
+              "name": "Anexo__Provider",
+              "value": "Blob"
+            },
+            {
+              "name": "Anexo__ConnectionString",
+              "value": "[format('@Microsoft.KeyVault(VaultName={0};SecretName=blob-connection)', variables('vaultName'))]"
+            },
+            {
+              "name": "Anexo__Container",
+              "value": "anexos"
+            },
+            {
+              "name": "Cors__Origins__0",
+              "value": "[format('https://{0}', reference(resourceId('Microsoft.Web/staticSites', format('{0}-web', variables('prefix'))), '2023-12-01').defaultHostname)]"
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/serverfarms', format('{0}-plan', variables('prefix')))]",
+        "[resourceId('Microsoft.Web/staticSites', format('{0}-web', variables('prefix')))]",
+        "[resourceId('Microsoft.KeyVault/vaults/secrets', variables('vaultName'), 'blob-connection')]",
+        "[resourceId('Microsoft.KeyVault/vaults/secrets', variables('vaultName'), 'jwt-signing-key')]",
+        "[resourceId('Microsoft.KeyVault/vaults/secrets', variables('vaultName'), 'sql-connection')]",
+        "[resourceId('Microsoft.KeyVault/vaults', variables('vaultName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Web/staticSites",
+      "apiVersion": "2023-12-01",
+      "name": "[format('{0}-web', variables('prefix'))]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "Free",
+        "tier": "Free"
+      },
+      "properties": {
+        "allowConfigFileUpdates": true
+      }
+    },
+    {
+      "type": "Microsoft.KeyVault/vaults",
+      "apiVersion": "2023-07-01",
+      "name": "[variables('vaultName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "tenantId": "[subscription().tenantId]",
+        "sku": {
+          "family": "A",
+          "name": "standard"
+        },
+        "enableRbacAuthorization": false,
+        "accessPolicies": [
+          {
+            "tenantId": "[subscription().tenantId]",
+            "objectId": "[parameters('deployerPrincipalId')]",
+            "permissions": {
+              "secrets": [
+                "get",
+                "list",
+                "set"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.KeyVault/vaults/accessPolicies",
+      "apiVersion": "2023-07-01",
+      "name": "[format('{0}/{1}', variables('vaultName'), 'add')]",
+      "properties": {
+        "accessPolicies": [
+          {
+            "tenantId": "[subscription().tenantId]",
+            "objectId": "[reference(resourceId('Microsoft.Web/sites', format('{0}-api', variables('prefix'))), '2023-12-01', 'full').identity.principalId]",
+            "permissions": {
+              "secrets": [
+                "get",
+                "list"
+              ]
+            }
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', format('{0}-api', variables('prefix')))]",
+        "[resourceId('Microsoft.KeyVault/vaults', variables('vaultName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.KeyVault/vaults/secrets",
+      "apiVersion": "2023-07-01",
+      "name": "[format('{0}/{1}', variables('vaultName'), 'sql-connection')]",
+      "properties": {
+        "value": "[format('Server=tcp:{0},1433;Initial Catalog={1};Persist Security Info=False;User ID={2};Password={3};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;', reference(resourceId('Microsoft.Sql/servers', format('{0}-sql', variables('prefix'))), '2023-08-01-preview').fullyQualifiedDomainName, 'GlDemandas', parameters('sqlAdminLogin'), parameters('sqlAdminPassword'))]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Sql/servers/databases', format('{0}-sql', variables('prefix')), 'GlDemandas')]",
+        "[resourceId('Microsoft.Sql/servers', format('{0}-sql', variables('prefix')))]",
+        "[resourceId('Microsoft.KeyVault/vaults', variables('vaultName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.KeyVault/vaults/secrets",
+      "apiVersion": "2023-07-01",
+      "name": "[format('{0}/{1}', variables('vaultName'), 'jwt-signing-key')]",
+      "properties": {
+        "value": "[parameters('jwtSigningKey')]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.KeyVault/vaults', variables('vaultName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.KeyVault/vaults/secrets",
+      "apiVersion": "2023-07-01",
+      "name": "[format('{0}/{1}', variables('vaultName'), 'blob-connection')]",
+      "properties": {
+        "value": "[format('DefaultEndpointsProtocol=https;AccountName={0};AccountKey={1};EndpointSuffix={2}', variables('storageName'), listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageName')), '2023-05-01').keys[0].value, environment().suffixes.storage)]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageName'))]",
+        "[resourceId('Microsoft.KeyVault/vaults', variables('vaultName'))]"
+      ]
+    }
+  ],
+  "outputs": {
+    "apiName": {
+      "type": "string",
+      "value": "[format('{0}-api', variables('prefix'))]"
+    },
+    "apiHost": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Web/sites', format('{0}-api', variables('prefix'))), '2023-12-01').defaultHostName]"
+    },
+    "portalName": {
+      "type": "string",
+      "value": "[format('{0}-web', variables('prefix'))]"
+    },
+    "vaultName": {
+      "type": "string",
+      "value": "[variables('vaultName')]"
+    },
+    "sqlServer": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Sql/servers', format('{0}-sql', variables('prefix'))), '2023-08-01-preview').fullyQualifiedDomainName]"
+    },
+    "storageAccount": {
+      "type": "string",
+      "value": "[variables('storageName')]"
+    },
+    "firewallRule": {
+      "type": "string",
+      "value": "AllowAzureServices"
+    }
+  }
+}

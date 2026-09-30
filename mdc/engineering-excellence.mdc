@@ -1,0 +1,36 @@
+---
+description: Diretriz primária — software seguro, Clean Architecture, API e React
+alwaysApply: true
+---
+
+# Engenharia de excelência (diretriz primária)
+
+**Art. XII** da [constitution.md](../../.specify/memory/constitution.md). Detalhes em
+[`architecture.md`](../../specs/001-mvp-ads-plataforma/architecture.md).
+
+Objetivo: aplicações **seguras**, **resilientes** e **escaláveis**.
+
+## Checklist por decisão de código
+
+| Área | MUST |
+|------|------|
+| **Segurança** | Validar entrada; JWT no admin; `X-Sistema-Key` no público; sem secrets no repo/bundle |
+| **Clean Architecture** | Dependência para dentro; use cases na Application; adapters na Infrastructure |
+| **SQL** | Um dono (Infrastructure); scripts DDL; nomenclatura `database-naming.mdc` |
+| **APIs HTTP** | Swagger UI em `/swagger` (`api-swagger.mdc`) |
+| **Web** | Só Admin HTTP; camadas domain/application/infrastructure/presentation; UI sem fetch direto |
+
+## Resiliência (sempre)
+
+Timeouts HTTP, health checks, rate limiting em prod (admin), degradar UI com mensagem clara.
+Clique: redirect 302 não depende de sucesso do INSERT de log.
+
+## Proibido
+
+- Lógica de negócio em `Program.cs`, `*Endpoints.cs` ou componentes React
+- Secrets em `.env` commitado ou `appsettings` com senha
+- URL de afiliado no payload público de criativo (`clickUrl` = redirect desta API)
+
+## Ao concluir
+
+Atualizar spec se mudou contrato, boundary ou deploy (`spec-sync.mdc`).

@@ -1,0 +1,73 @@
+---
+description: Nomenclatura SQL corporativa — tabelas, colunas, índices e views do schema app
+globs:
+  - infra/database/sql-server/**
+  - backend/**/Persistence/**
+  - backend/**/Domain/Entities/**
+  - specs/**/data-model.md
+---
+
+# SQL Server — padrão corporativo (schema `app`)
+
+Fonte de verdade DDL: [`infra/database/sql-server/`](../../infra/database/sql-server/) (quando existir).  
+Modelo detalhado: [`specs/001-mvp-ads-plataforma/data-model.md`](../../specs/001-mvp-ads-plataforma/data-model.md).
+
+## Tabelas
+
+- Nome: `Termo1_Termo2` (PascalCase com underscore), ex.: `Anuncio_Sistema`, `Clique_Redirecionamento`
+- Schema: sempre `app`
+- Tabelas MVP: `Categoria`, `Sistema`, `Anuncio`, `Anuncio_Sistema`, `Clique_Redirecionamento`
+
+## Colunas (prefixos)
+
+| Prefixo | Uso | Exemplo |
+|---------|-----|---------|
+| `ID_` | PK/FK numérica | `ID_Anuncio`, `ID_Categoria` |
+| `CD_` | código/UUID público ou natural | `CD_Anuncio`, `CD_Sistema`, `CD_Clique`, `CD_Cookie` |
+| `NM_` | nome/descrição curta | `NM_Categoria`, `NM_Anuncio`, `NM_Sistema` |
+| `SG_` | sigla / status curto | `SG_Status`, `SG_Tipo_Midia`, `SG_Origem` |
+| `DS_` | texto longo / URL / path | `DS_Url_Afiliado`, `DS_Url_Midia`, `DS_Url_Poster`, `DS_Categoria` |
+| `DT_` | data/hora UTC | `DT_Criacao`, `DT_Clique`, `DT_Inicio`, `DT_Fim` |
+| `NR_` | número curto | `NR_Prioridade` |
+| `MD_` | medida numérica | `MD_Tamanho_Bytes` (se necessário) |
+
+**Não usar `FL_`.** Ativo/inativo = `SG_Status` (`ATIVO` / `INATIVO`).
+
+## Constraints e índices
+
+- PK: `PK_<Tabela>`
+- FK: `FK_<Tabela>_<Referencia>`
+- UK: `UK_<Tabela>_<Coluna(s)>`
+- IX: `IX_<Tabela>_<Proposito>`
+
+Índices **filtrados** MUST ser criados via `sys.sp_executesql` com `SET QUOTED_IDENTIFIER ON` (CI usa `SQLCMDOPTIONS=-I`).
+
+## Views (read models)
+
+- `VC_*` — consultas agregadas / coleções
+- `VB_*` — detalhe de entidade
+
+MVP: views **opcionais**. Preferir use cases + EF. Se criar view, aliases de coluna MUST manter contrato JSON da API (camelCase).
+
+## API vs SQL
+
+| API (JSON camelCase) | SQL |
+|----------------------|-----|
+| `id` | `CD_*` (UUID) |
+| `name` | `NM_*` |
+| `status` | `SG_Status` |
+| `affiliateUrl` | `DS_Url_Afiliado` |
+
+PK interna `ID_* BIGINT IDENTITY` — uso exclusivo FK/dedup; **nunca** expor na API pública.
+
+## EF Core
+
+- `AppDbContext` mapeia tabelas corporativas; entidades C# mantêm nomes de domínio (`Advertisement`, `Category`, `ConsumerSystem`)
+- Produção/local: scripts `01`+ via CI ou runbook — **não** `Database.Migrate()` em runtime
+- Testes: `UseInMemoryDatabase` ou Testcontainers — migrations EF não são fonte de verdade DDL
+
+## Seeds
+
+| Script | Uso |
+|--------|-----|
+| `11_seed_categorias.sql` | Esporte, Tecnologia, Eletrodoméstico, Utilidades de casa |

@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="src/Gl.Demandas.Domain/Gl.Demandas.Domain.csproj" />
+  <Project Path="src/Gl.Demandas.Application/Gl.Demandas.Application.csproj" />
+  <Project Path="src/Gl.Demandas.Infrastructure/Gl.Demandas.Infrastructure.csproj" />
+  <Project Path="src/Gl.Demandas.Api/Gl.Demandas.Api.csproj" />
+  <Project Path="tests/Gl.Demandas.Application.Tests/Gl.Demandas.Application.Tests.csproj" />
+</Solution>

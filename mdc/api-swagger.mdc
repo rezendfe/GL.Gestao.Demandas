@@ -1,0 +1,41 @@
+---
+description: Toda API HTTP MUST expor Swagger UI para documentar e testar rotas
+globs: backend/**/*Api/**,specs/**/contracts/*-api.md
+alwaysApply: false
+---
+
+# Swagger obrigatório em APIs HTTP
+
+Sempre que existir ou for criada uma **API HTTP** (Minimal API, controllers), o projeto MUST expor **Swagger UI** para visualizar e **testar** todas as rotas publicadas.
+
+## MUST
+
+| Item | Requisito |
+|------|-----------|
+| **Swagger UI** | Rota `/swagger` (ou prefixo documentado no README/contrato) |
+| **OpenAPI JSON** | `/swagger/v1/swagger.json` gerado a partir dos endpoints |
+| **Metadados** | `WithName`, `WithTags`, `WithSummary` em cada endpoint |
+| **Auth no Swagger** | JWT Bearer nas rotas admin; `X-Sistema-Key` nas rotas públicas |
+| **Contrato** | `specs/*/contracts/*-api.md` MUST linkar a URL do Swagger (local + prod/staging) |
+| **README** | `backend/README.md` MUST indicar como abrir o Swagger |
+
+## Ao criar ou alterar endpoint
+
+1. Registrar rota com tags/summary (explorador Swagger legível).
+2. Garantir que aparece no Swagger UI e responde no **Try it out**.
+3. Atualizar contrato Markdown e quickstart com exemplo testável via Swagger.
+4. Se a API for nova, adicionar `AddSwaggerGen` + `UseSwaggerUI` no `Program.cs`.
+
+## Referência no monorepo
+
+| API | Swagger local | Produção |
+|-----|---------------|----------|
+| **Ads.Api** | http://localhost:5000/swagger | `{ADS_API_BASE}/swagger` |
+
+Não há Worker HTTP neste MVP.
+
+## Proibido
+
+- Entregar API HTTP sem Swagger UI acessível no ambiente de dev.
+- Documentar rotas só em Markdown sem espelho no OpenAPI gerado pelo código.
+- Tags Admin e Public misturadas sem `WithTags`.

@@ -1,0 +1,105 @@
+# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
+# More GitHub Actions for Azure: https://github.com/Azure/actions
+
+name: Build and deploy ASP.Net Core app to Azure Web App - gl-demandas
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read #This is required for actions/checkout
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET Core
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.x"
+
+      - name: dotnet publish
+        run: dotnet publish backend/src/Gl.Demandas.Api/Gl.Demandas.Api.csproj -c Release -o ${{env.DOTNET_ROOT}}/myapp
+
+      - name: Upload artifact for deployment job
+        uses: actions/upload-artifact@v4
+        with:
+          name: .net-app
+          path: ${{env.DOTNET_ROOT}}/myapp
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      id-token: write #This is required for requesting the JWT
+      contents: read #This is required for actions/checkout
+
+    steps:
+      - name: Download artifact from build job
+        uses: actions/download-artifact@v4
+        with:
+          name: .net-app
+          path: api
+
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_53C92FB683CD46F089BB1326B88A240A }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_137A4D817B404DAFB80A89ADD77E4702 }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_1CB71A9B4FC742ED9AD25A222DF03D4B }}
+
+      - name: Configure App Service
+        run: |
+          set -euo pipefail
+          app=gl-demandas
+          rg=$(az webapp list --query "[?name=='$app'].resourceGroup | [0]" -o tsv)
+          if [ -z "$rg" ]; then
+            echo "App Service $app não encontrado na assinatura ligada ao GitHub."
+            exit 1
+          fi
+          kind=$(az webapp show -g "$rg" -n "$app" --query kind -o tsv)
+          host=$(az staticwebapp list --query "[?contains(defaultHostname, 'gray-bay-0ad3ef71e')].defaultHostname | [0]" -o tsv)
+          if [ -z "$host" ]; then
+            host=$(az staticwebapp list --query "[0].defaultHostname" -o tsv)
+          fi
+          if [ -z "$host" ]; then
+            echo "Static Web App não encontrado na assinatura."
+            exit 1
+          fi
+          echo "resource_group=$rg"
+          echo "kind=$kind"
+          echo "portal_host=$host"
+          key=$(az webapp config appsettings list -g "$rg" -n "$app" --query "[?name=='Auth__SigningKey'].value | [0]" -o tsv)
+          if [ -z "$key" ]; then
+            key=$(openssl rand -base64 48 | tr -d '\n')
+            echo "::add-mask::$key"
+          fi
+          if [[ "$kind" == *linux* ]]; then
+            pasta="/home/data/anexos"
+            az webapp config set -g "$rg" -n "$app" --linux-fx-version "DOTNETCORE|10.0" -o none
+          else
+            pasta='D:\home\data\anexos'
+          fi
+          az webapp config appsettings set -g "$rg" -n "$app" -o none --settings \
+            ASPNETCORE_ENVIRONMENT=Production \
+            Auth__Mode=Demo \
+            Auth__SigningKey="$key" \
+            Database__Provider=InMemory \
+            Anexo__Provider=Local \
+            Anexo__Pasta="$pasta" \
+            Cors__Origins__0="https://$host" \
+            Cors__Origins__1="http://localhost:5173" \
+            Cors__Origins__2="http://127.0.0.1:5173"
+
+      - name: Deploy to Azure Web App
+        id: deploy-to-webapp
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: "gl-demandas"
+          slot-name: "Production"
+          package: api

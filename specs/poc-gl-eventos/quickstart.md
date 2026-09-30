@@ -1,0 +1,12 @@
+# Quickstart
+
+1. `dotnet test backend/Gl.Demandas.slnx`
+2. `dotnet run --project backend/src/Gl.Demandas.Api --launch-profile http`
+3. `cd web && npm ci && npm run dev`
+4. Abrir http://localhost:5173 e entrar com `joao.silva@empresaexemplo.com.br` / `Demo@2026`
+
+Swagger: http://localhost:5090/swagger
+
+SQL Server, quando for usar o banco de verdade: scripts em `infra/database/sql-server/README.md`.
+
+Azure: o workflow `cd` espera os segredos `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `AZURE_RESOURCE_GROUP`, `AZURE_DEPLOYER_OBJECT_ID`, `SQL_ADMIN_LOGIN`, `SQL_ADMIN_PASSWORD` e `JWT_SIGNING_KEY` (32 caracteres ou mais). O login do GitHub usa OIDC. Nada disso fica no repositório.

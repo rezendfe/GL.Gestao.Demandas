@@ -1,0 +1,112 @@
+name: cd
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy infrastructure
+        id: infra
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            set -euo pipefail
+            az group create --name "${{ secrets.AZURE_RESOURCE_GROUP }}" --location brazilsouth
+            az deployment group create \
+              --name glpoc \
+              --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+              --template-file infra/azure/main.bicep \
+              --parameters \
+                sqlAdminLogin="${{ secrets.SQL_ADMIN_LOGIN }}" \
+                sqlAdminPassword="${{ secrets.SQL_ADMIN_PASSWORD }}" \
+                jwtSigningKey="${{ secrets.JWT_SIGNING_KEY }}" \
+                deployerPrincipalId="${{ secrets.AZURE_DEPLOYER_OBJECT_ID }}"
+            show() { az deployment group show -g "${{ secrets.AZURE_RESOURCE_GROUP }}" -n glpoc --query "$1" -o tsv; }
+            echo "api_name=$(show properties.outputs.apiName.value)" >> "$GITHUB_OUTPUT"
+            echo "api_host=$(show properties.outputs.apiHost.value)" >> "$GITHUB_OUTPUT"
+            echo "portal_name=$(show properties.outputs.portalName.value)" >> "$GITHUB_OUTPUT"
+            echo "sql_server=$(show properties.outputs.sqlServer.value)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+      - name: Publish API
+        run: dotnet publish backend/src/Gl.Demandas.Api/Gl.Demandas.Api.csproj -c Release -o "${{ runner.temp }}/api"
+      - uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ steps.infra.outputs.api_name }}
+          package: ${{ runner.temp }}/api
+
+      - name: Open SQL firewall for the runner
+        id: sqlfw
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            set -euo pipefail
+            ip=$(curl -fsSL https://api.ipify.org)
+            fqdn="${{ steps.infra.outputs.sql_server }}"
+            server="${fqdn%%.*}"
+            az sql server firewall-rule create \
+              --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+              --server "$server" \
+              --name "gha-${{ github.run_id }}" \
+              --start-ip-address "$ip" \
+              --end-ip-address "$ip"
+            echo "server=$server" >> "$GITHUB_OUTPUT"
+
+      - name: Apply SQL scripts
+        env:
+          SQLCMDPASSWORD: ${{ secrets.SQL_ADMIN_PASSWORD }}
+        run: |
+          set -euo pipefail
+          for script in 01_schema.sql 02_tables.sql 11_seed.sql; do
+            docker run --rm \
+              -v "$PWD/infra/database/sql-server:/sql:ro" \
+              -e SQLCMDPASSWORD \
+              mcr.microsoft.com/mssql-tools18 \
+              /opt/mssql-tools18/bin/sqlcmd \
+                -S "${{ steps.infra.outputs.sql_server }}" \
+                -d GlDemandas \
+                -U "${{ secrets.SQL_ADMIN_LOGIN }}" \
+                -C -b \
+                -i "/sql/$script"
+          done
+
+      - name: Close SQL firewall
+        if: always() && steps.sqlfw.outputs.server != ''
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            az sql server firewall-rule delete \
+              --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+              --server "${{ steps.sqlfw.outputs.server }}" \
+              --name "gha-${{ github.run_id }}" \
+              --yes || true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Build and deploy portal
+        env:
+          VITE_API_BASE_URL: https://${{ steps.infra.outputs.api_host }}
+        run: |
+          set -euo pipefail
+          cd web
+          npm ci
+          npm run build
+          token=$(az staticwebapp secrets list --name "${{ steps.infra.outputs.portal_name }}" --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" --query "properties.apiKey" -o tsv)
+          npx --yes @azure/static-web-apps-cli deploy ./dist --deployment-token "$token" --env production

@@ -1,0 +1,32 @@
+---
+description: Sincronizar especificação SDD ao concluir tarefas de implementação
+alwaysApply: true
+---
+
+# Encerramento — Atualizar especificação
+
+Ao **concluir** uma ou mais tarefas (`Txxx`) ou sessão de implementação, ANTES de
+encerrar a resposta, atualize os artefatos SDD afetados:
+
+## Checklist obrigatório
+
+1. **`tasks.md`** — marcar tarefas ✅ (ou 🔄 se parcial)
+2. **Contratos** — se endpoints/schemas mudaram: `specs/001-mvp-ads-plataforma/contracts/*.md`
+3. **`quickstart.md`** — se setup ou smoke mudou (portas, URLs, env vars)
+4. **`data-model.md`** — se entidades SQL, FKs ou mapeamento API↔DB mudaram
+5. **`.cursor/rules/database-naming.mdc`** e **`Util/mdc/database-naming.mdc`** — se convenção SQL mudou
+6. **`infra/database/sql-server/README.md`** — se scripts, seeds ou ordem de deploy mudaram
+7. **`backend/README.md`** / **`web/README.md`** — comandos e URLs locais
+8. **`architecture.md`** — se camadas, ports ou fluxo de clique mudaram
+9. **`research.md`** — apenas se houve ADR/decisão técnica nova
+10. **`architecture-audit.md`** — se o código passou a existir ou mudou de camada
+
+## Quando NÃO pular
+
+- Mesmo que o usuário não peça commit, a spec DEVE refletir o estado real do código.
+
+## Ordem
+
+Implementação → testes → **sync spec** → (commit/push se solicitado)
+
+Referência: Art. X da [constitution.md](../../.specify/memory/constitution.md).

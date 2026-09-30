@@ -1,0 +1,59 @@
+---
+description: Clean Architecture — camadas, dependências e resiliência (DIRETRIZ CRÍTICA)
+alwaysApply: true
+---
+
+# Clean Architecture — DIRETRIZ CRÍTICA (obrigatório)
+
+**Gate bloqueante:** [`spec.md` §0](../../specs/001-mvp-ads-plataforma/spec.md). Violação = **não implementar / não mergear**.
+
+Parte da **diretriz primária** (Art. XII). Leia também
+[`.cursor/rules/engineering-excellence.mdc`](./engineering-excellence.mdc).
+
+Leia [`specs/001-mvp-ads-plataforma/architecture.md`](../../specs/001-mvp-ads-plataforma/architecture.md)
+e Art. XI–XII da [constitution.md](../../.specify/memory/constitution.md) antes de implementar.
+
+## Regra de dependência
+
+Código MUST apontar **para dentro**: Presentation → Application → Domain.
+Infrastructure implementa ports definidos na **Application/Abstractions** (nunca em `*.Api`).
+
+## Proibições absolutas (NÃO implementar)
+
+- Lógica de negócio em `*Endpoints.cs`, `Program.cs`, componentes React
+- `DbContext`, EF, filesystem/blob SDK na Application ou Presentation (exceto composition root DI)
+- SQL no **Ads.Api** fora do composition root — endpoints só chamam use cases
+- Ports (`I*`) definidos em projetos `*.Api` — somente `Application/Abstractions`
+- Web React chamando SQL diretamente ou secrets no bundle
+- Tratar `DbUpdateException` na API — mapear na Application
+
+## Por stack
+
+### Backend (.NET)
+
+- **Domain** (`Ads.Domain`): entidades, enums, exceções — zero EF/ASP.NET
+- **Application** (`Ads.Application`): use cases, validators, `I*Repository`, `HtmlCreativeRules`, `IAdminTokenService`
+- **Infrastructure**: EF, JWT — implementa ports; schema SQL `app.*` via scripts + `AppDbContext`
+- **Presentation** (`Ads.Api`): endpoints finos, DI, sem regra de negócio
+
+**Novo código:** criar handler/use case na Application.
+
+### Web (React)
+
+- **Domain/types:** tipos e regras puras
+- **Application/hooks:** orquestração e estado de casos de uso
+- **Infrastructure/api:** `adminClient`, HTTP
+- **Presentation/components:** UI apenas; sem `fetch` direto
+
+**Proibido:** web chamar SQL; secrets no bundle.
+
+## Resiliência (sempre considerar)
+
+- Timeouts HTTP, health checks
+- Redirect de clique: **302 primeiro** se o log falhar (não perder comissão de afiliado)
+- UI: degradar com mensagem clara (não falhar silencioso)
+
+## Ao concluir tarefa
+
+Se introduziu camada nova ou moveu responsabilidade: atualizar `architecture.md`,
+`architecture-audit.md` e `tasks.md`.
