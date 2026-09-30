@@ -73,7 +73,7 @@ jobs:
           SQLCMDPASSWORD: ${{ secrets.SQL_ADMIN_PASSWORD }}
         run: |
           set -euo pipefail
-          for script in 01_schema.sql 02_tables.sql 11_seed.sql; do
+          for script in 01_schema.sql 02_tables.sql 11_seed.sql 12_espacos_locacoes.sql 13_alinhamento_modelo.sql; do
             docker run --rm \
               -v "$PWD/infra/database/sql-server:/sql:ro" \
               -e SQLCMDPASSWORD \

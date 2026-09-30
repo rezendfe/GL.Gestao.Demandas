@@ -54,6 +54,8 @@ jobs:
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_1CB71A9B4FC742ED9AD25A222DF03D4B }}
 
       - name: Configure App Service
+        env:
+          SQL_CONNECTION_STRING: ${{ secrets.SQL_CONNECTION_STRING }}
         run: |
           set -euo pipefail
           app=gl-demandas
@@ -78,16 +80,75 @@ jobs:
           else
             pasta='D:\home\data\anexos'
           fi
+          if [ -z "${SQL_CONNECTION_STRING:-}" ]; then
+            echo "Defina o segredo SQL_CONNECTION_STRING do repositório."
+            exit 1
+          fi
           az webapp config appsettings set -g "$rg" -n "$app" -o none --settings \
             ASPNETCORE_ENVIRONMENT=Production \
             Auth__Mode=Demo \
             Auth__SigningKey="$key" \
-            Database__Provider=InMemory \
+            Database__Provider=SqlServer \
+            ConnectionStrings__Sql="$SQL_CONNECTION_STRING" \
             Anexo__Provider=Local \
             Anexo__Pasta="$pasta" \
             Cors__Origins__0="https://$host" \
             Cors__Origins__1="http://localhost:5173" \
             Cors__Origins__2="http://127.0.0.1:5173"
+
+      - name: Checkout SQL scripts
+        uses: actions/checkout@v4
+
+      - name: Apply SQL schema
+        env:
+          SQLCMDPASSWORD: ${{ secrets.SQL_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SQLCMDPASSWORD:-}" ]; then
+            echo "Defina o segredo SQL_PASSWORD do repositório."
+            exit 1
+          fi
+          ip=$(curl -fsSL https://api.ipify.org)
+          rg=$(az sql server list --query "[?name=='smartezy'].resourceGroup | [0]" -o tsv)
+          if [ -z "$rg" ]; then
+            echo "Servidor SQL smartezy não encontrado na assinatura."
+            exit 1
+          fi
+          rule="gha-${{ github.run_id }}"
+          cleanup() {
+            az sql server firewall-rule delete \
+              --resource-group "$rg" \
+              --server smartezy \
+              --name "$rule" \
+              --yes || true
+          }
+          trap cleanup EXIT
+          az sql server firewall-rule create \
+            --resource-group "$rg" \
+            --server smartezy \
+            --name "$rule" \
+            --start-ip-address "$ip" \
+            --end-ip-address "$ip" \
+            -o none
+          az sql server firewall-rule create \
+            --resource-group "$rg" \
+            --server smartezy \
+            --name AllowAzureServices \
+            --start-ip-address 0.0.0.0 \
+            --end-ip-address 0.0.0.0 \
+            -o none || true
+          for script in 01_schema.sql 02_tables.sql 11_seed.sql 12_espacos_locacoes.sql 13_alinhamento_modelo.sql; do
+            docker run --rm \
+              -v "$PWD/infra/database/sql-server:/sql:ro" \
+              -e SQLCMDPASSWORD \
+              mcr.microsoft.com/mssql-tools18 \
+              /opt/mssql-tools18/bin/sqlcmd \
+                -S smartezy.database.windows.net \
+                -d gl-demandas \
+                -U usr.smartezy \
+                -C -b \
+                -i "/sql/$script"
+          done
 
       - name: Deploy to Azure Web App
         id: deploy-to-webapp

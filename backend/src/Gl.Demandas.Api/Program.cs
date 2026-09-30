@@ -5,7 +5,6 @@ using Gl.Demandas.Api;
 using Gl.Demandas.Application;
 using Gl.Demandas.Domain;
 using Gl.Demandas.Infrastructure;
-using Gl.Demandas.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -169,15 +168,6 @@ static async Task Erro(HttpContext ctx, int status, string codigo, string mensag
 
 static async Task PrepararDadosAsync(WebApplication app)
 {
-    await using var escopo = app.Services.CreateAsyncScope();
-    var db = escopo.ServiceProvider.GetRequiredService<AppDbContext>();
-    if (!string.Equals(app.Configuration["Database:Provider"], "SqlServer", StringComparison.OrdinalIgnoreCase))
-    {
-        db.Database.EnsureCreated();
-        DemoSeed.Aplicar(db, DateTime.UtcNow);
-        DemoSeed.GarantirCadeia(db);
-    }
-
     var pasta = Path.GetFullPath(app.Configuration["Anexo:Pasta"] ?? "anexos-dev");
     var seed = Path.Combine(pasta, "seed");
     Directory.CreateDirectory(seed);

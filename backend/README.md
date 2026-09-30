@@ -9,10 +9,15 @@ dotnet test backend/Gl.Demandas.slnx
 dotnet run --project backend/src/Gl.Demandas.Api --launch-profile http
 ```
 
-Desenvolvimento usa banco em memória e o seed da demonstração. Para SQL Server, aplique os scripts em `infra/database/sql-server` e defina:
+A API local e o App Service usam o catálogo `gl-demandas` em `smartezy.database.windows.net`. Os scripts estão em `infra/database/sql-server`. A senha não entra no repositório.
 
-- `Database__Provider=SqlServer`
-- `ConnectionStrings__Sql`
+No desenvolvimento, grave a connection string no user-secrets da API:
+
+```bash
+dotnet user-secrets set "ConnectionStrings:Sql" "<connection string do catálogo gl-demandas>" --project backend/src/Gl.Demandas.Api
+```
+
+Na publicação, a mesma chave é `ConnectionStrings__Sql` no App Service. `Database:Provider` permanece `SqlServer`.
 
 Login demo (senha `Demo@2026`, só desenvolvimento):
 

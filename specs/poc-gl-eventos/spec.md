@@ -18,6 +18,13 @@ Novo, Recebido, Em andamento, Aguardando aprovação, Liberado para execução, 
 
 O ciclo longo do PDR §4.1 fica para o produto. Aqui Novo corresponde à abertura, Recebido ao direcionamento, Em andamento ao atendimento e Liberado para execução à aprovação.
 
+## Persistência
+
+### RF-POC.1 Catálogo Azure SQL
+A API em execução grava e lê o catálogo `gl-demandas` em `smartezy.database.windows.net`, schema `app`. O processo da API não mantém cadastro em memória.
+**CA:** Dado a API com `ConnectionStrings:Sql` desse catálogo, quando o GL / Administrador salva um cadastro e a API reinicia, então o cadastro continua disponível na consulta seguinte.
+**Trace:** PDR §7.1 / RNF-04
+
 ## Fora desta POC
 
 WhatsApp real, parametrizador, seis microsserviços, Service Bus e o bloqueio da RN-09 (todos os documentos de obra antes do envio). A mensageria da tela é simulada. A classificação lê termos da tabela `app.Regra_Classificacao`. O modelo de linguagem entra só no preenchimento da abertura (RF-01.5). O quadro e a operação leem a fila já visível ao perfil. O cartão avança só para a próxima etapa manual da cadeia do tipo de atendimento daquele chamado, configurada pelo GL / Administrador.

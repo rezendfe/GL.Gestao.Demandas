@@ -10,17 +10,15 @@ public static class DependenciasInfra
 {
     public static IServiceCollection AddInfraestrutura(this IServiceCollection services, IConfiguration configuracao, bool desenvolvimento)
     {
-        var provedor = configuracao["Database:Provider"] ?? "InMemory";
-        if (string.Equals(provedor, "SqlServer", StringComparison.OrdinalIgnoreCase))
-        {
-            var conexao = configuracao.GetConnectionString("Sql")
-                ?? throw new InvalidOperationException("Defina ConnectionStrings:Sql.");
-            services.AddDbContext<AppDbContext>(o => o.UseSqlServer(conexao));
-        }
-        else
-        {
-            services.AddDbContext<AppDbContext>(o => o.UseInMemoryDatabase("gl-demandas-poc"));
-        }
+        var provedor = configuracao["Database:Provider"] ?? "SqlServer";
+        if (!string.Equals(provedor, "SqlServer", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("A API usa somente o SQL Server do catálogo gl-demandas.");
+
+        var conexaoSql = configuracao.GetConnectionString("Sql");
+        if (string.IsNullOrWhiteSpace(conexaoSql))
+            throw new InvalidOperationException("Defina ConnectionStrings:Sql para o catálogo gl-demandas.");
+
+        services.AddDbContext<AppDbContext>(o => o.UseSqlServer(conexaoSql));
 
         services.AddScoped<GlRepositorio>();
         services.AddScoped<IUsuarios>(sp => sp.GetRequiredService<GlRepositorio>());

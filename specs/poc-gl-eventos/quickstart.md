@@ -9,6 +9,6 @@ Swagger: http://localhost:5090/swagger
 
 Swagger publicado: https://gl-demandas-cfffckaaa2cvd5fa.westus-01.azurewebsites.net/swagger
 
-SQL Server, quando for usar o banco de verdade: scripts em `infra/database/sql-server/README.md`.
+A API local lê o catálogo `gl-demandas` em `smartezy.database.windows.net`. Antes do `dotnet run`, defina `ConnectionStrings:Sql` no user-secrets da API (veja `backend/README.md`). A senha publicada fica no segredo `SQL_CONNECTION_STRING` e na configuração do App Service.
 
 Azure: o workflow `cd` espera os segredos `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `AZURE_RESOURCE_GROUP`, `AZURE_DEPLOYER_OBJECT_ID`, `SQL_ADMIN_LOGIN`, `SQL_ADMIN_PASSWORD` e `JWT_SIGNING_KEY` (32 caracteres ou mais). O login do GitHub usa OIDC. Nada disso fica no repositório.

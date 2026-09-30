@@ -359,7 +359,7 @@ Ponto de atenção é mais largo que a ação agora: inclui complemento ainda se
 
 - **Arquitetura hexagonal (ports & adapters)** em cada microsserviço.
 - **Microsserviços** com fronteiras claras e comunicação assíncrona preferencial via **Azure Service Bus / Queues**.
-- **SQL Server** como banco transacional por bounded context (databases ou schemas isolados na 1ª entrega).
+- **SQL Server** como banco transacional por bounded context (databases ou schemas isolados na 1ª entrega). A 1ª entrega usa o catálogo existente `gl-demandas` em `smartezy.database.windows.net`, schema `app`, tanto na API publicada quanto na API local. O processo da API não mantém registro em memória. A credencial fica só no App Service, no Key Vault ou no user-secrets de desenvolvimento (RNF-04).
 - **Segurança:** least privilege, secrets no Azure Key Vault, HTTPS, validação de entrada/anexos, RBAC alinhado aos 3 perfis.
 - **Identidade:** Azure AD / Entra ID (OIDC) no portal React (MSAL) e validação de JWT nas APIs.
 
