@@ -13,3 +13,6 @@ web/playwright-report/
 web/blob-report/
 .venv/
 .playwright-mcp/
+artifacts/
+*.nupkg
+*.snupkg
