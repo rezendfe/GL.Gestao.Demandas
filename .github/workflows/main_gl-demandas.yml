@@ -63,14 +63,7 @@ jobs:
             exit 1
           fi
           kind=$(az webapp show -g "$rg" -n "$app" --query kind -o tsv)
-          host=$(az staticwebapp list --query "[?contains(defaultHostname, 'gray-bay-0ad3ef71e')].defaultHostname | [0]" -o tsv)
-          if [ -z "$host" ]; then
-            host=$(az staticwebapp list --query "[0].defaultHostname" -o tsv)
-          fi
-          if [ -z "$host" ]; then
-            echo "Static Web App não encontrado na assinatura."
-            exit 1
-          fi
+          host="gray-bay-0ad3ef71e.1.azurestaticapps.net"
           echo "resource_group=$rg"
           echo "kind=$kind"
           echo "portal_host=$host"
