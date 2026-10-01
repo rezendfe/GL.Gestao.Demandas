@@ -190,7 +190,8 @@ textarea { min-height: 110px; resize: vertical; }
 .btn.danger:hover { background: #8e1b13; }
 .btn:disabled { opacity: 0.6; cursor: default; }
 .acoes-topo { display: flex; flex-wrap: wrap; gap: 8px; }
-.acao-arquivo { display: grid; gap: 6px; justify-items: stretch; }
+.acao-arquivo { display: grid; gap: 6px; justify-items: stretch; min-width: 0; }
+.acao-arquivo .note, .acao-arquivo .erro { overflow-wrap: anywhere; }
 .acao-arquivo .erro { font-size: 12px; letter-spacing: 0; text-transform: none; }
 .btn-block { width: 100%; }
 .row { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -865,7 +866,19 @@ tr.clickable:hover { background: #fafbfc; }
 .fila-vista-nota, .fila-contagem { margin: 0; font-size: 12px; color: var(--muted); }
 .fila-vista-nota span { font-weight: 700; color: var(--ink); }
 .fila-contagem { margin-left: auto; font-weight: 700; color: var(--ink); }
-.fila-vazio { margin: 0; padding: 16px 15px; }
+.fila-vazio { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0; padding: 16px 15px; }
+.fila-vazio .btn, .estado-acao .btn { min-height: 44px; }
+.estado-acao {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  background: white;
+  min-width: 0;
+}
+.estado-acao p { margin: 0; overflow-wrap: anywhere; }
+.estado-acao .btn { justify-self: start; }
 .fila-vista.vista-cartoes,
 .fila-vista.vista-pulso { padding: 15px; }
 .fila-vista.vista-grade { overflow-x: auto; }
@@ -946,7 +959,7 @@ tr.clickable:hover { background: #fafbfc; }
 .detail-head h1 { margin: 4px 0; font-size: 22px; font-weight: 600; }
 .protocol { font-size: 12px; letter-spacing: 0.08em; color: var(--muted); font-weight: 700; }
 .grid-2 { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 16px; }
-.detail-tools { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.detail-tools { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; min-width: 0; max-width: 100%; }
 .preferencia-vista {
   display: flex;
   align-items: center;
@@ -2018,7 +2031,7 @@ html, body { max-width: 100%; overflow-x: clip; }
   .page-container.is-nav-open { height: 100vh; overflow: hidden; }
   .page-sidebar nav a, .x-toggle, .x-user button, .btn, .periodo-atalho, .vista-opcao { min-height: 44px; }
   .acoes-topo, .acao-arquivo { width: 100%; }
-  .acoes-topo .btn, .acao-arquivo .btn, .detail-tools .btn { width: 100%; }
+  .acoes-topo .btn, .acao-arquivo .btn, .detail-tools .btn, .estado-acao .btn, .fila-vazio .btn { width: 100%; }
   .x-toggle { min-width: 44px; }
   input, select, textarea { font-size: 16px; }
   input[type="date"], input[type="datetime-local"], input[type="time"] { min-width: 0; max-width: 100%; }

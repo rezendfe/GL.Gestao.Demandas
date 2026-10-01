@@ -136,7 +136,8 @@ public sealed class AtendimentoAplicacao(
                 d.NotaAvaliacao,
                 d.ComentarioAvaliacao,
                 d.SubcategoriaId,
-                prazos.GetValueOrDefault(d.CategoriaId)))
+                prazos.GetValueOrDefault(d.CategoriaId),
+                d.Sala))
             .ToArray();
     }
 

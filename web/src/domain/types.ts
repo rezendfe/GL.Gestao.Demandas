@@ -35,6 +35,7 @@ export interface FilaItem {
   comentarioAvaliacao: string | null;
   subcategoriaId: string;
   prazoCategoriaHoras: number | null;
+  local: string;
 }
 
 export interface Pessoa {

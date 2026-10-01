@@ -80,6 +80,35 @@ export function podeAvancar(perfil: Perfil, situacao: string, destino: string) {
   return perfil === "GL / Administrador" || perfil === "Responsável da Área";
 }
 
+export function proximoPassoDemanda(
+  perfil: Perfil,
+  situacao: string,
+  destino: { codigo: string; nome: string } | null,
+  semAvaliacao: boolean,
+): { texto: string; acao: "avancar" | "aprovar" | "encerrar" | "avaliar" | null } {
+  if (situacao === "Reprovado" || situacao === "Encerrada" || situacao === "Cancelada") {
+    return { texto: "Acompanhar o histórico", acao: null };
+  }
+  if (situacao === "Concluído") {
+    if (perfil === "GL / Administrador") return { texto: "Encerrar o chamado", acao: "encerrar" };
+    if (perfil === "Cessionário" && semAvaliacao) return { texto: "Avaliar o atendimento", acao: "avaliar" };
+    return { texto: "Acompanhar o histórico", acao: null };
+  }
+  if (situacao === "Aguardando ajuste") {
+    return perfil === "Cessionário"
+      ? { texto: "Enviar o ajuste na comunicação", acao: null }
+      : { texto: "Aguardar o ajuste", acao: null };
+  }
+  if (situacao === "Aguardando aprovação" && perfil === "GL / Administrador") {
+    return { texto: "Decidir a aprovação", acao: "aprovar" };
+  }
+  if (destino && podeAvancar(perfil, situacao, destino.codigo)) {
+    return { texto: destino.nome, acao: "avancar" };
+  }
+  if (destino) return { texto: `Aguardar ${destino.nome.toLowerCase()}`, acao: null };
+  return { texto: "Acompanhar o histórico", acao: null };
+}
+
 export function rotuloCampo(destino: string, campo: string) {
   if (destino === "aprovacao" && campo === "comentario") return "Observação da aprovação";
   if (destino === "atendimento" && campo === "comentario") return "O que será feito";

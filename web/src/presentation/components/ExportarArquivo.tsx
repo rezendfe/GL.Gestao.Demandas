@@ -22,7 +22,8 @@ export function BotaoExportarFila() {
       <button className="btn secondary" type="button" onClick={exportar} disabled={enviando}>
         {enviando ? "Gerando planilha..." : "Exportar planilha"}
       </button>
-      {falha && <span className="erro">{falha}</span>}
+      <span className="note">Fila visível. Próximo passo: baixar a planilha.</span>
+      {falha && <span className="erro">{falha} <button className="btn secondary" type="button" onClick={exportar}>Tentar de novo</button></span>}
     </span>
   );
 }
@@ -48,7 +49,8 @@ export function BotaoPdfProtocolo({ id, protocolo }: { id: string; protocolo: st
       <button className="btn secondary" type="button" onClick={exportar} disabled={enviando}>
         {enviando ? "Gerando PDF..." : "PDF do protocolo"}
       </button>
-      {falha && <span className="erro">{falha}</span>}
+      <span className="note">Protocolo {protocolo}. Próximo passo: baixar o PDF.</span>
+      {falha && <span className="erro">{falha} <button className="btn secondary" type="button" onClick={exportar}>Tentar de novo</button></span>}
     </span>
   );
 }

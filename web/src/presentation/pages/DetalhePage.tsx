@@ -3,12 +3,13 @@ import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useCatalogo, useCadeia, useDetalhe } from "../../application/hooks";
 import { useLinhaDoTempo } from "../../application/preferenciaVisual";
 import { useSessao } from "../../application/session";
-import { cadeiaDoTipo, proximaEtapa } from "../../domain/cadeia";
+import { cadeiaDoTipo, proximaEtapa, proximoPassoDemanda } from "../../domain/cadeia";
 import { validarArquivo, validarTexto } from "../../domain/entrada";
 import { espacoPorSala } from "../../domain/espacos";
 import { hora, quandoAtende } from "../../domain/types";
 import { ApiError, api } from "../../infrastructure/api/client";
 import { Badge } from "../components/Badge";
+import { EstadoAcao } from "../components/EstadoAcao";
 import { BotaoPdfProtocolo } from "../components/ExportarArquivo";
 import { LinhaDoTempoAtendimento } from "../components/LinhaDoTempoAtendimento";
 import { ModalAvanco } from "../components/ModalAvanco";
@@ -50,11 +51,12 @@ export function DetalhePage() {
     }
   }
 
-  if (carregando) return <p>Carregando chamado...</p>;
-  if (erro || !dados) return <p className="erro">{erro ?? "Chamado não encontrado."}</p>;
+  if (carregando) return <p>Carregando chamado... <Link className="btn secondary" to="/inicio">Voltar ao início</Link></p>;
+  if (erro || !dados) return <p className="erro">{erro ?? "Chamado não encontrado."} <Link className="btn secondary" to="/inicio">Voltar ao início</Link></p>;
 
   const espaco = espacoPorSala(dados.cessionario.sala);
   const destino = proximaEtapa(dados.situacao, cadeiaDoTipo(cadeia, dados.subcategoriaId));
+  const passo = proximoPassoDemanda(perfil ?? "Cessionário", dados.situacao, destino, dados.notaAvaliacao === null);
   const subAtual = subcategoriaId || dados.subcategoriaId;
   const areaAtual = areaId || dados.areaId;
 
@@ -87,6 +89,19 @@ export function DetalhePage() {
           {dados.natureza === "Reclamação" && <Badge valor="Reclamação" />}
         </div>
       </header>
+      <EstadoAcao
+        situacao={dados.situacao}
+        proximo={passo.texto}
+        acao={passo.acao === "avancar" && destino ? (
+          <button className="btn" type="button" onClick={() => setAvancando(true)}>Avançar para {destino.nome}</button>
+        ) : passo.acao === "aprovar" ? (
+          <button className="btn" type="button" onClick={() => void executar(() => api.aprovar(dados.id, "Aprovar"))}>Aprovar</button>
+        ) : passo.acao === "encerrar" ? (
+          <button className="btn" type="button" onClick={() => void executar(() => api.encerrar(dados.id))}>Encerrar chamado</button>
+        ) : passo.acao === "avaliar" ? (
+          <a className="btn" href="#avaliacao">Avaliar o atendimento</a>
+        ) : undefined}
+      />
       {falha && <p className="erro">{falha}</p>}
       {linhaDoTempo && (
         <LinhaDoTempoAtendimento
@@ -110,9 +125,11 @@ export function DetalhePage() {
             )}
           </Panel>
           {perfil === "Cessionário" && (dados.situacao === "Concluído" || dados.situacao === "Encerrada") && dados.notaAvaliacao === null && (
-            <Panel title="Como foi o atendimento">
-              <PerguntaAtendimento id={dados.id} protocolo={dados.protocolo} aoEnviar={recarregar} />
-            </Panel>
+            <div id="avaliacao">
+              <Panel title="Como foi o atendimento">
+                <PerguntaAtendimento id={dados.id} protocolo={dados.protocolo} aoEnviar={recarregar} />
+              </Panel>
+            </div>
           )}
           {!linhaDoTempo && <Panel title="Comunicação">
             <div className="timeline">

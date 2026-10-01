@@ -1,4 +1,4 @@
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useFila } from "../../application/hooks";
 import { useSessao } from "../../application/session";
 import { destinoRecorte, itensDoRecorte, rotuloRecorte } from "../../domain/recorte";
@@ -63,7 +63,7 @@ export function CentralPage() {
 
 function FilaCentral() {
   const { sessao } = useSessao();
-  const { dados, erro, carregando } = useFila();
+  const { dados, erro, carregando, recarregar } = useFila();
   const [params] = useSearchParams();
   const fila = dados ?? [];
   const recorte = params.get("recorte");
@@ -80,8 +80,8 @@ function FilaCentral() {
   return (
     <>
       <p className="muted" style={{ marginTop: -8, marginBottom: 16 }}>A fila é o centro da operação. A prioridade ilustra uma regra configurável. Grade, cartões ou pulso: a escolha fica salva para o seu usuário.</p>
-      {erro && <p className="erro">{erro}</p>}
-      {carregando && <p>Carregando a fila...</p>}
+      {erro && <p className="erro">{erro} <button className="btn secondary" type="button" onClick={() => void recarregar()}>Tentar de novo</button></p>}
+      {carregando && <p>Carregando a fila... <Link className="btn secondary" to="/inicio">Voltar ao início</Link></p>}
       <section className="kpis">
         <CartaoIndicador tom="tone-info" sigla="N" valor={entrada.length} rotulo="Novas" itens={entrada} para={destinoRecorte(perfil, entrada, "entrada")} />
         <CartaoIndicador tom="tone-amber" sigla="A" valor={atendimento.length} rotulo="Em andamento" itens={atendimento} para={destinoRecorte(perfil, atendimento, "atendimento")} />
@@ -89,7 +89,14 @@ function FilaCentral() {
         <CartaoIndicador tom="tone-ok" sigla="C" valor={concluidas.length} rotulo="Concluídas" itens={concluidas} para={destinoRecorte(perfil, concluidas, "concluidas")} />
       </section>
       <RecorteAtivo rotulo={rotuloRecorte(recorte, servico, atuacao, cessionario)} limpar="/central" />
-      {!carregando && visiveis.length === 0 && <p className="dash-nota">Nenhum chamado neste recorte.</p>}
+      {!carregando && !erro && visiveis.length === 0 && (
+        <p className="fila-vazio">
+          Nenhum chamado neste recorte.
+          {recorte || servico || atuacao || cessionario
+            ? <Link className="btn secondary" to="/central">Limpar filtro</Link>
+            : <Link className="btn secondary" to="/inicio">Voltar ao início</Link>}
+        </p>
+      )}
       {!carregando && visiveis.length > 0 && (
         <FilaExploravel titulo="Fila de demandas" itens={visiveis} usuarioId={sessao?.usuario.id} />
       )}

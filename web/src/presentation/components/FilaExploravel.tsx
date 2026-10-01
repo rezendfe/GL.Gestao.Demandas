@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useVistaFila, type VistaFila } from "../../application/preferenciaFila";
+import { correspondeBusca } from "../../domain/buscaFila";
 import { emAtraso } from "../../domain/operacao";
 import { encerrada } from "../../domain/recorte";
 import { tempoRelativo, type FilaItem } from "../../domain/types";
@@ -49,10 +50,6 @@ function isoData(data: Date) {
 
 function diaDoItem(iso: string) {
   return isoData(new Date(iso));
-}
-
-function normalizar(valor: string) {
-  return valor.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
 }
 
 function unicos(valores: string[]) {
@@ -108,7 +105,7 @@ export function FilaExploravel({
             Buscar
             <input
               value={filtro.texto}
-              placeholder="Protocolo, cessionário, serviço ou responsável"
+              placeholder="Protocolo, empresa ou espaço"
               onChange={(event) => patch({ texto: event.target.value })}
             />
           </label>
@@ -208,7 +205,10 @@ export function FilaExploravel({
         </div>
       </div>
       {visiveis.length === 0 ? (
-        <p className="fila-vazio">Nenhum chamado com esses filtros.</p>
+        <p className="fila-vazio">
+          Nenhum chamado com esses filtros.
+          <button className="btn secondary" type="button" onClick={() => setFiltro(FILTRO_INICIAL)}>Limpar filtro</button>
+        </p>
       ) : (
         <div className={`fila-vista vista-${vista}`}>
           {vista === "grade" && <Grade itens={visiveis} destacar={destacar} onAbrir={(id) => navigate(`/demandas/${id}`)} />}
@@ -221,7 +221,6 @@ export function FilaExploravel({
 }
 
 function filtrar(itens: FilaItem[], filtro: Filtro) {
-  const texto = normalizar(filtro.texto.trim());
   return itens.filter((item) => {
     if (filtro.situacao && item.situacao !== filtro.situacao) return false;
     if (filtro.prioridade && item.prioridade !== filtro.prioridade) return false;
@@ -232,9 +231,7 @@ function filtrar(itens: FilaItem[], filtro: Filtro) {
     const dia = diaDoItem(item.abertoEm);
     if (filtro.de && dia < filtro.de) return false;
     if (filtro.ate && dia > filtro.ate) return false;
-    if (!texto) return true;
-    const alvo = normalizar(`${item.protocolo} ${item.cessionario} ${item.servico} ${item.responsavel} ${item.situacao} ${item.prioridade}`);
-    return alvo.includes(texto);
+    return correspondeBusca(item.protocolo, item.cessionario, item.local ?? "", filtro.texto);
   });
 }
 
@@ -272,7 +269,7 @@ function Grade({ itens, destacar, onAbrir }: { itens: FilaItem[]; destacar?: Set
           <tr key={item.id} className="clickable" onClick={() => onAbrir(item.id)}>
             <td><Badge valor={item.prioridade} /></td>
             <td>{item.protocolo}{destacar?.has(item.id) && <span className="dot" />}</td>
-            <td>{item.cessionario}</td>
+            <td>{item.cessionario}{item.local ? <><br /><span className="note">{item.local}</span></> : null}</td>
             <td>{item.servico}</td>
             <td><Badge valor={item.situacao} />{emAtraso(item) && <> <Badge valor="Em atraso" /></>}</td>
             <td>{item.responsavel}</td>
@@ -299,7 +296,7 @@ function Cartoes({ itens, destacar, onAbrir }: { itens: FilaItem[]; destacar?: S
           }}
         >
           <strong>{item.protocolo}{destacar?.has(item.id) && <span className="dot" />}</strong>
-          <span>{item.cessionario} · {item.servico}</span>
+          <span>{item.cessionario}{item.local ? ` · ${item.local}` : ""} · {item.servico}</span>
           <span className="motivos">
             <Badge valor={item.prioridade} />
             <Badge valor={item.situacao} />
@@ -355,7 +352,7 @@ function Pulso({ itens, destacar, onAbrir }: { itens: FilaItem[]; destacar?: Set
                       <span className="pulso-trilho" aria-hidden="true" />
                       <span className="pulso-corpo">
                         <strong>{item.protocolo}{destacar?.has(item.id) && <span className="dot" />}</strong>
-                        <span>{item.cessionario} · {item.servico}</span>
+                        <span>{item.cessionario}{item.local ? ` · ${item.local}` : ""} · {item.servico}</span>
                       </span>
                       <span className="pulso-meta">
                         <Badge valor={item.situacao} />

@@ -5,6 +5,7 @@ import { mascaraCodigo, validarCodigo, validarData, validarOpcional, validarText
 import { espacoPorChave, espacoPorEmail, type EspacoCessionario } from "../../domain/espacos";
 import type { EmpresaCessionariaOpcao, EspacoInventario } from "../../domain/types";
 import { ApiError, api } from "../../infrastructure/api/client";
+import { EstadoAcao } from "../components/EstadoAcao";
 import { PageHeader } from "../components/PageHeader";
 import { Panel } from "../components/Panel";
 
@@ -48,7 +49,7 @@ export function MeuEspacoPage() {
   const { sessao } = useSessao();
   const espaco = espacoPorEmail(sessao?.usuario.email ?? "");
   if (!espaco) {
-    return <p className="erro">Não há espaço associado a este login na demonstração.</p>;
+    return <p className="erro">Não há espaço associado a este login na demonstração. <Link className="btn secondary" to="/inicio">Voltar ao início</Link></p>;
   }
   return <Navigate to={`/espacos/${espaco.chave}`} replace />;
 }
@@ -187,7 +188,12 @@ export function EspacosListaPage() {
     <>
       <PageHeader title="Espaços" trail={["Início", "Espaços"]} />
       <AbasEspacos ativa="espacos" />
-      {erro && <p className="erro" role="alert">{erro}</p>}
+      {erro && (
+        <p className="erro">
+          {erro}{" "}
+          <button className="btn secondary" type="button" onClick={() => void carregar()}>Tentar de novo</button>
+        </p>
+      )}
       {mensagem && <p className="cadastro-ok" role="status">{mensagem}</p>}
       <div role="tabpanel" id="painel-espacos" aria-labelledby="aba-espacos">
       <Panel title="Inventário" className="livre">
@@ -205,17 +211,25 @@ export function EspacosListaPage() {
             <label><input type="radio" name="vista-espacos" checked={vista === "grade"} onChange={() => setVista("grade")} />Grade</label>
           </fieldset>
         </div>
-        {carregando ? <p>Carregando inventário...</p> : visiveis.length === 0 ? <p>Nenhum espaço corresponde aos filtros.</p> : vista === "cartoes" ? (
+        {carregando ? <p>Carregando inventário... <Link className="btn secondary" to="/inicio">Voltar ao início</Link></p> : visiveis.length === 0 ? (
+          <p className="fila-vazio">
+            {itens.length === 0 ? "Nenhum espaço cadastrado." : "Nenhum espaço corresponde aos filtros."}
+            {itens.length === 0
+              ? <button className="btn" type="button" onClick={novoEspaco}>Novo espaço</button>
+              : <button className="btn secondary" type="button" onClick={() => { setBusca(""); setSituacao(""); }}>Limpar filtro</button>}
+          </p>
+        ) : vista === "cartoes" ? (
           <div className="espacos-cartoes">
             {visiveis.map((item) => <article className="espaco-admin" key={item.id}>
               <div className="espaco-admin-topo"><span className={`espaco-situacao ${classeSituacao(item.situacao)}`}>{item.situacao}</span><span className="note">{item.codigo}</span></div>
               <h2>{item.nome}</h2><p>{item.localizacao}</p>
+              <p className="note">Próximo passo: {item.situacao === "Disponível" ? "Locar" : item.situacao === "Locado" ? "Encerrar locação" : "Editar"}</p>
               {item.empresaLocataria && <p><strong>{item.empresaLocataria.nome}</strong><span className="note"> · locatária atual</span></p>}
               {item.descricao && <p className="note">{item.descricao}</p>}
               <div className="espaco-admin-acoes">
                 <button className="btn secondary" type="button" onClick={() => editarEspaco(item)}>Editar</button>
-                {item.situacao === "Disponível" && <button className="btn secondary" type="button" onClick={() => setLocacaoEspacoId(item.id)}>Locar</button>}
-                {item.situacao === "Locado" && <button className="btn secondary" type="button" onClick={() => setEncerramentoEspacoId(item.id)}>Encerrar locação</button>}
+                {item.situacao === "Disponível" && <button className="btn" type="button" onClick={() => setLocacaoEspacoId(item.id)}>Locar</button>}
+                {item.situacao === "Locado" && <button className="btn" type="button" onClick={() => setEncerramentoEspacoId(item.id)}>Encerrar locação</button>}
               </div>
               <details className="espaco-historico"><summary>Histórico de locações ({item.historico.length})</summary>
                 {item.historico.length === 0 ? <p>Nenhuma locação registrada.</p> : <ol>{item.historico.map((locacao) => <li key={locacao.id}><strong>{locacao.empresa}</strong><span>{formatarData(locacao.inicio)} – {locacao.termino ? formatarData(locacao.termino) : "Vigente"}</span></li>)}</ol>}
@@ -272,7 +286,9 @@ export function EspacoPage() {
   const { chave = "", secao } = useParams();
   const { sessao } = useSessao();
   const espaco = espacoPorChave(chave);
-  if (!espaco) return <p className="erro">Espaço não encontrado.</p>;
+  if (!espaco) {
+    return <p className="erro">Espaço não encontrado. <Link className="btn secondary" to="/inicio">Voltar ao início</Link></p>;
+  }
   if (!podeVer(sessao?.usuario.perfil, sessao?.usuario.email, espaco)) {
     return <p className="erro">Esta ficha pertence a outro Cessionário.</p>;
   }
@@ -288,6 +304,11 @@ export function EspacoPage() {
       <p className="muted" style={{ marginTop: -8, marginBottom: 16 }}>
         Ficha de demonstração. Cada cartão abre o detalhe. O cadastro definitivo de entrega e vistoria ainda depende do cliente.
       </p>
+      <EstadoAcao
+        situacao="Ficha do espaço"
+        proximo="Conferir o local"
+        acao={<Link className="btn" to={`/espacos/${espaco.chave}/local`}>Ver o local</Link>}
+      />
       <section className="ficha-hero">
         <img src={espaco.foto} alt={`Foto de ${espaco.nome}`} />
         <div>

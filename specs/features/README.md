@@ -42,6 +42,6 @@ Fonte de regra: [PDR.md](../../PDR.md). Objetos: [objetos-do-sistema.md](../mode
 | EF-20 Documentos da operação | Não feito · fase C | [EF-20-documentos-operacao](EF-20-documentos-operacao/spec.md) |
 | EF-21 Empresas executoras | Não feito · fase C | [EF-21-empresas-executoras](EF-21-empresas-executoras/spec.md) |
 | EF-22 Comunicados | Feito · fase B | [EF-22-comunicados](EF-22-comunicados/spec.md) |
-| EF-23 Usabilidade do portal | Não feito · fase B | [EF-23-usabilidade](EF-23-usabilidade/spec.md) |
+| EF-23 Usabilidade do portal | Feito · fase B | [EF-23-usabilidade](EF-23-usabilidade/spec.md) |
 
 Atores, somente: **Cessionário**, **GL / Administrador**, **Responsável da Área**.

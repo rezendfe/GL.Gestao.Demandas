@@ -4,6 +4,7 @@ import { useComunicado, useComunicados } from "../../application/hooks";
 import { useSessao } from "../../application/session";
 import { validarTexto } from "../../domain/entrada";
 import { ApiError, api } from "../../infrastructure/api/client";
+import { EstadoAcao } from "../components/EstadoAcao";
 import { PageHeader } from "../components/PageHeader";
 
 function estado(situacao: string, lido: boolean) {
@@ -71,7 +72,14 @@ export function ComunicadosPage() {
         </p>
       )}
       {carregando && <p>Carregando comunicados...</p>}
-      {!carregando && !erro && (dados ?? []).length === 0 && <p>Nenhum comunicado vigente.</p>}
+      {!carregando && !erro && (dados ?? []).length === 0 && (
+        <p className="fila-vazio">
+          Nenhum comunicado vigente.
+          {gl
+            ? <button className="btn" type="button" onClick={() => document.getElementById("comunicado-titulo")?.focus()}>Publicar comunicado</button>
+            : <Link className="btn secondary" to="/inicio">Voltar ao início</Link>}
+        </p>
+      )}
       <div className="comunicado-lista">
         {(dados ?? []).map((item) => (
           <Link key={item.id} className="comunicado-item" to={`/comunicados/${item.id}`}>
@@ -120,20 +128,28 @@ export function ComunicadoPage() {
       {carregando && <p>Carregando comunicado...</p>}
       {dados && (
         <article className="comunicado-leitura">
-          <p className="protocol">{estado(dados.situacao, dados.lido)}</p>
+          <EstadoAcao
+            situacao={estado(dados.situacao, dados.lido)}
+            proximo={
+              perfil === "Cessionário" && dados.situacao === "Vigente" && !dados.lido
+                ? "Marcar como lido"
+                : perfil === "GL / Administrador" && dados.situacao === "Vigente"
+                  ? "Encerrar o comunicado"
+                  : "Acompanhar o aviso"
+            }
+            acao={perfil === "Cessionário" && dados.situacao === "Vigente" && !dados.lido ? (
+              <button className="btn" type="button" disabled={enviando} onClick={() => void acao(() => api.marcarLeituraComunicado(id))}>
+                {enviando ? "Registrando..." : "Marcar como lido"}
+              </button>
+            ) : perfil === "GL / Administrador" && dados.situacao === "Vigente" ? (
+              <button className="btn" type="button" disabled={enviando} onClick={() => void acao(() => api.encerrarComunicado(id))}>
+                {enviando ? "Encerrando..." : "Encerrar comunicado"}
+              </button>
+            ) : undefined}
+          />
           <h1>{dados.titulo}</h1>
           <p>{dados.texto}</p>
           {falha && <p className="erro">{falha}</p>}
-          {perfil === "Cessionário" && dados.situacao === "Vigente" && !dados.lido && (
-            <button className="btn" type="button" disabled={enviando} onClick={() => void acao(() => api.marcarLeituraComunicado(id))}>
-              {enviando ? "Registrando..." : "Marcar como lido"}
-            </button>
-          )}
-          {perfil === "GL / Administrador" && dados.situacao === "Vigente" && (
-            <button className="btn secondary" type="button" disabled={enviando} onClick={() => void acao(() => api.encerrarComunicado(id))}>
-              {enviando ? "Encerrando..." : "Encerrar comunicado"}
-            </button>
-          )}
           {perfil === "GL / Administrador" && (
             <ul className="comunicado-historico">
               {dados.historico.map((evento) => (

@@ -81,7 +81,8 @@ public sealed record FilaItemDto(
     int? NotaAvaliacao,
     string? ComentarioAvaliacao,
     Guid SubcategoriaId,
-    int? PrazoCategoriaHoras);
+    int? PrazoCategoriaHoras,
+    string Local);
 
 public sealed record PessoaDto(Guid Id, string Nome, string? Empresa, string? Sala);
 

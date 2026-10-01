@@ -140,13 +140,19 @@ export function useObras() {
   const [dados, setDados] = useState<Obra[] | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(true);
-  useEffect(() => {
-    void api.obras()
-      .then(setDados)
-      .catch((error: unknown) => setErro(mensagem(error)))
-      .finally(() => setCarregando(false));
+  const recarregar = useCallback(async () => {
+    setCarregando(true);
+    setErro(null);
+    try {
+      setDados(await api.obras());
+    } catch (error) {
+      setErro(mensagem(error));
+    } finally {
+      setCarregando(false);
+    }
   }, []);
-  return { dados, erro, carregando };
+  useEffect(() => { void recarregar(); }, [recarregar]);
+  return { dados, erro, carregando, recarregar };
 }
 
 export function useNotificacoes() {
