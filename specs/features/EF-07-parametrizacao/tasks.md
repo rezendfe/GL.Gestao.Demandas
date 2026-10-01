@@ -13,3 +13,4 @@ Fonte: [spec.md](spec.md).
 
 - [ ] T701 Cadastro de WhatsApp, documentos obrigatórios e situações parametrizáveis, sem apagar o que já está gravado (RF-07.1, RN-16). WhatsApp de envio: [EF-04](../EF-04-whatsapp/tasks.md)
 - [ ] T702 Tarefa com tipo de campo e regra de aplicabilidade condicional (RF-07.3, RN-28)
+- [ ] T703 Modelo de abertura por categoria: assunto e campos sugeridos, gravados só pelo GL / Administrador (RF-07.5, RN-16)

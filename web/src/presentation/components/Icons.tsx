@@ -1,4 +1,4 @@
-export type NomeIcone = "menu" | "lista" | "mais" | "mensagem" | "grade" | "obra" | "caixa" | "casa" | "quadro" | "alerta" | "configuracao" | "sino";
+export type NomeIcone = "menu" | "lista" | "mais" | "mensagem" | "grade" | "obra" | "caixa" | "casa" | "quadro" | "alerta" | "configuracao" | "sino" | "agenda";
 
 type IconeProps = { name: NomeIcone };
 
@@ -80,6 +80,13 @@ export function Icone({ name }: IconeProps) {
       <svg {...comum}>
         <path d="M6 16V10a6 6 0 1 1 12 0v6l1.5 2h-15L6 16z" />
         <path d="M10 18a2 2 0 0 0 4 0" />
+      </svg>
+    );
+  }
+  if (name === "agenda") {
+    return (
+      <svg {...comum}>
+        <path d="M7 3v3M17 3v3M4 8h16M5 5h14v15H5z" />
       </svg>
     );
   }

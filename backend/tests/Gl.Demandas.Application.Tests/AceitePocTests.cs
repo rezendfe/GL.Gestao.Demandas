@@ -53,6 +53,72 @@ public sealed class AceitePocTests : IDisposable
     }
 
     [Fact]
+    public async Task Exportacao_fica_na_fila_visivel()
+    {
+        var detalhe = await AbrirInfiltracao();
+        var gl = new Ator(DemoIds.Gl, Perfil.GlAdministrador, null);
+        var planilha = await _atendimento.ExportarPlanilha(gl, CancellationToken.None);
+        var csv = System.Text.Encoding.UTF8.GetString(planilha.Conteudo);
+        Assert.Contains(detalhe.Protocolo, csv);
+        Assert.Contains("Sala 205", csv);
+        Assert.StartsWith("protocolo;empresa;local;categoria;situacao;descricao", csv.TrimStart('\uFEFF'));
+
+        var recepcao = new Ator(DemoIds.Resp02, Perfil.ResponsavelArea, DemoIds.AreaRecepcao);
+        var csvRecepcao = System.Text.Encoding.UTF8.GetString((await _atendimento.ExportarPlanilha(recepcao, CancellationToken.None)).Conteudo);
+        Assert.DoesNotContain(detalhe.Protocolo, csvRecepcao);
+        await Assert.ThrowsAsync<AcessoNegadoException>(() => _atendimento.ExportarProtocolo(recepcao, detalhe.Id, CancellationToken.None));
+
+        var outraEmpresa = Cessionario(DemoIds.EmpresaB);
+        var csvOutra = System.Text.Encoding.UTF8.GetString((await _atendimento.ExportarPlanilha(outraEmpresa, CancellationToken.None)).Conteudo);
+        Assert.DoesNotContain(detalhe.Protocolo, csvOutra);
+        await Assert.ThrowsAsync<AcessoNegadoException>(() => _atendimento.ExportarProtocolo(outraEmpresa, detalhe.Id, CancellationToken.None));
+
+        var antes = await _atendimento.Obter(gl, detalhe.Id, CancellationToken.None);
+        var pdf = await _atendimento.ExportarProtocolo(gl, detalhe.Id, CancellationToken.None);
+        var depois = await _atendimento.Obter(gl, detalhe.Id, CancellationToken.None);
+        Assert.Equal(antes.Situacao, depois.Situacao);
+        Assert.Equal(antes.Historico.Count, depois.Historico.Count);
+        Assert.Equal("application/pdf", pdf.Tipo);
+        var corpo = System.Text.Encoding.Latin1.GetString(pdf.Conteudo);
+        Assert.StartsWith("%PDF", corpo);
+        Assert.Contains(detalhe.Protocolo, corpo);
+        Assert.Contains("Sala 205", corpo);
+        Assert.Contains(detalhe.Cessionario.Empresa ?? "", corpo);
+        Assert.Contains(detalhe.Categoria, corpo);
+        Assert.Contains(detalhe.Situacao, corpo);
+    }
+
+    [Fact]
+    public async Task Agenda_mostra_so_a_fila_autorizada_e_recusa_o_cessionario()
+    {
+        var detalhe = await AbrirInfiltracao();
+        var joao = Cessionario(DemoIds.Joao);
+        await _atendimento.Mensagem(joao, detalhe.Id, new MensagemComando("Data desejada: 15/10/2026."), CancellationToken.None);
+        var manutencao = new Ator(DemoIds.Resp01, Perfil.ResponsavelArea, DemoIds.AreaManutencao);
+        await _atendimento.DefinirPrevisao(manutencao, detalhe.Id, new PrevisaoComando(new DateTime(2026, 10, 8, 14, 0, 0, DateTimeKind.Utc)), CancellationToken.None);
+
+        var agenda = new AgendaAplicacao(new GlRepositorio(_db), new GlRepositorio(_db));
+        var gl = new Ator(DemoIds.Gl, Perfil.GlAdministrador, null);
+        var doGl = await agenda.Listar(gl, CancellationToken.None);
+        Assert.Contains(doGl, item => item.Id == detalhe.Id && item.Marco == "previsao" && item.Data == new DateOnly(2026, 10, 8) && item.Situacao == "Novo");
+        Assert.Contains(doGl, item => item.Id == detalhe.Id && item.Marco == "data-desejada" && item.Data == new DateOnly(2026, 10, 15));
+        Assert.Contains(doGl, item => item.Origem == "obra" && item.Id == DemoIds.ObraFoyer && item.Marco == "inicio" && item.Data == new DateOnly(2026, 10, 6));
+        Assert.Contains(doGl, item => item.Origem == "obra" && item.Id == DemoIds.ObraFoyer && item.Marco == "termino");
+
+        var daArea = await agenda.Listar(manutencao, CancellationToken.None);
+        Assert.Contains(daArea, item => item.Id == detalhe.Id && item.Marco == "previsao");
+        Assert.Contains(daArea, item => item.Id == detalhe.Id && item.Marco == "data-desejada");
+        Assert.DoesNotContain(daArea, item => item.Origem == "obra");
+
+        var recepcao = new Ator(DemoIds.Resp02, Perfil.ResponsavelArea, DemoIds.AreaRecepcao);
+        var daRecepcao = await agenda.Listar(recepcao, CancellationToken.None);
+        Assert.DoesNotContain(daRecepcao, item => item.Id == detalhe.Id);
+        Assert.DoesNotContain(daRecepcao, item => item.Origem == "obra");
+
+        await Assert.ThrowsAsync<AcessoNegadoException>(() => agenda.Listar(joao, CancellationToken.None));
+    }
+
+    [Fact]
     public async Task Classificador_cobre_refrigeracao_e_fibra()
     {
         var refrigeracao = await _atendimento.Sugerir("Ar-condicionado parou de funcionar.", CancellationToken.None);

@@ -4,6 +4,7 @@ import { Shell } from "./components/Shell";
 import { CadeiaPage } from "./pages/CadeiaPage";
 import { CadastrosPage } from "./pages/CadastrosPage";
 import { AbrirPage } from "./pages/AbrirPage";
+import { AgendaPage } from "./pages/AgendaPage";
 import { CentralPage } from "./pages/CentralPage";
 import { InicioPage } from "./pages/InicioPage";
 import { DetalhePage } from "./pages/DetalhePage";
@@ -34,6 +35,7 @@ export function App() {
       <Route element={<Protegido />}>
         <Route path="/inicio" element={<InicioPage />} />
         <Route path="/central" element={<CentralPage />} />
+        <Route path="/agenda" element={<AgendaPage />} />
         <Route path="/quadro" element={<Navigate to="/central?visao=quadro" replace />} />
         <Route path="/cadeia" element={<CadeiaPage />} />
         <Route path="/cadastros" element={<CadastrosPage />} />

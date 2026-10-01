@@ -146,11 +146,34 @@ public static class Endpoints
             .WithName("AtualizarFuncaoCessionario")
             .WithSummary("GL / Administrador atualiza nome, estado e permissões da função.");
 
+        app.MapGet("/api/agenda", async (ClaimsPrincipal user, IUsuarios usuarios, IConfiguration config, AgendaAplicacao agenda, CancellationToken ct) =>
+            Results.Ok(await agenda.Listar(await AtorAtual(user, usuarios, config, ct), ct)))
+            .WithTags("Agenda")
+            .RequireAuthorization()
+            .WithName("ListarAgenda")
+            .WithSummary("Calendário da fila autorizada. RF-17.1. O Cessionário não usa esta agenda.");
+
         var demandas = app.MapGroup("/api/demandas").WithTags("Demandas").RequireAuthorization();
         demandas.MapGet("/", async (ClaimsPrincipal user, IUsuarios usuarios, IConfiguration config, AtendimentoAplicacao appCaso, CancellationToken ct) =>
             Results.Ok(await appCaso.Listar(await AtorAtual(user, usuarios, config, ct), ct)))
             .WithName("ListarDemandas")
             .WithSummary("Lista a fila visível para o perfil autenticado.");
+
+        demandas.MapGet("/exportacao", async (ClaimsPrincipal user, IUsuarios usuarios, IConfiguration config, AtendimentoAplicacao appCaso, CancellationToken ct) =>
+        {
+            var arquivo = await appCaso.ExportarPlanilha(await AtorAtual(user, usuarios, config, ct), ct);
+            return Results.File(arquivo.Conteudo, arquivo.Tipo, arquivo.Nome);
+        })
+            .WithName("ExportarFila")
+            .WithSummary("Planilha CSV da fila visível ao perfil. RF-16.1.");
+
+        demandas.MapGet("/{id:guid}/protocolo", async (Guid id, ClaimsPrincipal user, IUsuarios usuarios, IConfiguration config, AtendimentoAplicacao appCaso, CancellationToken ct) =>
+        {
+            var arquivo = await appCaso.ExportarProtocolo(await AtorAtual(user, usuarios, config, ct), id, ct);
+            return Results.File(arquivo.Conteudo, arquivo.Tipo, arquivo.Nome);
+        })
+            .WithName("ExportarProtocolo")
+            .WithSummary("PDF do protocolo que o perfil já pode abrir. RF-16.2.");
 
         demandas.MapPost("/", async (AbrirPedido pedido, ClaimsPrincipal user, IUsuarios usuarios, IConfiguration config, AtendimentoAplicacao appCaso, CancellationToken ct) =>
             Results.Ok(await appCaso.Abrir(await AtorAtual(user, usuarios, config, ct), new AbrirComando(pedido.Descricao, pedido.Sala, pedido.Ponto, pedido.SubcategoriaId, pedido.Canal, pedido.Reclamacao), ct)))

@@ -33,3 +33,9 @@ Cada nó aceita tarefas de comentário, previsão e anexo, obrigatória ou opcio
 O GL / Administrador grava na categoria um inteiro de 1 a 8760, ou deixa em branco. Em branco, chamado sem previsão não entra em atraso. A meta de uma categoria não altera as outras. Outro perfil não grava.  
 **CA:** Dado Manutenção com meta de 2 horas, quando um chamado em aberto dessa categoria não tem previsão e foi aberto há mais de 2 horas, então GL / Administrador e o Responsável da Área da fila o veem em atraso. Dado previsão ainda no futuro, então não entra em atraso por essa meta. Dado valor fora de 1 a 8760, quando se grava, então a API recusa.  
 **Trace:** RN-16 / RN-22 / RF-07.4
+
+### RF-07.5 Modelo de abertura por categoria
+**Estado:** Não feito  
+O GL / Administrador grava, na categoria, assunto sugerido e campos sugeridos. O Cessionário vê o modelo ao escolher a categoria e pode alterar antes de abrir. Sem modelo, o formulário segue em branco. Outro perfil não grava.  
+**CA:** Dado GL / Administrador, quando grava o modelo da categoria, então o Cessionário o vê na abertura e pode corrigir. Dado categoria sem modelo, então o formulário abre em branco. Dado Responsável da Área ou Cessionário, quando tenta gravar, então a API recusa.  
+**Trace:** RN-16 / EnterCondo RF-C05 / PDR RF-07.5

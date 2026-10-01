@@ -40,6 +40,7 @@ export function Shell() {
         ? [
             ["/inicio", "Início", "casa"],
             ["/central", "Central operacional", "grade"],
+            ["/agenda", "Agenda", "agenda"],
             ["/cadeia", "Cadeia", "grade"],
             ["/cadastros", "Cadastros", "configuracao"],
             ["/espacos", "Espaços", "lista"],
@@ -49,6 +50,7 @@ export function Shell() {
         : [
             ["/inicio", "Início", "casa"],
             ["/central", "Central operacional", "grade"],
+            ["/agenda", "Agenda", "agenda"],
           ];
   const nomeSessao =
     links

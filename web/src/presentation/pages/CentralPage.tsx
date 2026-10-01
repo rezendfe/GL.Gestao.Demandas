@@ -5,6 +5,7 @@ import { destinoRecorte, itensDoRecorte, rotuloRecorte } from "../../domain/reco
 import { FilaExploravel } from "../components/FilaExploravel";
 import { CartaoIndicador, RecorteAtivo } from "../components/PainelInterativo";
 import { PageHeader } from "../components/PageHeader";
+import { BotaoExportarFila } from "../components/ExportarArquivo";
 import { OperacaoPage } from "./OperacaoPage";
 import { QuadroPage } from "./QuadroPage";
 
@@ -31,6 +32,7 @@ export function CentralPage() {
       <PageHeader
         title="Central operacional"
         trail={["Início", "Central operacional"]}
+        extra={<BotaoExportarFila />}
       />
       {perfil !== "Cessionário" && (
         <div className="visoes-centrais" role="group" aria-label="Visão operacional">

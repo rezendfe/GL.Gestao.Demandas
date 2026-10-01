@@ -158,6 +158,8 @@ public sealed record ObraDto(
     IReadOnlyList<string> Etapas,
     IReadOnlyList<DocumentoObraDto> Documentos);
 
+public sealed record ItemAgendaDto(string Origem, Guid Id, string Titulo, string Situacao, string Marco, DateOnly Data);
+
 public sealed record NotificacaoDto(Guid Id, Guid DemandaId, string Protocolo, string Texto, bool Lida, DateTime CriadaEm);
 
 public sealed record ChavePushDto(string ChavePublica);

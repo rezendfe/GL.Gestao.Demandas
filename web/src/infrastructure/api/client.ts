@@ -7,6 +7,7 @@ import type {
   EspacoInventario,
   EtapaCadeia,
   FilaItem,
+  ItemAgenda,
   Notificacao,
   Obra,
   Sessao,
@@ -66,10 +67,41 @@ async function request<T>(path: string, options: RequestInit = {}, timeoutMs = 1
   return body as T;
 }
 
+async function baixar(path: string, nome: string) {
+  const headers = new Headers();
+  const token = sessionStorage.getItem(TOKEN);
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+  let response: Response;
+  try {
+    response = await fetch(`${base}${path}`, { headers, signal: AbortSignal.timeout(15000) });
+  } catch {
+    throw new ApiError("A API não respondeu. Verifique se o serviço está no ar.", 0);
+  }
+  if (!response.ok) {
+    const text = await response.text();
+    let mensagem = "Não foi possível baixar o arquivo.";
+    try {
+      const body = text ? JSON.parse(text) : null;
+      if (body?.mensagem) mensagem = body.mensagem;
+    } catch {
+      /* o corpo não é JSON */
+    }
+    throw new ApiError(mensagem, response.status);
+  }
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = nome;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 export const api = {
   login: (email: string, senha: string) =>
     request<Sessao>("/api/auth/login", { method: "POST", body: JSON.stringify({ email, senha }) }),
   fila: () => request<FilaItem[]>("/api/demandas"),
+  agenda: () => request<ItemAgenda[]>("/api/agenda"),
   detalhe: (id: string) => request<DetalheDemanda>(`/api/demandas/${id}`),
   sugerir: (texto: string) => request<Sugestao>("/api/classificacao/sugerir", { method: "POST", body: JSON.stringify({ texto }) }),
   preencher: (texto: string) =>
@@ -165,6 +197,8 @@ export const api = {
     request<void>("/api/notificacoes/push", { method: "POST", body: JSON.stringify(inscricao) }),
   cancelarPush: (endpoint: string) =>
     request<void>("/api/notificacoes/push/cancelamento", { method: "POST", body: JSON.stringify({ endpoint }) }),
+  exportarFila: () => baixar("/api/demandas/exportacao", "fila-demandas.csv"),
+  exportarProtocolo: (id: string, protocolo: string) => baixar(`/api/demandas/${id}/protocolo`, `protocolo-${protocolo}.pdf`),
   baixarAnexo: async (demandaId: string, anexoId: string, nome: string) => {
     const token = sessionStorage.getItem(TOKEN);
     const response = await fetch(`${base}/api/demandas/${demandaId}/anexos/${anexoId}`, {

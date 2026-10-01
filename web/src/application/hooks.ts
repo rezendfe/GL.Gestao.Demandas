@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import type { CadeiaTipo, Catalogo, DetalheDemanda, FilaItem, Notificacao, Obra, Sugestao } from "../domain/types";
+import type { CadeiaTipo, Catalogo, DetalheDemanda, FilaItem, ItemAgenda, Notificacao, Obra, Sugestao } from "../domain/types";
 import { ApiError, api } from "../infrastructure/api/client";
 
 function mensagem(error: unknown) {
@@ -70,6 +70,27 @@ export function useCadeia() {
   }, []);
   useEffect(() => { void recarregar(); }, [recarregar]);
   return { dados, erro, recarregar };
+}
+
+export function useAgenda(ativo = true) {
+  const [dados, setDados] = useState<ItemAgenda[] | null>(null);
+  const [erro, setErro] = useState<string | null>(null);
+  const [carregando, setCarregando] = useState(ativo);
+  const recarregar = useCallback(async () => {
+    setCarregando(true);
+    setErro(null);
+    try {
+      setDados(await api.agenda());
+    } catch (error) {
+      setErro(mensagem(error));
+    } finally {
+      setCarregando(false);
+    }
+  }, []);
+  useEffect(() => {
+    if (ativo) void recarregar();
+  }, [ativo, recarregar]);
+  return { dados, erro, carregando, recarregar };
 }
 
 export function useObras() {

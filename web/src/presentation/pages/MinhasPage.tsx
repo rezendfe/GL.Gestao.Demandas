@@ -6,6 +6,7 @@ import { FilaExploravel } from "../components/FilaExploravel";
 import { RecorteAtivo } from "../components/PainelInterativo";
 import { PageHeader } from "../components/PageHeader";
 import { Panel } from "../components/Panel";
+import { BotaoExportarFila } from "../components/ExportarArquivo";
 
 export function MinhasPage() {
   const { sessao } = useSessao();
@@ -24,7 +25,7 @@ export function MinhasPage() {
       <PageHeader
         title="Minhas solicitações"
         trail={["Início", "Minhas solicitações"]}
-        extra={<Link className="btn" to="/abrir">Abrir chamado</Link>}
+        extra={<span className="acoes-topo"><BotaoExportarFila /><Link className="btn" to="/abrir">Abrir chamado</Link></span>}
       />
       <p className="muted" style={{ marginTop: -8, marginBottom: 16 }}>Aqui ficam somente os chamados abertos por você.</p>
       {erro && <p className="erro">{erro}</p>}

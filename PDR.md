@@ -24,15 +24,25 @@ Plataforma centralizada para registro, classificação, roteamento, acompanhamen
 
 ### 1.2 Escopo
 
-| Incluído | Fora de escopo (v1) |
-|----------|---------------------|
-| Portal web (React) com login Azure AD | App nativo mobile |
-| Abertura e gestão de demandas | Integração ERP/financeiro |
-| Categorias/subcategorias e fluxo Obras | Chat WhatsApp bidirecional completo |
-| Notificação WhatsApp outbound | Provisionamento automático de infraestrutura Azure |
-| Notificação no celular do Cessionário (navegador), com o portal aberto ou fechado depois da autorização do aparelho, e resposta no chamado | BI avançado além de relatórios básicos |
-| Histórico/auditoria | |
-| Parametrização administrativa de categorias, espaços e acessos (GL) | |
+O catálogo fechado está em `specs/catalogo-completo.md`. A entrega segue fases. Fase C e fase D não são descarte: ainda não estão nesta construção. O que fica de fora permanece de fora.
+
+| Fase | Incluído |
+|------|----------|
+| A — já especificado | Portal web (React) com login Azure AD / Entra ID. Abertura, ciclo, visibilidade, Obras, histórico, parametrização, portal móvel, ficha, início, notificação no celular, quadro, espaços, representantes e entrada tipada (EF-01 a EF-15). WhatsApp só de saída. |
+| B — achar, acompanhar e concluir | Usabilidade dos três perfis no celular e no computador (EF-23). Planilha da fila visível e PDF do protocolo (EF-16). Agenda das datas que a demanda e a obra já têm (EF-17). Comunicado do GL / Administrador lido pelo Cessionário (EF-22). Modelo de abertura por categoria (RF-07.5). |
+| C — objetos da operação | Preventiva que abre demanda no ciclo atual (EF-18). Ativo com QR só para quem já entrou no Entra ID (EF-19). Documento do empreendimento com validade, distinto de Obras (EF-20). Empresa executora sem login, referenciada na obra (EF-21). |
+| D — não nesta entrega | PMOC como documento ligado a ativo de Refrigeração, se o cliente confirmar. Escalonamento de atraso sem responsável pelos canais já existentes. |
+
+| Fora do produto | Motivo |
+|-----------------|--------|
+| Financeiro, orçamento, cotação, proposta, compra, estoque e ERP | Não é o ciclo de demandas |
+| Login por e-mail/senha, autocadastro, trial e planos | O acesso é Entra ID |
+| QR anônimo, GPS, ronda, PWA offline e app nativo | Não há abertura sem login nem app à parte |
+| Cofre, senha extra e simular outro perfil | Sem segunda credencial e sem impersonação |
+| 13 perfis, 131 permissões, copiloto, heatmap e vistoria com nota de IA | Permanecem três perfis; sem BI de mapa |
+| Ordem de serviço e ocorrência como entidades | O único fluxo é a demanda. Reclamação é marca (RN-24) |
+| Chat e WhatsApp bidirecional | WhatsApp é saída (EF-04) |
+| Provisionamento automático de infraestrutura Azure | Fora da construção funcional |
 
 ### 1.3 Baseline de implementação
 
@@ -255,10 +265,17 @@ As tarefas configuráveis usam componentes nativos e tipados, não texto livre i
 | RN-36 | Empresa Cessionária pode ser inativada somente pelo GL / Administrador. A empresa inativa não pode receber novas locações, e seus representantes não podem autenticar ações de Cessionário; locações e demandas históricas permanecem consultáveis pelo GL / Administrador e mantêm seus vínculos. |
 | RN-37 | Nome de função é único dentro da empresa. Função inativa não concede permissões, mesmo que continue associada a um representante. Inativar função não altera o histórico de ações já realizadas. |
 | RN-38 | Todo campo editável tem tipo declarado. O portal aplica a máscara na digitação e recusa o envio fora do formato. A API repete a mesma regra e não grava valor inválido. |
+| RN-39 | Manutenção preventiva é recorrência que o GL / Administrador define sobre categoria já parametrizada (RN-16). No vencimento, o sistema abre uma demanda no ciclo da §4, com protocolo (RN-01) e roteamento à área da categoria (RN-03). Não nasce ordem de serviço, situação nova nem perfil novo. A demanda continua sujeita à RN-35. A quem ela pertence está em aberto no §11. |
+| RN-40 | O GL / Administrador cadastra o ativo da operação ligado a Manutenção. Uma demanda pode apontar um ativo. O QR desse ativo só vale para quem já está autenticado no Entra ID (RN-17). Não há abertura anônima por QR. |
+| RN-41 | Documento da operação é documento do empreendimento, com validade e alerta, distinto do dossiê de Obras (RN-09 a RN-13). Só o GL / Administrador grava. Não há senha extra nem cofre. Quem mais consulta está em aberto no §11. |
+| RN-42 | Empresa executora é cadastro administrativo (nome e contato) referenciado na obra no lugar de texto livre. Não autentica, não é perfil e não tem ranking financeiro. |
+| RN-43 | Comunicado é aviso que o GL / Administrador publica. O Cessionário lê no portal. O aviso no celular, quando houver, usa a notificação já especificada (EF-11) e não abre conversa. Não é mensagem de chamado (RN-21) nem WhatsApp bidirecional. |
 
 ---
 
 ## 6. Requisitos funcionais (épicos)
+
+EF-23 aplica-se a toda jornada já especificada: achar o objeto, ver o estado e o próximo passo, no celular e no computador. Os RF de EF-01 a EF-15 não são reescritos por isso.
 
 ### EF-01 Abertura e protocolo
 
@@ -302,11 +319,12 @@ As tarefas configuráveis usam componentes nativos e tipados, não texto livre i
 - RF-07.2 O GL / Administrador escolhe o tipo de atendimento e configura a cadeia daquele tipo (RN-27): marca Aprovação, Atendimento ou Validação do cliente como automáticos. Solicitação e Conclusão permanecem na cadeia. Responsável da Área e Cessionário não gravam essa configuração. Trocar o tipo na tela mostra a configuração daquele tipo.
 - RF-07.3 Para cada nó e tipo de atendimento, o GL / Administrador compõe uma lista ordenada de tarefas usando os campos estruturados e as ações disponíveis no sistema. Cada tarefa declara rótulo/instrução, obrigatoriedade, responsável elegível, regra de aplicabilidade e validação; tarefas de dados declaram tipo (texto, número, data/hora, opção ou confirmação) e tarefas de anexo declaram tipo de arquivo/evidência. Ações disponíveis incluem decisão de aprovação, solicitação de ajuste/informação, previsão, registro de andamento e upload de documento/foto. Não há execução de código ou integração arbitrária configurável. Uma tarefa obrigatória pendente impede o avanço; uma opcional não. Nó automático não pode exigir input manual. A configuração de um tipo não altera os demais.
 - RF-07.4 O GL / Administrador grava, em cada categoria, a meta de prazo em horas inteiras de 1 a 8760, ou deixa em branco (RN-16, RN-22). Em branco, chamado sem previsão não entra em atraso. A meta de uma categoria não altera as demais. Responsável da Área e Cessionário não gravam essa meta.
+- RF-07.5 O GL / Administrador grava, por categoria, um modelo de abertura: assunto sugerido e campos sugeridos. Na abertura, o Cessionário vê esse modelo e pode alterar antes de enviar. Categoria sem modelo abre o formulário em branco, como hoje. Outro perfil não grava o modelo. A lista de categorias continua parâmetro (RN-16).
 
 ### EF-08 Portal em dispositivo móvel
 
 - RF-08.1 Todo o portal — login, navegação, listas, detalhe, abertura, Obras e mensageria — é utilizável em celular, sem rolagem horizontal, a partir de 360px de largura.
-- RF-08.2 O Cessionário é o perfil de uso principal em celular: abrir chamado, acompanhar as próprias solicitações, responder e anexar.
+- RF-08.2 O Cessionário é o perfil de uso principal em celular: abrir chamado, acompanhar as próprias solicitações, responder e anexar. A usabilidade dos três perfis no celular e no computador, com ação principal, estado visível e busca na fila autorizada, está em EF-23.
 
 ### EF-09 Portal visual e ficha do espaço
 
@@ -403,6 +421,74 @@ Cada campo editável declara o que aceita (RN-38). O portal bloqueia, na digita�
 - RF-15.1 O GL / Administrador, o Responsável da Área e o Cessionário preenchem os campos da tabela acima com o tipo correspondente. Letra na meta de prazo não entra no campo. Telefone e WhatsApp ganham a máscara enquanto se digita. E-mail sem domínio e código de espaço com caractere fora do permitido não são gravados.
 - RF-15.2 A API aplica os mesmos limites e formatos em categoria, responsável, empresa, representante, contato, espaço, locação, abertura, mensagem, avaliação, motivo e anexo. O portal não é a única barreira.
 
+### EF-16 Relatórios básicos e exportação
+
+Fase B. Contexto dono: Demandas. A fila exportada é a que o perfil já pode ver (RN-04, RN-05, RN-33). Não há heatmap, BI nem painel configurável.
+
+- RF-16.1 GL / Administrador, Responsável da Área e Cessionário exportam a própria fila visível em planilha CSV. A planilha não inclui demanda de outra área nem de outra empresa.
+- RF-16.2 O mesmo perfil gera o PDF do protocolo de uma demanda que já pode abrir. O PDF traz protocolo, empresa, local, categoria, situação e descrição. Demanda fora da fila visível não gera PDF.
+
+### EF-17 Agenda operacional
+
+Fase B. Contexto dono: Demandas. Lê o cronograma já gravado em Obras. Não cria agenda paralela nem data nova.
+
+- RF-17.1 GL / Administrador e Responsável da Área veem, em calendário, a fila que já podem ver, nas datas que o produto já tem: data desejada, previsão de atendimento e marco do cronograma de obra. A data desejada é a já gravada na descrição ou na mensagem, no texto "Data desejada: dd/mm/aaaa". O marco da obra usa o início e o término previstos. A obra não tem área, então esses marcos entram na agenda do GL / Administrador, que já consulta Obras. O Responsável da Área vê data desejada e previsão das demandas da própria área.
+- RF-17.2 Cada item do calendário mostra a situação e abre o detalhe da demanda ou a obra. O Cessionário não usa esta agenda; ele continua vendo a previsão no próprio resumo (RF-10.5).
+
+### EF-18 Manutenção preventiva
+
+Fase C. A recorrência fica em Parametrização. A demanda que nasce fica em Demandas. Não há serviço novo.
+
+- RF-18.1 O GL / Administrador agenda a recorrência por categoria parametrizada (RN-16, RN-39). Responsável da Área e Cessionário não gravam essa agenda.
+- RF-18.2 No vencimento, o sistema abre uma demanda no ciclo da §4. A área executa. Não há ordem de serviço nem perfil novo. A empresa da demanda preventiva permanece em aberto (§11).
+
+### EF-19 Ativos da operação
+
+Fase C. O cadastro fica em Parametrização. O apontamento na demanda fica em Demandas.
+
+- RF-19.1 O GL / Administrador cadastra o equipamento ligado a Manutenção, com local e categoria. Outro perfil não grava.
+- RF-19.2 Na demanda de Manutenção, quem já pode editar o chamado pode apontar um ativo cadastrado. O detalhe mostra esse ativo.
+- RF-19.3 O QR do ativo só funciona para usuário já autenticado no Entra ID e abre o ativo ou a abertura já autenticada. Sem sessão, o QR não abre demanda (RN-17, RN-40).
+
+### EF-20 Documentos da operação
+
+Fase C. Contexto dono: Parametrização. Não é o dossiê de Obras e não é serviço novo.
+
+- RF-20.1 O GL / Administrador grava documento do empreendimento, com nome, arquivo e validade. Não há segunda senha nem cofre (RN-41).
+- RF-20.2 Documento com validade vencida, ou a vencer no prazo configurado pelo GL / Administrador, aparece em alerta para o GL / Administrador. A consulta dos outros dois perfis está em aberto (§11).
+- RF-20.3 O GL / Administrador substitui o arquivo ou encerra o documento. A troca fica no histórico (RN-15). O dossiê de Obras não muda por este cadastro.
+
+### EF-21 Empresas executoras
+
+Fase C. Contexto dono: Obras. O cadastro substitui o texto livre da empresa executora. Não é serviço novo.
+
+- RF-21.1 O GL / Administrador cadastra a empresa executora com nome e contato. Não há login, ranking financeiro nem quarto perfil (RN-42).
+- RF-21.2 A obra referencia uma empresa desse cadastro. Obra já gravada com texto livre permanece legível até o GL / Administrador trocar pela empresa cadastrada.
+
+### EF-22 Comunicados
+
+Fase B. Contexto dono: Notificações. Não é serviço novo e não é chamado.
+
+- RF-22.1 O GL / Administrador publica um comunicado com título e texto, e pode encerrá-lo. Responsável da Área e Cessionário não publicam.
+- RF-22.2 O Cessionário encontra o comunicado em aberto no portal, vê se está vigente e marca a leitura. A leitura e o encerramento ficam registrados (RN-15, RN-43).
+- RF-22.3 O publicado pode usar a notificação de celular já especificada (EF-11). Não há chat nem resposta por WhatsApp.
+
+### EF-23 Usabilidade do portal
+
+Fase B. Vale para as jornadas já existentes e para as fases B e C. Não cria contexto nem serviço. No celular, GL / Administrador e Responsável da Área são usuários de primeira classe, como o Cessionário.
+
+- RF-23.1 Cada tela tem uma ação principal visível, o estado do objeto e o próximo passo para acompanhar ou concluir. Vale para demanda, obra, espaço e, quando existirem, ativo, documento da operação, preventiva, comunicado e arquivo exportado.
+- RF-23.2 Lista vazia, carregamento e erro mostram o que aconteceu e uma ação clara (tentar de novo, limpar filtro ou voltar).
+- RF-23.3 De 360px até a largura de computador, a página não rola na horizontal. Alvos de toque cabem no dedo. A mesma jornada existe nos dois tamanhos (RNF-08).
+- RF-23.4 A busca da fila encontra protocolo, empresa e espaço somente entre o que o perfil já pode ver. Não revela demanda de outra área nem de outra empresa.
+
+### Fase D — não nesta entrega
+
+Não há pasta de feature para estes itens. Não entram na construção atual.
+
+- PMOC fica como documento ou plano ligado a ativo de Refrigeração, sem perfil novo, somente se o cliente confirmar a Lei 13.589 no fluxo. Até lá, Refrigeração continua subcategoria parametrizada.
+- Escalonamento: demanda em atraso e sem responsável avisa pelo WhatsApp da categoria (EF-04) e pela notificação do portal (EF-11). Vive em Parametrização e Notificações. A meta de prazo continua RN-22.
+
 ---
 
 ## 7. Arquitetura alvo
@@ -476,7 +562,7 @@ Padrão recomendado: **Transactional Outbox** no serviço de origem antes de pub
 | RNF-05 | Filas com retry, DLQ e idempotência no consumidor. |
 | RNF-06 | Uploads: antivírus/policy de tipo-tamanho; storage seguro (Azure Blob). |
 | RNF-07 | Logs estruturados e correlação por `protocolo` / `correlationId`. |
-| RNF-08 | Portal utilizável em celular (largura a partir de 360px), sem rolagem horizontal. O Cessionário é o perfil de uso móvel principal (RF-08.1, RF-08.2). |
+| RNF-08 | O portal é utilizável no computador e no celular, a partir de 360px, sem rolagem horizontal da página e com alvo de toque adequado. Cessionário, GL / Administrador e Responsável da Área concluem as mesmas jornadas nos dois tamanhos (RF-08.1, EF-23). Em cada tela há uma ação principal, o estado do objeto e o próximo passo. Vazio, carregando e erro oferecem uma ação clara. A busca não amplia a fila além de RN-04, RN-05 e RN-33. |
 
 ---
 
@@ -641,6 +727,61 @@ Padrão recomendado: **Transactional Outbox** no serviço de origem antes de pub
 - Dado usuário sem perfil adequado, quando tenta ação restrita (ex.: aprovar obra), então recebe 403.
 - Dado acesso ao portal, quando não autenticado no AD, então é redirecionado ao login.
 
+### CA — Modelo de abertura
+
+- Dado GL / Administrador, quando grava assunto e campos sugeridos na categoria, então o Cessionário vê esse modelo ao escolher a categoria e pode alterar antes de abrir.
+- Dado categoria sem modelo, quando o Cessionário abre, então o formulário segue em branco.
+- Dado Responsável da Área ou Cessionário, quando tenta gravar o modelo, então a API recusa.
+
+### CA — Relatórios
+
+- Dado GL / Administrador, Responsável da Área ou Cessionário em 360px e em largura de computador, quando exporta a fila, então a planilha contém só as demandas que esse perfil já vê, a página não rola na horizontal e a ação de exportar está visível.
+- Dado demanda da fila visível, quando o perfil gera o PDF, então o arquivo traz protocolo, empresa, local, categoria, situação e descrição.
+- Dado demanda de outra área ou de outra empresa, quando o perfil tenta o PDF ou a planilha, então essa demanda não entra.
+
+### CA — Agenda
+
+- Dado GL / Administrador ou Responsável da Área em 360px e em largura de computador, quando abre a agenda, então vê a fila autorizada nas datas já gravadas, a situação de cada item e o próximo passo que abre o detalhe, sem rolagem horizontal da página.
+- Dado Cessionário, quando tenta abrir a agenda operacional, então não a vê. A previsão continua no resumo dele.
+
+### CA — Preventiva
+
+- Dado GL / Administrador, quando grava recorrência numa categoria parametrizada, então a consulta devolve essa recorrência. Outro perfil não grava.
+- Dado o vencimento dessa recorrência, quando o sistema abre a demanda, então ela nasce no ciclo da §4, com protocolo, na área da categoria, sem ordem de serviço.
+- Dado essa demanda em 360px e em largura de computador, quando a área abre o detalhe, então vê a situação e o próximo passo do ciclo, sem rolagem horizontal da página. Mudança de situação entra no histórico.
+
+### CA — Ativos
+
+- Dado GL / Administrador, quando cadastra ativo de Manutenção com local e categoria, então a consulta devolve o ativo. Outro perfil não grava.
+- Dado demanda de Manutenção que o perfil pode editar, quando aponta um ativo, então o detalhe mostra esse ativo e o histórico registra o apontamento.
+- Dado QR de ativo e usuário sem sessão, quando o endereço é aberto, então não nasce demanda. Dado o mesmo QR com usuário já autenticado, quando ele abre, então vê o ativo.
+
+### CA — Documentos da operação
+
+- Dado GL / Administrador em 360px e em largura de computador, quando grava documento com validade, então vê nome, validade e o próximo passo (substituir ou encerrar), sem rolagem horizontal da página.
+- Dado validade vencida, quando o GL / Administrador abre a lista, então o documento aparece em alerta.
+- Dado substituição do arquivo, quando a gravação termina, então o histórico registra a troca e o dossiê de Obras permanece o mesmo.
+- Dado tentativa de proteger o documento com senha extra, então o produto não oferece esse caminho.
+
+### CA — Empresas executoras
+
+- Dado GL / Administrador, quando cadastra nome e contato, então a obra pode referenciar essa empresa no lugar do texto livre.
+- Dado essa obra em 360px e em largura de computador, quando o GL / Administrador abre o detalhe, então vê a empresa, a situação da obra e o próximo passo, sem rolagem horizontal da página.
+- Dado tentativa de login como empresa executora, então não há acesso. Outro perfil não grava o cadastro.
+
+### CA — Comunicados
+
+- Dado GL / Administrador, quando publica título e texto, então o Cessionário vê o comunicado em aberto no portal.
+- Dado Cessionário em 360px e em largura de computador, quando abre o comunicado, então vê que está vigente e a ação de marcar leitura, sem rolagem horizontal da página. A leitura fica registrada.
+- Dado comunicado encerrado pelo GL / Administrador, quando o Cessionário abre a lista, então não aparece como vigente. Não há campo de resposta nem envio de WhatsApp.
+
+### CA — Usabilidade
+
+- Dado qualquer um dos três perfis em 360px e em largura de computador, quando abre demanda, obra ou espaço que já pode ver, então vê o estado, uma ação principal e o próximo passo, e a página não rola na horizontal.
+- Dado lista vazia, carregamento ou erro, quando a tela aparece, então há uma ação clara para seguir, limpar ou tentar de novo.
+- Dado busca por protocolo, empresa ou espaço, quando o perfil pesquisa, então o resultado continua dentro da fila que RN-04, RN-05 e RN-33 já autorizam.
+- Dado mudança de situação nesse objeto, quando a ação conclui, então o histórico registra a alteração (RN-15).
+
 ---
 
 ## 10. Rastreabilidade (docx → PDR)
@@ -666,6 +807,17 @@ Padrão recomendado: **Transactional Outbox** no serviço de origem antes de pub
 | Início operacional por perfil | §2, EF-10, RF-10.1 a RF-10.8, RN-04, RN-05, RN-16, RN-19, RN-20 |
 | Notificação no celular do Cessionário | §2.1, EF-11, RF-11.1 a RF-11.6, RN-21 |
 | Operação, quadro, reclamação e nota do atendimento | EF-12, RF-12.1 a RF-12.8, RN-14, RN-16, RN-22 a RN-28 |
+| EnterCondo RF-C05 modelo de chamado | EF-07, RF-07.5, RN-16 |
+| EnterCondo RF-C09, RF-O05, RF-R01 e WBS F4.46, F5.17 | EF-16, RF-16.1, RF-16.2. Sem heatmap (RF-R02 fica de fora) |
+| EnterCondo TELA-14 | EF-17, RF-17.1, RF-17.2 |
+| EnterCondo RF-P01 fluxo 5.2 | EF-18, RF-18.1, RF-18.2, RN-39. Sem OS |
+| EnterCondo RF-K04, RF-CA03 | EF-19, RF-19.1 a RF-19.3, RN-40. QR só autenticado |
+| EnterCondo RF-DO01, RF-DO02, TELA-32 | EF-20, RF-20.1 a RF-20.3, RN-41. Distinto de EF-05 |
+| EnterCondo RF-K02, TELA-20, TELA-21 | EF-21, RF-21.1, RF-21.2, RN-42. Sem ranking e sem login |
+| EnterCondo TELA-45 | EF-22, RF-22.1 a RF-22.3, RN-43, EF-11 |
+| Usabilidade no celular e no computador, busca na fila autorizada | EF-23, RF-23.1 a RF-23.4, RNF-08 |
+| EnterCondo RF-P02, TELA-28, fluxo 5.3 | Fase D, PMOC. Não nesta entrega. §11 |
+| Escalonamento de atraso sem responsável | Fase D. Parametrização e Notificações. Não nesta entrega. §11 |
 
 ---
 
@@ -684,3 +836,8 @@ Documentados em detalhe (Q-01 a Q-19) em `docs/Analise-Funcional-Pontos-Atencao.
 - Se a reclamação deve ser categoria própria ou permanecer uma marca na abertura (RN-24). Nesta versão, é uma marca do chamado, no mesmo fluxo e nos mesmos três perfis.
 - Se a nota de 0 a 10 e o índice promotor/detrator (RN-25) são a escala definitiva do cliente, ou se haverá outra pergunta por serviço.
 - Q-19 — Validar o limite da parametrização da cadeia: tarefas compostas apenas por campos e ações disponíveis no catálogo do sistema ou criação de ações/status livres; e se alterações na configuração passam a valer apenas para novas demandas ou também para demandas em andamento.
+- Preventiva — A recorrência é da operação do empreendimento, aberta pelo sistema a pedido do GL / Administrador, ou também pode nascer de um Cessionário? Enquanto isso estiver em aberto, a demanda preventiva não ganha empresa por suposição (RN-35, RN-39).
+- Ativo e QR — O QR autenticado só consulta o ativo, ou também inicia uma demanda de Manutenção já com o ativo apontado? A abertura anônima permanece fora (RN-40).
+- Documentos da operação — Além do GL / Administrador, o Responsável da Área e o Cessionário consultam o documento e o alerta de validade? Até a resposta, só o GL / Administrador grava e vê o alerta (RN-41).
+- PMOC — A Lei 13.589 entra no fluxo como documento ligado ao ativo de Refrigeração, ou Refrigeração permanece só subcategoria? Não é épico desta entrega e não cria perfil.
+- Escalonamento — Demanda em atraso e sem responsável deve avisar o WhatsApp da categoria e o portal, ou o atraso visível (RN-22) basta até o cliente decidir? Não é épico desta entrega.

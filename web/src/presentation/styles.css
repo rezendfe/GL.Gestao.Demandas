@@ -189,6 +189,9 @@ textarea { min-height: 110px; resize: vertical; }
 .btn.danger { background: var(--error); }
 .btn.danger:hover { background: #8e1b13; }
 .btn:disabled { opacity: 0.6; cursor: default; }
+.acoes-topo { display: flex; flex-wrap: wrap; gap: 8px; }
+.acao-arquivo { display: grid; gap: 6px; justify-items: stretch; }
+.acao-arquivo .erro { font-size: 12px; letter-spacing: 0; text-transform: none; }
 .btn-block { width: 100%; }
 .row { display: flex; gap: 8px; flex-wrap: wrap; }
 .erro { background: var(--error-bg); color: var(--error); padding: 10px 12px; border-radius: 3px; }
@@ -1917,6 +1920,64 @@ tr.clickable:hover { background: #fafbfc; }
 .pergunta-nps textarea { width: 100%; min-height: 72px; }
 td .badge { margin: 0 4px 4px 0; }
 
+.agenda-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.agenda-nav strong { text-transform: capitalize; }
+.agenda-grade {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+  margin-bottom: 16px;
+}
+.agenda-semana {
+  min-width: 0;
+  text-align: center;
+  font-size: 12px;
+  color: var(--muted);
+  text-transform: lowercase;
+}
+.agenda-dia {
+  min-width: 0;
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: white;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 2px;
+  padding: 4px 0;
+  cursor: pointer;
+}
+.agenda-dia.fora { color: var(--muted); }
+.agenda-dia.ativo { border-color: var(--red); background: #fff6f6; }
+.agenda-dia em {
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--red);
+}
+.agenda-dia-lista { display: grid; gap: 8px; }
+.agenda-dia-lista h2 { margin: 0; font-size: 16px; }
+.agenda-item {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  text-decoration: none;
+  color: inherit;
+  background: white;
+}
+.agenda-item span, .agenda-item em { font-style: normal; color: var(--muted); font-size: 13px; }
+
 /* As regras de celular anteriores ficam antes de estilos de computador que as anulam.
    Este bloco precisa permanecer no fim da folha. */
 html, body { max-width: 100%; overflow-x: clip; }
@@ -1933,6 +1994,8 @@ html, body { max-width: 100%; overflow-x: clip; }
   .page-container.is-nav-open .page-sidebar { visibility: visible; pointer-events: auto; transform: none; }
   .page-container.is-nav-open { height: 100vh; overflow: hidden; }
   .page-sidebar nav a, .x-toggle, .x-user button, .btn, .periodo-atalho, .vista-opcao { min-height: 44px; }
+  .acoes-topo, .acao-arquivo { width: 100%; }
+  .acoes-topo .btn, .acao-arquivo .btn, .detail-tools .btn { width: 100%; }
   .x-toggle { min-width: 44px; }
   input, select, textarea { font-size: 16px; }
   input[type="date"], input[type="datetime-local"], input[type="time"] { min-width: 0; max-width: 100%; }

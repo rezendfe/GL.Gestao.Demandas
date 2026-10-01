@@ -9,6 +9,7 @@ import { espacoPorSala } from "../../domain/espacos";
 import { hora, quandoAtende } from "../../domain/types";
 import { ApiError, api } from "../../infrastructure/api/client";
 import { Badge } from "../components/Badge";
+import { BotaoPdfProtocolo } from "../components/ExportarArquivo";
 import { LinhaDoTempoAtendimento } from "../components/LinhaDoTempoAtendimento";
 import { ModalAvanco } from "../components/ModalAvanco";
 import { Panel } from "../components/Panel";
@@ -70,6 +71,7 @@ export function DetalhePage() {
           )}
         </div>
         <div className="detail-tools">
+          <BotaoPdfProtocolo id={dados.id} protocolo={dados.protocolo} />
           <label className="preferencia-vista">
             <input
               type="checkbox"

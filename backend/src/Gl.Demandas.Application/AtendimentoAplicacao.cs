@@ -140,6 +140,47 @@ public sealed class AtendimentoAplicacao(
             .ToArray();
     }
 
+    public async Task<ArquivoExportado> ExportarPlanilha(Ator ator, CancellationToken ct)
+    {
+        var linhas = await LinhasVisiveis(ator, ct);
+        return new ArquivoExportado("fila-demandas.csv", "text/csv; charset=utf-8", ExportacaoDemanda.Planilha(linhas));
+    }
+
+    public async Task<ArquivoExportado> ExportarProtocolo(Ator ator, Guid id, CancellationToken ct)
+    {
+        if (ator.Perfil == Perfil.Cessionario && !Pode(ator, PermissaoCessionario.ConsultarEmpresa))
+            throw new AcessoNegadoException("A função do representante não permite consultar demandas da empresa.");
+        var demanda = await Exigir(id, ct);
+        demanda.GarantirLeitura(ator.Perfil, ator.Id, ator.AreaId, ator.EmpresaId);
+        var linha = await Linha(demanda, ct);
+        var nome = $"protocolo-{linha.Protocolo}.pdf";
+        return new ArquivoExportado(nome, "application/pdf", ExportacaoDemanda.Protocolo(linha));
+    }
+
+    private async Task<IReadOnlyList<LinhaExportacao>> LinhasVisiveis(Ator ator, CancellationToken ct)
+    {
+        if (ator.Perfil == Perfil.Cessionario && !Pode(ator, PermissaoCessionario.ConsultarEmpresa))
+            throw new AcessoNegadoException("A função do representante não permite consultar demandas da empresa.");
+        var itens = await demandas.Listar(ct);
+        var linhas = new List<LinhaExportacao>();
+        foreach (var demanda in itens.Where(d => Visivel(d, ator)).OrderByDescending(d => d.AbertoEm))
+            linhas.Add(await Linha(demanda, ct));
+        return linhas;
+    }
+
+    private async Task<LinhaExportacao> Linha(Demanda demanda, CancellationToken ct)
+    {
+        var categorias = (await catalogo.ListarCategorias(ct)).ToDictionary(c => c.Id);
+        var categoria = categorias.TryGetValue(demanda.CategoriaId, out var cadastrada) ? cadastrada.Nome : demanda.Servico;
+        return new LinhaExportacao(
+            demanda.Protocolo,
+            demanda.Empresa,
+            string.IsNullOrWhiteSpace(demanda.Sala) ? "—" : demanda.Sala,
+            categoria,
+            demanda.Situacao.ParaTexto(),
+            demanda.Descricao);
+    }
+
     public async Task<DetalheDemandaDto> Obter(Ator ator, Guid id, CancellationToken ct)
     {
         if (ator.Perfil == Perfil.Cessionario && !Pode(ator, PermissaoCessionario.ConsultarEmpresa))
