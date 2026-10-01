@@ -1978,6 +1978,29 @@ td .badge { margin: 0 4px 4px 0; }
 }
 .agenda-item span, .agenda-item em { font-style: normal; color: var(--muted); font-size: 13px; }
 
+.comunicado-form, .comunicado-leitura { display: grid; gap: 12px; margin-bottom: 16px; }
+.comunicado-form { padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: white; }
+.comunicado-form h2, .comunicado-leitura h1 { margin: 0; font-size: 18px; }
+.comunicado-aviso { display: flex; align-items: center; gap: 8px; text-transform: none; letter-spacing: 0; font-size: 14px; }
+.comunicado-aviso input { width: auto; }
+.comunicado-lista { display: grid; gap: 8px; }
+.comunicado-item, .comunicado-leitura {
+  min-width: 0;
+}
+.comunicado-item {
+  display: grid;
+  gap: 2px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  text-decoration: none;
+  color: inherit;
+  background: white;
+}
+.comunicado-item em, .comunicado-historico { font-style: normal; color: var(--muted); font-size: 13px; }
+.comunicado-leitura p { overflow-wrap: anywhere; margin: 0; }
+.comunicado-historico { margin: 0; padding-left: 18px; }
+
 /* As regras de celular anteriores ficam antes de estilos de computador que as anulam.
    Este bloco precisa permanecer no fim da folha. */
 html, body { max-width: 100%; overflow-x: clip; }

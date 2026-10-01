@@ -33,6 +33,7 @@ export function Shell() {
           ["/inicio", "Início", "casa"],
           ["/meu-espaco", "Meu espaço", "lista"],
           ["/minhas", "Minhas solicitações", "lista"],
+          ["/comunicados", "Comunicados", "sino"],
           ["/abrir", "Abrir chamado", "mais"],
           ["/mensageria", "Mensageria", "mensagem"],
         ]
@@ -41,6 +42,7 @@ export function Shell() {
             ["/inicio", "Início", "casa"],
             ["/central", "Central operacional", "grade"],
             ["/agenda", "Agenda", "agenda"],
+            ["/comunicados", "Comunicados", "sino"],
             ["/cadeia", "Cadeia", "grade"],
             ["/cadastros", "Cadastros", "configuracao"],
             ["/espacos", "Espaços", "lista"],
@@ -56,7 +58,7 @@ export function Shell() {
     links
       .filter(([to]) => pathname === to || pathname.startsWith(`${to}/`))
       .sort((a, b) => b[0].length - a[0].length)[0]?.[1]
-    ?? (pathname.startsWith("/demandas") ? "Chamado" : "Início");
+    ?? (pathname.startsWith("/demandas") ? "Chamado" : pathname.startsWith("/comunicados") ? "Comunicados" : "Início");
 
   useEffect(() => {
     const consulta = window.matchMedia("(min-width: 901px)");

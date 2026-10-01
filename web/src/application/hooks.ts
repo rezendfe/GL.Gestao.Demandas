@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import type { CadeiaTipo, Catalogo, DetalheDemanda, FilaItem, ItemAgenda, Notificacao, Obra, Sugestao } from "../domain/types";
+import type { CadeiaTipo, Catalogo, ComunicadoDetalhe, ComunicadoResumo, DetalheDemanda, FilaItem, ItemAgenda, Notificacao, Obra, Sugestao } from "../domain/types";
 import { ApiError, api } from "../infrastructure/api/client";
 
 function mensagem(error: unknown) {
@@ -91,6 +91,49 @@ export function useAgenda(ativo = true) {
     if (ativo) void recarregar();
   }, [ativo, recarregar]);
   return { dados, erro, carregando, recarregar };
+}
+
+export function useComunicados(ativo = true) {
+  const [dados, setDados] = useState<ComunicadoResumo[] | null>(null);
+  const [erro, setErro] = useState<string | null>(null);
+  const [carregando, setCarregando] = useState(ativo);
+  const recarregar = useCallback(async () => {
+    setCarregando(true);
+    setErro(null);
+    try {
+      setDados(await api.comunicados());
+    } catch (error) {
+      setErro(mensagem(error));
+    } finally {
+      setCarregando(false);
+    }
+  }, []);
+  useEffect(() => {
+    if (ativo) void recarregar();
+  }, [ativo, recarregar]);
+  return { dados, erro, carregando, recarregar };
+}
+
+export function useComunicado(id: string, ativo = true) {
+  const [dados, setDados] = useState<ComunicadoDetalhe | null>(null);
+  const [erro, setErro] = useState<string | null>(null);
+  const [carregando, setCarregando] = useState(ativo);
+  const recarregar = useCallback(async () => {
+    if (!id) return;
+    setCarregando(true);
+    setErro(null);
+    try {
+      setDados(await api.comunicado(id));
+    } catch (error) {
+      setErro(mensagem(error));
+    } finally {
+      setCarregando(false);
+    }
+  }, [id]);
+  useEffect(() => {
+    if (ativo) void recarregar();
+  }, [ativo, recarregar]);
+  return { dados, erro, carregando, recarregar, setDados };
 }
 
 export function useObras() {

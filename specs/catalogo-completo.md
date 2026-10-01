@@ -161,7 +161,7 @@ F4.46 é a API de indicadores básicos, com exportação simples e sem BI. F5.17
 | TELA-42 | Auditoria | coberto | EF-06 |
 | TELA-43 | Cofre | fora | — |
 | TELA-44 | Notificação formal com contestação | fora | O aviso de chamado no celular é EF-11. Contestação não é este fluxo |
-| TELA-45 | Comunicados | fase B | EF-22 |
+| TELA-45 | Comunicados | coberto | EF-22 |
 | TELA-46 | Compras | fora | — |
 | TELA-47 | Carteira com senha extra | fora | — |
 | TELA-48 | Visita com GPS | fora | — |

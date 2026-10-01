@@ -6,6 +6,7 @@ import { CadastrosPage } from "./pages/CadastrosPage";
 import { AbrirPage } from "./pages/AbrirPage";
 import { AgendaPage } from "./pages/AgendaPage";
 import { CentralPage } from "./pages/CentralPage";
+import { ComunicadoPage, ComunicadosPage } from "./pages/ComunicadosPage";
 import { InicioPage } from "./pages/InicioPage";
 import { DetalhePage } from "./pages/DetalhePage";
 import { LoginPage } from "./pages/LoginPage";
@@ -36,6 +37,8 @@ export function App() {
         <Route path="/inicio" element={<InicioPage />} />
         <Route path="/central" element={<CentralPage />} />
         <Route path="/agenda" element={<AgendaPage />} />
+        <Route path="/comunicados" element={<ComunicadosPage />} />
+        <Route path="/comunicados/:id" element={<ComunicadoPage />} />
         <Route path="/quadro" element={<Navigate to="/central?visao=quadro" replace />} />
         <Route path="/cadeia" element={<CadeiaPage />} />
         <Route path="/cadastros" element={<CadastrosPage />} />

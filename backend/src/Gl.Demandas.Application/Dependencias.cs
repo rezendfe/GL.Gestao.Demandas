@@ -13,6 +13,7 @@ public static class Dependencias
         services.AddScoped<CadeiaAplicacao>();
         services.AddScoped<ObrasAplicacao>();
         services.AddScoped<AgendaAplicacao>();
+        services.AddScoped<ComunicadosAplicacao>();
         services.AddScoped<NotificacaoAplicacao>();
         services.AddScoped<EspacosAplicacao>();
         services.AddScoped<GestaoCessionariosAplicacao>();

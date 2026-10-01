@@ -471,7 +471,7 @@ Fase B. Contexto dono: Notificações. Não é serviço novo e não é chamado.
 
 - RF-22.1 O GL / Administrador publica um comunicado com título e texto, e pode encerrá-lo. Responsável da Área e Cessionário não publicam.
 - RF-22.2 O Cessionário encontra o comunicado em aberto no portal, vê se está vigente e marca a leitura. A leitura e o encerramento ficam registrados (RN-15, RN-43).
-- RF-22.3 O publicado pode usar a notificação de celular já especificada (EF-11). Não há chat nem resposta por WhatsApp.
+- RF-22.3 O publicado pode usar a notificação de celular já especificada (EF-11). O toque abre o comunicado. Não há chat nem resposta por WhatsApp. O Responsável da Área não publica e não abre esta tela.
 
 ### EF-23 Usabilidade do portal
 

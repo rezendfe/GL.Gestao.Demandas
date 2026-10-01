@@ -73,6 +73,14 @@ public interface IObras
     Task<Obra?> Obter(Guid id, CancellationToken ct);
 }
 
+public interface IComunicados
+{
+    Task<IReadOnlyList<Comunicado>> Listar(CancellationToken ct);
+    Task<Comunicado?> Obter(Guid id, CancellationToken ct);
+    Task Adicionar(Comunicado comunicado, CancellationToken ct);
+    Task Salvar(Comunicado comunicado, CancellationToken ct);
+}
+
 public interface ICadeia
 {
     Task<IReadOnlyList<CadeiaDoTipo>> Listar(CancellationToken ct);

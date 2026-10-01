@@ -166,6 +166,22 @@ public sealed record ChavePushDto(string ChavePublica);
 
 public sealed record InscricaoPushComando(string Endpoint, string ChaveP256dh, string SegredoAuth);
 
-public sealed record NotificacaoPush(Guid UsuarioId, Guid NotificacaoId, Guid DemandaId, string Protocolo, string Texto);
+public sealed record NotificacaoPush(Guid UsuarioId, Guid NotificacaoId, Guid DemandaId, string Protocolo, string Texto, string? Url = null);
+
+public sealed record PublicarComunicadoComando(string Titulo, string Texto, bool AvisarCelular);
+
+public sealed record ComunicadoResumoDto(Guid Id, string Titulo, string Situacao, bool Lido, DateTime PublicadoEm);
+
+public sealed record EventoComunicadoDto(Guid Id, string Autor, string Tipo, string Comentario, DateTime EventoEm);
+
+public sealed record ComunicadoDetalheDto(
+    Guid Id,
+    string Titulo,
+    string Texto,
+    string Situacao,
+    bool Lido,
+    DateTime PublicadoEm,
+    DateTime? EncerradoEm,
+    IReadOnlyList<EventoComunicadoDto> Historico);
 
 public sealed record AnexoConteudo(string Nome, string Tipo, Stream Conteudo);

@@ -6,6 +6,8 @@ import type {
   EmpresaCessionariaOpcao,
   EspacoInventario,
   EtapaCadeia,
+  ComunicadoDetalhe,
+  ComunicadoResumo,
   FilaItem,
   ItemAgenda,
   Notificacao,
@@ -102,6 +104,12 @@ export const api = {
     request<Sessao>("/api/auth/login", { method: "POST", body: JSON.stringify({ email, senha }) }),
   fila: () => request<FilaItem[]>("/api/demandas"),
   agenda: () => request<ItemAgenda[]>("/api/agenda"),
+  comunicados: () => request<ComunicadoResumo[]>("/api/comunicados"),
+  comunicado: (id: string) => request<ComunicadoDetalhe>(`/api/comunicados/${id}`),
+  publicarComunicado: (payload: { titulo: string; texto: string; avisarCelular: boolean }) =>
+    request<ComunicadoDetalhe>("/api/comunicados", { method: "POST", body: JSON.stringify(payload) }),
+  encerrarComunicado: (id: string) => request<ComunicadoDetalhe>(`/api/comunicados/${id}/encerramento`, { method: "POST" }),
+  marcarLeituraComunicado: (id: string) => request<ComunicadoDetalhe>(`/api/comunicados/${id}/leitura`, { method: "POST" }),
   detalhe: (id: string) => request<DetalheDemanda>(`/api/demandas/${id}`),
   sugerir: (texto: string) => request<Sugestao>("/api/classificacao/sugerir", { method: "POST", body: JSON.stringify({ texto }) }),
   preencher: (texto: string) =>

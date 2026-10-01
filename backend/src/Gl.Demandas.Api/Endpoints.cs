@@ -153,6 +153,28 @@ public static class Endpoints
             .WithName("ListarAgenda")
             .WithSummary("Calendário da fila autorizada. RF-17.1. O Cessionário não usa esta agenda.");
 
+        var comunicados = app.MapGroup("/api/comunicados").WithTags("Comunicados").RequireAuthorization();
+        comunicados.MapGet("/", async (ClaimsPrincipal user, IUsuarios usuarios, IConfiguration config, ComunicadosAplicacao appCaso, CancellationToken ct) =>
+            Results.Ok(await appCaso.Listar(await AtorAtual(user, usuarios, config, ct), ct)))
+            .WithName("ListarComunicados")
+            .WithSummary("Lista comunicados vigentes para o Cessionário e todos para o GL / Administrador. RF-22.2.");
+        comunicados.MapGet("/{id:guid}", async (Guid id, ClaimsPrincipal user, IUsuarios usuarios, IConfiguration config, ComunicadosAplicacao appCaso, CancellationToken ct) =>
+            Results.Ok(await appCaso.Obter(await AtorAtual(user, usuarios, config, ct), id, ct)))
+            .WithName("ObterComunicado")
+            .WithSummary("Abre o comunicado. Não há resposta nem conversa. RF-22.2.");
+        comunicados.MapPost("/", async (PublicarComunicadoPedido pedido, ClaimsPrincipal user, IUsuarios usuarios, IConfiguration config, ComunicadosAplicacao appCaso, CancellationToken ct) =>
+            Results.Ok(await appCaso.Publicar(await AtorAtual(user, usuarios, config, ct), new PublicarComunicadoComando(pedido.Titulo, pedido.Texto, pedido.AvisarCelular), ct)))
+            .WithName("PublicarComunicado")
+            .WithSummary("GL / Administrador publica um comunicado. RF-22.1.");
+        comunicados.MapPost("/{id:guid}/encerramento", async (Guid id, ClaimsPrincipal user, IUsuarios usuarios, IConfiguration config, ComunicadosAplicacao appCaso, CancellationToken ct) =>
+            Results.Ok(await appCaso.Encerrar(await AtorAtual(user, usuarios, config, ct), id, ct)))
+            .WithName("EncerrarComunicado")
+            .WithSummary("GL / Administrador encerra o comunicado vigente. RF-22.1.");
+        comunicados.MapPost("/{id:guid}/leitura", async (Guid id, ClaimsPrincipal user, IUsuarios usuarios, IConfiguration config, ComunicadosAplicacao appCaso, CancellationToken ct) =>
+            Results.Ok(await appCaso.MarcarLido(await AtorAtual(user, usuarios, config, ct), id, ct)))
+            .WithName("MarcarLeituraComunicado")
+            .WithSummary("Cessionário marca a leitura. RF-22.2.");
+
         var demandas = app.MapGroup("/api/demandas").WithTags("Demandas").RequireAuthorization();
         demandas.MapGet("/", async (ClaimsPrincipal user, IUsuarios usuarios, IConfiguration config, AtendimentoAplicacao appCaso, CancellationToken ct) =>
             Results.Ok(await appCaso.Listar(await AtorAtual(user, usuarios, config, ct), ct)))
@@ -382,6 +404,7 @@ public sealed record LoginPedido(string Email, string Senha);
 public sealed record SugestaoPedido(string Texto);
 public sealed record PreencherPedido(string Texto);
 public sealed record AbrirPedido(string Descricao, string Sala, string? Ponto, Guid SubcategoriaId, string Canal, bool Reclamacao = false);
+public sealed record PublicarComunicadoPedido(string Titulo, string Texto, bool AvisarCelular);
 public sealed record ClassificacaoPedido(Guid SubcategoriaId);
 public sealed record RedirecionarPedido(Guid AreaId, Guid? ResponsavelId);
 public sealed record AndamentoPedido(string Comentario, string Situacao);

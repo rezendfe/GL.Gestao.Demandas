@@ -260,6 +260,45 @@ internal sealed class DocumentoObraRegistro
     public int Ordem { get; set; }
 }
 
+internal sealed class ComunicadoRegistro
+{
+    public long IdInterno { get; set; }
+    public Guid Id { get; set; }
+    public long AutorIdInterno { get; set; }
+    public UsuarioRegistro? Autor { get; set; }
+    public string Titulo { get; set; } = "";
+    public string Texto { get; set; } = "";
+    public bool Vigente { get; set; }
+    public DateTime PublicadoEm { get; set; }
+    public DateTime? EncerradoEm { get; set; }
+    public List<ComunicadoEventoRegistro> Eventos { get; set; } = [];
+    public List<ComunicadoLeituraRegistro> Leituras { get; set; } = [];
+}
+
+internal sealed class ComunicadoEventoRegistro
+{
+    public long IdInterno { get; set; }
+    public Guid Id { get; set; }
+    public long ComunicadoIdInterno { get; set; }
+    public ComunicadoRegistro? Comunicado { get; set; }
+    public long UsuarioIdInterno { get; set; }
+    public UsuarioRegistro? Usuario { get; set; }
+    public string Tipo { get; set; } = "";
+    public string Comentario { get; set; } = "";
+    public DateTime EventoEm { get; set; }
+}
+
+internal sealed class ComunicadoLeituraRegistro
+{
+    public long IdInterno { get; set; }
+    public Guid Id { get; set; }
+    public long ComunicadoIdInterno { get; set; }
+    public ComunicadoRegistro? Comunicado { get; set; }
+    public long UsuarioIdInterno { get; set; }
+    public UsuarioRegistro? Usuario { get; set; }
+    public DateTime LidaEm { get; set; }
+}
+
 internal sealed class NotificacaoRegistro
 {
     public long IdInterno { get; set; }

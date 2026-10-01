@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Gl.Demandas.Infrastructure.Persistence;
 
-public sealed class GlRepositorio(AppDbContext db) : IUsuarios, ICatalogo, IDemandas, IObras, INotificacoes, IInscricoesPush, ICadeia, IInventarioEspacos, IGestaoCessionarios
+public sealed class GlRepositorio(AppDbContext db) : IUsuarios, ICatalogo, IDemandas, IObras, INotificacoes, IInscricoesPush, ICadeia, IInventarioEspacos, IGestaoCessionarios, IComunicados
 {
     public async Task<IReadOnlyList<EmpresaCadastro>> ListarEmpresasAdministracao(CancellationToken ct)
     {
@@ -814,6 +814,91 @@ public sealed class GlRepositorio(AppDbContext db) : IUsuarios, ICatalogo, IDema
         }));
         await db.SaveChangesAsync(ct);
     }
+
+    async Task<IReadOnlyList<Comunicado>> IComunicados.Listar(CancellationToken ct)
+    {
+        var rows = await ConsultaComunicado().OrderByDescending(item => item.PublicadoEm).ToListAsync(ct);
+        return rows.Select(Mapear).ToArray();
+    }
+
+    async Task<Comunicado?> IComunicados.Obter(Guid id, CancellationToken ct)
+    {
+        var row = await ConsultaComunicado().FirstOrDefaultAsync(item => item.Id == id, ct);
+        return row is null ? null : Mapear(row);
+    }
+
+    public async Task Adicionar(Comunicado comunicado, CancellationToken ct)
+    {
+        var autor = await db.Usuarios.FirstAsync(usuario => usuario.Id == comunicado.AutorId, ct);
+        var row = new ComunicadoRegistro
+        {
+            Id = comunicado.Id,
+            AutorIdInterno = autor.IdInterno,
+            Titulo = comunicado.Titulo,
+            Texto = comunicado.Texto,
+            Vigente = comunicado.Vigente,
+            PublicadoEm = comunicado.PublicadoEm,
+            EncerradoEm = comunicado.EncerradoEm
+        };
+        db.Comunicados.Add(row);
+        await db.SaveChangesAsync(ct);
+        await IncluirNovos(row, comunicado, ct);
+        await db.SaveChangesAsync(ct);
+    }
+
+    public async Task Salvar(Comunicado comunicado, CancellationToken ct)
+    {
+        var row = await ConsultaComunicado().FirstAsync(item => item.Id == comunicado.Id, ct);
+        row.Vigente = comunicado.Vigente;
+        row.EncerradoEm = comunicado.EncerradoEm;
+        await IncluirNovos(row, comunicado, ct);
+        await db.SaveChangesAsync(ct);
+    }
+
+    private IQueryable<ComunicadoRegistro> ConsultaComunicado() =>
+        db.Comunicados.Include(item => item.Autor).Include(item => item.Eventos).ThenInclude(evento => evento.Usuario).Include(item => item.Leituras).ThenInclude(leitura => leitura.Usuario);
+
+    private async Task IncluirNovos(ComunicadoRegistro row, Comunicado comunicado, CancellationToken ct)
+    {
+        var pessoas = await db.Usuarios.ToDictionaryAsync(usuario => usuario.Id, ct);
+        var eventos = row.Eventos.Select(evento => evento.Id).ToHashSet();
+        foreach (var evento in comunicado.Historico.Where(evento => !eventos.Contains(evento.Id)))
+        {
+            row.Eventos.Add(new ComunicadoEventoRegistro
+            {
+                Id = evento.Id,
+                UsuarioIdInterno = pessoas[evento.UsuarioId].IdInterno,
+                Tipo = evento.Tipo,
+                Comentario = evento.Comentario,
+                EventoEm = evento.EventoEm
+            });
+        }
+
+        var leitores = row.Leituras.Select(leitura => leitura.Usuario!.Id).ToHashSet();
+        foreach (var leitor in comunicado.Leitores.Where(leitor => !leitores.Contains(leitor)))
+        {
+            var quando = comunicado.Historico.LastOrDefault(evento => evento.Tipo == "LEITURA" && evento.UsuarioId == leitor)?.EventoEm
+                ?? comunicado.PublicadoEm;
+            row.Leituras.Add(new ComunicadoLeituraRegistro
+            {
+                Id = Guid.NewGuid(),
+                UsuarioIdInterno = pessoas[leitor].IdInterno,
+                LidaEm = quando
+            });
+        }
+    }
+
+    private static Comunicado Mapear(ComunicadoRegistro row) =>
+        Comunicado.Carregar(
+            row.Id,
+            row.Autor!.Id,
+            row.Titulo,
+            row.Texto,
+            row.Vigente,
+            row.PublicadoEm,
+            row.EncerradoEm,
+            row.Eventos.Select(evento => new EventoComunicado(evento.Id, evento.Usuario!.Id, evento.Tipo, evento.Comentario, evento.EventoEm)),
+            row.Leituras.Select(leitura => leitura.Usuario!.Id));
 
     private static EtapaCadeia MapearEtapa(EtapaCadeiaRegistro row)
     {

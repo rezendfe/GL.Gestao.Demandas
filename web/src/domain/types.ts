@@ -136,6 +136,20 @@ export interface Catalogo {
   responsaveis: { id: string; nome: string; email: string; areaId: string | null; ativo: boolean }[];
 }
 
+export interface ComunicadoResumo {
+  id: string;
+  titulo: string;
+  situacao: string;
+  lido: boolean;
+  publicadoEm: string;
+}
+
+export interface ComunicadoDetalhe extends ComunicadoResumo {
+  texto: string;
+  encerradoEm: string | null;
+  historico: { id: string; autor: string; tipo: string; comentario: string; eventoEm: string }[];
+}
+
 export interface ItemAgenda {
   origem: "demanda" | "obra";
   id: string;

@@ -10,6 +10,7 @@ Ordem de aplicação:
 4. `12_espacos_locacoes.sql`
 5. `13_alinhamento_modelo.sql`
 6. `14_conteudo_demonstracao.sql`
+7. `16_comunicados.sql`
 
 A API não executa `Database.Migrate()` nem `EnsureCreated()`. O provedor da API é sempre `SqlServer`, apontando para este catálogo. O seed de demonstração em `DemoSeed` existe para os testes automatizados. Cada teste cria o próprio catálogo SQL Server, pela variável `GL_TEST_SQL` ou pelo LocalDB, e o apaga ao terminar. Esses testes não gravam neste servidor.
 
@@ -20,6 +21,7 @@ sqlcmd -S localhost -d GlDemandas -E -i 11_seed.sql
 sqlcmd -S localhost -d GlDemandas -E -i 12_espacos_locacoes.sql
 sqlcmd -S localhost -d GlDemandas -E -i 13_alinhamento_modelo.sql
 sqlcmd -S localhost -d GlDemandas -E -i 14_conteudo_demonstracao.sql
+sqlcmd -S localhost -d GlDemandas -E -i 16_comunicados.sql
 ```
 
 `ID_*` é a PK interna. A API expõe somente `CD_*`.

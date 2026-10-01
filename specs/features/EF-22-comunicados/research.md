@@ -4,4 +4,4 @@
 
 **Interpretação.** Comunicado é aviso do GL / Administrador no portal. O Cessionário lê e pode receber o mesmo tipo de notificação do EF-11. Não responde por chat nem por WhatsApp.
 
-**Pergunta ao cliente.** Nenhuma. O Responsável da Área não publica neste recorte.
+**Pergunta ao cliente.** Nenhuma. O Responsável da Área não publica e não abre esta tela. O aviso de celular abre o comunicado, sem conversa.

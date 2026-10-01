@@ -23,6 +23,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     internal DbSet<DecisaoRegistro> Decisoes => Set<DecisaoRegistro>();
     internal DbSet<ObraRegistro> Obras => Set<ObraRegistro>();
     internal DbSet<DocumentoObraRegistro> DocumentosObra => Set<DocumentoObraRegistro>();
+    internal DbSet<ComunicadoRegistro> Comunicados => Set<ComunicadoRegistro>();
+    internal DbSet<ComunicadoEventoRegistro> ComunicadoEventos => Set<ComunicadoEventoRegistro>();
+    internal DbSet<ComunicadoLeituraRegistro> ComunicadoLeituras => Set<ComunicadoLeituraRegistro>();
     internal DbSet<NotificacaoRegistro> Notificacoes => Set<NotificacaoRegistro>();
     internal DbSet<InscricaoPushRegistro> InscricoesPush => Set<InscricaoPushRegistro>();
     internal DbSet<EtapaCadeiaRegistro> EtapasCadeia => Set<EtapaCadeiaRegistro>();
@@ -351,6 +354,53 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             b.Property(x => x.Situacao).HasColumnName("SG_Situacao").HasMaxLength(20);
             b.Property(x => x.Ordem).HasColumnName("NR_Ordem");
             b.HasOne(x => x.Obra).WithMany(x => x.Documentos).HasForeignKey(x => x.ObraIdInterno).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ComunicadoRegistro>(b =>
+        {
+            b.ToTable("Comunicado");
+            b.HasKey(x => x.IdInterno);
+            b.Property(x => x.IdInterno).HasColumnName("ID_Comunicado").UseIdentityColumn();
+            b.Property(x => x.Id).HasColumnName("CD_Comunicado");
+            b.HasIndex(x => x.Id).IsUnique().HasDatabaseName("UK_Comunicado_CD");
+            b.Property(x => x.AutorIdInterno).HasColumnName("ID_Autor");
+            b.Property(x => x.Titulo).HasColumnName("DS_Titulo").HasMaxLength(120);
+            b.Property(x => x.Texto).HasColumnName("DS_Texto").HasMaxLength(2000);
+            b.Property(x => x.Vigente).HasColumnName("FL_Vigente");
+            b.Property(x => x.PublicadoEm).HasColumnName("DT_Publicacao");
+            b.Property(x => x.EncerradoEm).HasColumnName("DT_Encerramento");
+            b.HasOne(x => x.Autor).WithMany().HasForeignKey(x => x.AutorIdInterno).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<ComunicadoEventoRegistro>(b =>
+        {
+            b.ToTable("Comunicado_Evento");
+            b.HasKey(x => x.IdInterno);
+            b.Property(x => x.IdInterno).HasColumnName("ID_Comunicado_Evento").UseIdentityColumn();
+            b.Property(x => x.Id).HasColumnName("CD_Comunicado_Evento");
+            b.HasIndex(x => x.Id).IsUnique().HasDatabaseName("UK_Comunicado_Evento_CD");
+            b.Property(x => x.ComunicadoIdInterno).HasColumnName("ID_Comunicado");
+            b.Property(x => x.UsuarioIdInterno).HasColumnName("ID_Usuario");
+            b.Property(x => x.Tipo).HasColumnName("SG_Tipo").HasMaxLength(40);
+            b.Property(x => x.Comentario).HasColumnName("DS_Comentario").HasMaxLength(200);
+            b.Property(x => x.EventoEm).HasColumnName("DT_Evento");
+            b.HasOne(x => x.Comunicado).WithMany(x => x.Eventos).HasForeignKey(x => x.ComunicadoIdInterno).OnDelete(DeleteBehavior.Cascade);
+            b.HasOne(x => x.Usuario).WithMany().HasForeignKey(x => x.UsuarioIdInterno).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<ComunicadoLeituraRegistro>(b =>
+        {
+            b.ToTable("Comunicado_Leitura");
+            b.HasKey(x => x.IdInterno);
+            b.Property(x => x.IdInterno).HasColumnName("ID_Comunicado_Leitura").UseIdentityColumn();
+            b.Property(x => x.Id).HasColumnName("CD_Comunicado_Leitura");
+            b.HasIndex(x => x.Id).IsUnique().HasDatabaseName("UK_Comunicado_Leitura_CD");
+            b.Property(x => x.ComunicadoIdInterno).HasColumnName("ID_Comunicado");
+            b.Property(x => x.UsuarioIdInterno).HasColumnName("ID_Usuario");
+            b.Property(x => x.LidaEm).HasColumnName("DT_Leitura");
+            b.HasIndex(x => new { x.ComunicadoIdInterno, x.UsuarioIdInterno }).IsUnique().HasDatabaseName("UK_Comunicado_Leitura_Usuario");
+            b.HasOne(x => x.Comunicado).WithMany(x => x.Leituras).HasForeignKey(x => x.ComunicadoIdInterno).OnDelete(DeleteBehavior.Cascade);
+            b.HasOne(x => x.Usuario).WithMany().HasForeignKey(x => x.UsuarioIdInterno).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<NotificacaoRegistro>(b =>

@@ -38,7 +38,9 @@ public sealed class EnvioPushWeb(IConfiguration configuracao, IInscricoesPush in
             title = string.IsNullOrWhiteSpace(pedido.Protocolo) ? "Chamado GL" : pedido.Protocolo,
             body = pedido.Texto,
             tag = pedido.NotificacaoId.ToString(),
-            url = $"/demandas/{pedido.DemandaId}?responder={pedido.NotificacaoId}"
+            url = string.IsNullOrWhiteSpace(pedido.Url)
+                ? $"/demandas/{pedido.DemandaId}?responder={pedido.NotificacaoId}"
+                : pedido.Url
         });
         var vapid = new VapidDetails(assunto.Trim(), publica.Trim(), privada.Trim());
         var cliente = new WebPushClient();
