@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { Link, Navigate, useParams } from "react-router-dom";
+import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { useSessao } from "../../application/session";
 import { espacoPorChave, espacoPorEmail, type EspacoCessionario } from "../../domain/espacos";
 import type { EmpresaCessionariaOpcao, EspacoInventario } from "../../domain/types";
@@ -8,6 +8,35 @@ import { PageHeader } from "../components/PageHeader";
 import { Panel } from "../components/Panel";
 
 type Secao = "perfil" | "local" | "entrega" | "vistoria";
+
+const ABAS_ESPACOS = [
+  { id: "espacos", rotulo: "Espaços", destino: "/espacos" },
+  { id: "empresas", rotulo: "Empresas e acessos", destino: "/empresas-cessionarias" },
+] as const;
+
+export function AbasEspacos({ ativa }: { ativa: (typeof ABAS_ESPACOS)[number]["id"] }) {
+  const navigate = useNavigate();
+  return (
+    <div className="visoes-centrais" role="tablist" aria-label="Espaços">
+      {ABAS_ESPACOS.map((item) => (
+        <button
+          key={item.id}
+          type="button"
+          role="tab"
+          id={`aba-${item.id}`}
+          className={ativa === item.id ? "visao-central ativa" : "visao-central"}
+          aria-selected={ativa === item.id}
+          aria-controls={`painel-${item.id}`}
+          onClick={() => {
+            if (ativa !== item.id) navigate(item.destino);
+          }}
+        >
+          {item.rotulo}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 function podeVer(perfil: string | undefined, email: string | undefined, espaco: EspacoCessionario) {
   if (perfil === "GL / Administrador" || perfil === "Responsável da Área") return true;
@@ -136,10 +165,16 @@ export function EspacosListaPage() {
 
   return (
     <>
-      <PageHeader title="Espaços" trail={["Início", "Espaços"]} extra={<div className="row"><Link className="btn secondary" to="/empresas-cessionarias">Empresas e acessos</Link><button className="btn" type="button" onClick={novoEspaco}>Novo espaço</button></div>} />
+      <PageHeader title="Espaços" trail={["Início", "Espaços"]} />
+      <AbasEspacos ativa="espacos" />
       {erro && <p className="erro" role="alert">{erro}</p>}
       {mensagem && <p className="cadastro-ok" role="status">{mensagem}</p>}
+      <div role="tabpanel" id="painel-espacos" aria-labelledby="aba-espacos">
       <Panel title="Inventário" className="livre">
+        <div className="cadastro-lista-cabecalho">
+          <span>{visiveis.length} de {itens.length}</span>
+          <button className="btn secondary" type="button" onClick={novoEspaco}>Novo espaço</button>
+        </div>
         <div className="espacos-toolbar">
           <label>Buscar<input value={busca} onChange={(event) => setBusca(event.target.value)} placeholder="Código, espaço, localização ou empresa" /></label>
           <label>Situação<select value={situacao} onChange={(event) => setSituacao(event.target.value)}>
@@ -149,7 +184,6 @@ export function EspacosListaPage() {
             <label><input type="radio" name="vista-espacos" checked={vista === "cartoes"} onChange={() => setVista("cartoes")} />Cartões</label>
             <label><input type="radio" name="vista-espacos" checked={vista === "grade"} onChange={() => setVista("grade")} />Grade</label>
           </fieldset>
-          <span className="espacos-contagem">{visiveis.length} de {itens.length}</span>
         </div>
         {carregando ? <p>Carregando inventário...</p> : visiveis.length === 0 ? <p>Nenhum espaço corresponde aos filtros.</p> : vista === "cartoes" ? (
           <div className="espacos-cartoes">
@@ -197,6 +231,7 @@ export function EspacosListaPage() {
           <div className="row"><button className="btn" type="submit" disabled={salvando}>{salvando ? "Salvando..." : "Confirmar encerramento"}</button><button className="btn secondary" type="button" onClick={() => setEncerramentoEspacoId("")}>Cancelar</button></div>
         </form>
       </Panel>}
+      </div>
     </>
   );
 }

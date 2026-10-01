@@ -1940,14 +1940,13 @@ html, body { max-width: 100%; overflow-x: clip; }
   .cadastro-tipo small { flex-basis: 100%; }
 }
 
-.espacos-toolbar { display: grid; grid-template-columns: minmax(220px, 1.6fr) minmax(150px, .8fr) auto auto; gap: 12px; align-items: end; margin-bottom: 16px; }
+.espacos-toolbar { display: grid; grid-template-columns: minmax(220px, 1.6fr) minmax(150px, .8fr) auto; gap: 12px; align-items: end; margin-bottom: 16px; }
 .espacos-toolbar > label, .espacos-form > label { display: grid; gap: 5px; min-width: 0; font-weight: 700; }
 .espacos-toolbar input, .espacos-toolbar select, .espacos-form input, .espacos-form select, .espacos-form textarea { width: 100%; min-width: 0; }
 .espacos-vistas { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; margin: 0; min-height: 40px; }
 .espacos-vistas legend { color: var(--muted); font-size: 10px; padding: 0 4px; }
 .espacos-vistas label { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
 .espacos-vistas input { margin: 0; }
-.espacos-contagem { color: var(--muted); white-space: nowrap; padding-bottom: 10px; }
 .espacos-cartoes { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 270px), 1fr)); gap: 12px; }
 .espaco-admin { display: grid; align-content: start; gap: 8px; min-width: 0; padding: 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--white); }
 .espaco-admin h2 { margin: 0; font-size: 17px; overflow-wrap: anywhere; }
@@ -1981,7 +1980,6 @@ html, body { max-width: 100%; overflow-x: clip; }
 @media (max-width: 760px) {
   .espacos-toolbar { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .espacos-vistas { justify-content: flex-start; }
-  .espacos-contagem { justify-self: end; }
   .espacos-grade th, .espacos-grade td { padding: 8px 5px; font-size: 11px; }
   .espacos-grade th:first-child { width: 22%; }
   .espacos-grade th:nth-child(2) { width: 26%; }

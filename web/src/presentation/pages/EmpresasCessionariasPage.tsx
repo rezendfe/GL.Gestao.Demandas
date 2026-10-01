@@ -1,10 +1,11 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { Link, Navigate } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import { useSessao } from "../../application/session";
 import type { ContatoRepresentante, EmpresaCessionariaCadastro, FuncaoRepresentante, PermissaoCessionario, RepresentanteCessionario } from "../../domain/types";
 import { ApiError, api } from "../../infrastructure/api/client";
 import { PageHeader } from "../components/PageHeader";
 import { Panel } from "../components/Panel";
+import { AbasEspacos } from "./EspacoPage";
 
 const PERMISSOES: { id: PermissaoCessionario; nome: string }[] = [
   { id: "ConsultarEmpresa", nome: "Consultar espaços e demandas" },
@@ -155,10 +156,11 @@ export function EmpresasCessionariasPage() {
 
   return (
     <>
-      <PageHeader title="Empresas e acessos" trail={["Início", "Espaços", "Empresas e acessos"]} extra={<Link className="btn secondary" to="/espacos">Inventário de espaços</Link>} />
+      <PageHeader title="Empresas e acessos" trail={["Início", "Espaços", "Empresas e acessos"]} />
+      <AbasEspacos ativa="empresas" />
       {erro && <p className="erro" role="alert">{erro}</p>}
       {mensagem && <p className="cadastro-ok" role="status">{mensagem}</p>}
-      {carregando ? <p>Carregando empresas...</p> : <div className="empresas-admin">
+      {carregando ? <p>Carregando empresas...</p> : <div className="empresas-admin" role="tabpanel" id="painel-empresas" aria-labelledby="aba-empresas">
         <Panel title="Empresas Cessionárias" className="livre">
           <div className="cadastro-lista-cabecalho">
             <span>{empresas.length} cadastradas</span>
