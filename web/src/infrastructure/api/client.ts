@@ -115,7 +115,7 @@ export const api = {
   preencher: (texto: string) =>
     request<Preenchimento>("/api/solicitacoes/preencher", { method: "POST", body: JSON.stringify({ texto }) }, 40000),
   catalogo: () => request<Catalogo>("/api/catalogo"),
-  salvarCategoria: (payload: { id: string | null; nome: string; ativa: boolean; prazoHoras: number | null }) =>
+  salvarCategoria: (payload: { id: string | null; nome: string; ativa: boolean; prazoHoras: number | null; modelo: { assunto: string | null; ponto: string | null; periodo: string | null; itens: string[] } | null }) =>
     request<Catalogo>("/api/catalogo/categorias", { method: "POST", body: JSON.stringify(payload) }),
   salvarTipoAtendimento: (payload: { id: string | null; categoriaId: string; areaId: string; nome: string; fluxo: string; ativo: boolean }) =>
     request<Catalogo>("/api/catalogo/tipos-atendimento", { method: "POST", body: JSON.stringify(payload) }),

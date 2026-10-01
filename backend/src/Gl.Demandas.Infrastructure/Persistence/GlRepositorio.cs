@@ -353,7 +353,12 @@ public sealed class GlRepositorio(AppDbContext db) : IUsuarios, ICatalogo, IDema
         (await db.Subcategorias.Include(s => s.Categoria).Include(s => s.Area).ToListAsync(ct)).Select(Mapear).ToArray();
 
     public async Task<IReadOnlyList<Categoria>> ListarCategorias(CancellationToken ct) =>
-        (await db.Categorias.ToListAsync(ct)).Select(c => new Categoria(c.Id, c.Nome, c.Status == "ATIVO", c.PrazoHoras)).ToArray();
+        (await db.Categorias.ToListAsync(ct)).Select(c => new Categoria(
+            c.Id,
+            c.Nome,
+            c.Status == "ATIVO",
+            c.PrazoHoras,
+            ModeloAbertura.Ler(c.AssuntoSugerido, c.PontoSugerido, c.PeriodoSugerido, c.ItensSugeridos))).ToArray();
 
     public async Task<IReadOnlyList<Area>> ListarAreas(CancellationToken ct) =>
         (await db.Areas.ToListAsync(ct)).Select(a => new Area(a.Id, a.Nome, a.Status == "ATIVO")).ToArray();
@@ -371,7 +376,7 @@ public sealed class GlRepositorio(AppDbContext db) : IUsuarios, ICatalogo, IDema
         return new Area(row.Id, row.Nome, ativa);
     }
 
-    public async Task<Categoria> SalvarCategoria(Guid? id, string nome, bool ativa, int? prazoHoras, CancellationToken ct)
+    public async Task<Categoria> SalvarCategoria(Guid? id, string nome, bool ativa, int? prazoHoras, ModeloAbertura? modelo, CancellationToken ct)
     {
         var row = id.HasValue
             ? await db.Categorias.FirstOrDefaultAsync(c => c.Id == id.Value, ct)
@@ -380,9 +385,13 @@ public sealed class GlRepositorio(AppDbContext db) : IUsuarios, ICatalogo, IDema
         row.Nome = nome;
         row.Status = ativa ? "ATIVO" : "INATIVO";
         row.PrazoHoras = prazoHoras;
+        row.AssuntoSugerido = modelo?.Assunto;
+        row.PontoSugerido = modelo?.Ponto;
+        row.PeriodoSugerido = modelo?.Periodo;
+        row.ItensSugeridos = modelo is null || modelo.Itens.Count == 0 ? null : modelo.ItensTexto;
         if (!id.HasValue) db.Categorias.Add(row);
         await db.SaveChangesAsync(ct);
-        return new Categoria(row.Id, row.Nome, ativa, prazoHoras);
+        return new Categoria(row.Id, row.Nome, ativa, prazoHoras, modelo);
     }
 
     public async Task<Subcategoria> SalvarSubcategoria(Guid? id, Guid categoriaId, Guid areaId, string nome, FluxoDemanda fluxo, bool ativa, CancellationToken ct)

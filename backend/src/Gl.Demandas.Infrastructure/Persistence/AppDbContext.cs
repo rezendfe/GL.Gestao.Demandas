@@ -54,6 +54,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             b.HasIndex(x => x.Id).IsUnique().HasDatabaseName("UK_Categoria_CD_Categoria");
             b.Property(x => x.Nome).HasColumnName("NM_Categoria").HasMaxLength(120);
             b.Property(x => x.PrazoHoras).HasColumnName("NR_Prazo_Horas");
+            b.Property(x => x.AssuntoSugerido).HasColumnName("DS_Assunto_Sugerido").HasMaxLength(120);
+            b.Property(x => x.PontoSugerido).HasColumnName("DS_Ponto_Sugerido").HasMaxLength(200);
+            b.Property(x => x.PeriodoSugerido).HasColumnName("SG_Periodo_Sugerido").HasMaxLength(40);
+            b.Property(x => x.ItensSugeridos).HasColumnName("DS_Itens_Sugeridos").HasMaxLength(2000);
             b.Property(x => x.Status).HasColumnName("SG_Status").HasMaxLength(20);
         });
 

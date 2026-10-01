@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { sugerir, useCatalogo } from "../../application/hooks";
 import { useSessao } from "../../application/session";
 import { validarArquivo, validarDataOpcional, validarOpcional, validarTexto } from "../../domain/entrada";
+import { modeloPreenchido, PERIODOS_ABERTURA } from "../../domain/modeloAbertura";
 import { espacosPorEmail } from "../../domain/espacos";
 import type { Sugestao } from "../../domain/types";
 import { ApiError, api } from "../../infrastructure/api/client";
@@ -11,7 +12,6 @@ import { PageHeader } from "../components/PageHeader";
 import { Panel } from "../components/Panel";
 
 const ITENS_SUGERIDOS = ["Infiltração", "Elétrica", "Ar-condicionado", "Vaga", "Correspondência", "Liberação de área"];
-const PERIODOS = ["Manhã", "Tarde", "Noite", "Qualquer horário"];
 
 function hojeIso() {
   const data = new Date();
@@ -143,6 +143,23 @@ export function AbrirPage() {
   const [preenchendo, setPreenchendo] = useState(false);
   const [avisoPreenchimento, setAvisoPreenchimento] = useState<string | null>(null);
   const pedidoPreenchimento = useRef(0);
+
+  function aplicarModelo(subId: string) {
+    setSubcategoriaId(subId);
+    const categoria = catalogo?.categorias.find((item) => item.subcategorias.some((sub) => sub.id === subId));
+    const modelo = categoria?.modelo;
+    if (!modeloPreenchido(modelo)) {
+      setAssunto("");
+      setPonto("");
+      setPeriodo("");
+      setItens([]);
+      return;
+    }
+    setAssunto(modelo?.assunto ?? "");
+    setPonto(modelo?.ponto ?? "");
+    setPeriodo(modelo?.periodo ?? "");
+    setItens(modelo?.itens ?? []);
+  }
 
   function incluirItem(valor: string) {
     const item = valor.replace(/\s+/g, " ").trim();
@@ -290,15 +307,22 @@ export function AbrirPage() {
                 id="categoria"
                 rotulo="Categoria"
                 ajuda="A sugestão preenche este campo. Você pode corrigir antes de enviar."
-                extra={sugestao ? (
-                  <div className="suggestion">
-                    <strong>Classificação sugerida</strong>
-                    <p>{sugestao.resumo}</p>
-                    <p className="note">Confiança: {sugestao.confianca} · Destino: {sugestao.destinoSugerido}</p>
-                  </div>
-                ) : null}
+                extra={(
+                  <>
+                    {modeloPreenchido(catalogo?.categorias.find((item) => item.subcategorias.some((sub) => sub.id === subcategoriaId))?.modelo) && (
+                      <p className="campo-ajuda">Modelo da categoria. Você pode alterar o assunto, o ponto, o período e os itens antes de abrir.</p>
+                    )}
+                    {sugestao && (
+                      <div className="suggestion">
+                        <strong>Classificação sugerida</strong>
+                        <p>{sugestao.resumo}</p>
+                        <p className="note">Confiança: {sugestao.confianca} · Destino: {sugestao.destinoSugerido}</p>
+                      </div>
+                    )}
+                  </>
+                )}
               >
-                <select id="categoria" value={subcategoriaId} onChange={(event) => setSubcategoriaId(event.target.value)} disabled={!catalogo}>
+                <select id="categoria" value={subcategoriaId} onChange={(event) => aplicarModelo(event.target.value)} disabled={!catalogo}>
                   <option value="">{catalogo ? "Selecione a categoria" : "Carregando categorias..."}</option>
                   {catalogo?.categorias.flatMap((categoria) =>
                     categoria.ativa ? categoria.subcategorias.filter((sub) => sub.ativa).map((sub) => (
@@ -346,7 +370,7 @@ export function AbrirPage() {
               <CampoLinha id="periodo" rotulo="Período" ajuda="Horário em que a equipe pode atender na unidade.">
                 <select id="periodo" value={periodo} onChange={(event) => setPeriodo(event.target.value)}>
                   <option value="">Selecione o período</option>
-                  {PERIODOS.map((opcao) => <option key={opcao} value={opcao}>{opcao}</option>)}
+                  {PERIODOS_ABERTURA.map((opcao) => <option key={opcao} value={opcao}>{opcao}</option>)}
                 </select>
               </CampoLinha>
 

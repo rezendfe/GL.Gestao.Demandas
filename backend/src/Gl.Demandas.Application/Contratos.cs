@@ -130,7 +130,9 @@ public sealed record DetalheDemandaDto(
     int? NotaAvaliacao,
     string? ComentarioAvaliacao);
 
-public sealed record CategoriaDto(Guid Id, string Nome, bool Ativa, int? PrazoHoras, IReadOnlyList<SubcategoriaDto> Subcategorias);
+public sealed record ModeloAberturaDto(string? Assunto, string? Ponto, string? Periodo, IReadOnlyList<string> Itens);
+
+public sealed record CategoriaDto(Guid Id, string Nome, bool Ativa, int? PrazoHoras, IReadOnlyList<SubcategoriaDto> Subcategorias, ModeloAberturaDto? Modelo);
 
 public sealed record SubcategoriaDto(Guid Id, string Nome, Guid AreaId, string Fluxo, bool Ativa);
 

@@ -131,8 +131,15 @@ export interface Sugestao {
   resumo: string;
 }
 
+export interface ModeloAbertura {
+  assunto: string | null;
+  ponto: string | null;
+  periodo: string | null;
+  itens: string[];
+}
+
 export interface Catalogo {
-  categorias: { id: string; nome: string; ativa: boolean; prazoHoras: number | null; subcategorias: { id: string; nome: string; areaId: string; fluxo: string; ativa: boolean }[] }[];
+  categorias: { id: string; nome: string; ativa: boolean; prazoHoras: number | null; modelo: ModeloAbertura | null; subcategorias: { id: string; nome: string; areaId: string; fluxo: string; ativa: boolean }[] }[];
   areas: { id: string; nome: string; ativa: boolean }[];
   responsaveis: { id: string; nome: string; email: string; areaId: string | null; ativo: boolean }[];
 }

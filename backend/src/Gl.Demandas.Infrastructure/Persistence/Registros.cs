@@ -14,6 +14,10 @@ internal sealed class CategoriaRegistro
     public Guid Id { get; set; }
     public string Nome { get; set; } = "";
     public int? PrazoHoras { get; set; }
+    public string? AssuntoSugerido { get; set; }
+    public string? PontoSugerido { get; set; }
+    public string? PeriodoSugerido { get; set; }
+    public string? ItensSugeridos { get; set; }
     public string Status { get; set; } = "ATIVO";
 }
 

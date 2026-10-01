@@ -60,7 +60,7 @@ public sealed class CatalogoAdministracaoTests : IDisposable
     {
         var gl = new Ator(DemoIds.Gl, Perfil.GlAdministrador, null);
         var agora = new DateTime(2026, 9, 28, 15, 0, 0, DateTimeKind.Utc);
-        await _admin.SalvarCategoria(gl, DemoIds.CatManutencao, "Manutenção", true, 2, CancellationToken.None);
+        await _admin.SalvarCategoria(gl, DemoIds.CatManutencao, "Manutenção", true, 2, null, CancellationToken.None);
         var manutencao = (await _catalogo.Obter(CancellationToken.None)).Categorias.Single(c => c.Id == DemoIds.CatManutencao);
         Assert.Equal(2, manutencao.PrazoHoras);
 
@@ -70,8 +70,8 @@ public sealed class CatalogoAdministracaoTests : IDisposable
         Assert.False(PrazoAtendimento.EmAtraso(false, agora.AddHours(-3), null, 2, agora));
 
         await Assert.ThrowsAsync<AcessoNegadoException>(() =>
-            _admin.SalvarCategoria(new Ator(DemoIds.Resp01, Perfil.ResponsavelArea, DemoIds.AreaManutencao), DemoIds.CatManutencao, "Manutenção", true, 4, CancellationToken.None));
+            _admin.SalvarCategoria(new Ator(DemoIds.Resp01, Perfil.ResponsavelArea, DemoIds.AreaManutencao), DemoIds.CatManutencao, "Manutenção", true, 4, null, CancellationToken.None));
         await Assert.ThrowsAsync<RegraNegocioException>(() =>
-            _admin.SalvarCategoria(gl, DemoIds.CatManutencao, "Manutenção", true, 0, CancellationToken.None));
+            _admin.SalvarCategoria(gl, DemoIds.CatManutencao, "Manutenção", true, 0, null, CancellationToken.None));
     }
 }

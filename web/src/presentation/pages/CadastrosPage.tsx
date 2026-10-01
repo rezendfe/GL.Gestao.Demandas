@@ -2,7 +2,8 @@ import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { Navigate, useSearchParams } from "react-router-dom";
 import { useSessao } from "../../application/session";
 import type { Catalogo } from "../../domain/types";
-import { apenasDigitos, mascaraEmail, validarEmail, validarHoras, validarTexto } from "../../domain/entrada";
+import { apenasDigitos, mascaraEmail, validarEmail, validarHoras, validarOpcional, validarTexto } from "../../domain/entrada";
+import { PERIODOS_ABERTURA } from "../../domain/modeloAbertura";
 import { ApiError, api } from "../../infrastructure/api/client";
 import { PageHeader } from "../components/PageHeader";
 import { Panel } from "../components/Panel";
@@ -18,7 +19,7 @@ const ABAS = [
 type Aba = (typeof ABAS)[number]["id"];
 
 const INTRO: Record<Aba, string> = {
-  categorias: "A categoria agrupa os tipos de atendimento e pode ter uma meta de prazo em horas.",
+  categorias: "A categoria agrupa os tipos de atendimento, pode ter uma meta de prazo e um modelo de abertura.",
   tipos: "Cada tipo direciona a demanda para uma área e um fluxo.",
   areas: "A área recebe as demandas do tipo de atendimento vinculado a ela.",
   responsaveis: "O responsável atua em uma área. O perfil permanece Responsável da Área.",
@@ -47,6 +48,10 @@ export function CadastrosPage() {
   const [categoriaNome, setCategoriaNome] = useState("");
   const [categoriaAtiva, setCategoriaAtiva] = useState(true);
   const [categoriaPrazo, setCategoriaPrazo] = useState("");
+  const [assuntoSugerido, setAssuntoSugerido] = useState("");
+  const [pontoSugerido, setPontoSugerido] = useState("");
+  const [periodoSugerido, setPeriodoSugerido] = useState("");
+  const [itensSugeridos, setItensSugeridos] = useState("");
   const [tipoId, setTipoId] = useState("");
   const [tipoNome, setTipoNome] = useState("");
   const [tipoCategoriaId, setTipoCategoriaId] = useState("");
@@ -109,6 +114,10 @@ export function CadastrosPage() {
     setCategoriaNome("");
     setCategoriaAtiva(true);
     setCategoriaPrazo("");
+    setAssuntoSugerido("");
+    setPontoSugerido("");
+    setPeriodoSugerido("");
+    setItensSugeridos("");
     limparAviso();
   }
 
@@ -117,6 +126,10 @@ export function CadastrosPage() {
     setCategoriaNome(categoria.nome);
     setCategoriaAtiva(categoria.ativa);
     setCategoriaPrazo(categoria.prazoHoras ? String(categoria.prazoHoras) : "");
+    setAssuntoSugerido(categoria.modelo?.assunto ?? "");
+    setPontoSugerido(categoria.modelo?.ponto ?? "");
+    setPeriodoSugerido(categoria.modelo?.periodo ?? "");
+    setItensSugeridos(categoria.modelo?.itens?.join("\n") ?? "");
     limparAviso();
   }
 
@@ -189,14 +202,38 @@ export function CadastrosPage() {
         setSalvando(false);
         return;
       }
+      const assuntoInvalido = validarOpcional(assuntoSugerido, 120, "O assunto sugerido tem no máximo 120 caracteres.");
+      const pontoInvalido = validarOpcional(pontoSugerido, 200, "O ponto sugerido tem no máximo 200 caracteres.");
+      const itens = itensSugeridos.split("\n").map((item) => item.trim()).filter(Boolean);
+      const itemInvalido = itens.find((item) => item.length > 80);
+      if (assuntoInvalido || pontoInvalido || itens.length > 12 || itemInvalido) {
+        setErro(assuntoInvalido ?? pontoInvalido ?? "Cada item sugerido tem no máximo 80 caracteres, até 12 itens.");
+        setSalvando(false);
+        return;
+      }
       const prazo = categoriaPrazo.trim();
       const prazoHoras = prazo === "" ? null : Number(prazo);
-      const atualizado = await api.salvarCategoria({ id: categoriaId || null, nome: categoriaNome, ativa: categoriaAtiva, prazoHoras });
+      const atualizado = await api.salvarCategoria({
+        id: categoriaId || null,
+        nome: categoriaNome,
+        ativa: categoriaAtiva,
+        prazoHoras,
+        modelo: {
+          assunto: assuntoSugerido.trim() || null,
+          ponto: pontoSugerido.trim() || null,
+          periodo: periodoSugerido || null,
+          itens,
+        },
+      });
       setCatalogo(atualizado);
       setCategoriaId("");
       setCategoriaNome("");
       setCategoriaAtiva(true);
       setCategoriaPrazo("");
+      setAssuntoSugerido("");
+      setPontoSugerido("");
+      setPeriodoSugerido("");
+      setItensSugeridos("");
       setMensagem("Categoria salva.");
     } catch (error) {
       setErro(error instanceof ApiError ? error.message : "Não foi possível salvar a categoria.");
@@ -328,11 +365,12 @@ export function CadastrosPage() {
                   <button className="btn secondary" type="button" onClick={novaCategoria}>Nova categoria</button>
                 </div>
                 <Tabela
-                  colunas={["Categoria", "Meta", "Tipos", "Situação", "Ação"]}
+                  colunas={["Categoria", "Meta", "Modelo", "Tipos", "Situação", "Ação"]}
                   vazio={catalogo.categorias.length === 0 ? "Nenhuma categoria cadastrada." : "Nenhuma categoria encontrada na pesquisa."}
                   linhas={categoriasVisiveis.map((categoria) => [
                     categoria.nome,
                     categoria.prazoHoras ? `${categoria.prazoHoras} h` : "Sem meta",
+                    categoria.modelo?.assunto || categoria.modelo?.ponto || categoria.modelo?.periodo || (categoria.modelo?.itens.length ?? 0) > 0 ? "Com modelo" : "Em branco",
                     String(categoria.subcategorias.length),
                     <Situacao key={categoria.id} ativo={categoria.ativa} ativoTexto="Ativa" inativoTexto="Inativa" />,
                     <button key={`${categoria.id}-editar`} className="cadastro-editar" type="button" onClick={() => editarCategoria(categoria)}>Editar</button>,
@@ -353,6 +391,22 @@ export function CadastrosPage() {
                     />
                   </label>
                   <p className="campo-ajuda">Chamado sem previsão entra em atraso quando passa dessa meta desde a abertura. Previsão ainda no futuro não marca atraso.</p>
+                  <label>Assunto sugerido
+                    <input value={assuntoSugerido} maxLength={120} onChange={(event) => setAssuntoSugerido(event.target.value)} placeholder="Em branco, a abertura não sugere assunto" />
+                  </label>
+                  <label>Ponto sugerido
+                    <input value={pontoSugerido} maxLength={200} onChange={(event) => setPontoSugerido(event.target.value)} placeholder="Em branco, a abertura não sugere ponto" />
+                  </label>
+                  <label>Período sugerido
+                    <select value={periodoSugerido} onChange={(event) => setPeriodoSugerido(event.target.value)}>
+                      <option value="">Em branco</option>
+                      {PERIODOS_ABERTURA.map((periodo) => <option key={periodo} value={periodo}>{periodo}</option>)}
+                    </select>
+                  </label>
+                  <label>Itens sugeridos
+                    <textarea value={itensSugeridos} rows={3} maxLength={1000} onChange={(event) => setItensSugeridos(event.target.value)} placeholder="Um item por linha" />
+                  </label>
+                  <p className="campo-ajuda">O Cessionário vê esse modelo ao escolher a categoria e pode alterar antes de abrir. Sem esses campos, o formulário segue em branco.</p>
                   <label className="cadastro-check"><input type="checkbox" checked={categoriaAtiva} onChange={(event) => setCategoriaAtiva(event.target.checked)} /><span>Categoria ativa</span></label>
                   <button className="btn" type="submit" disabled={salvando}>{salvando ? "Salvando..." : "Salvar categoria"}</button>
                 </form>

@@ -3,7 +3,7 @@
 | Método | Rota | Quem |
 |---|---|---|
 | GET | `/api/catalogo` | autenticado |
-| POST | `/api/catalogo/categorias` | GL / Administrador. Prazo 1–8760 ou nulo |
+| POST | `/api/catalogo/categorias` | GL / Administrador. Prazo 1–8760 ou nulo. Modelo opcional: assunto, ponto, período e itens |
 | POST | `/api/catalogo/tipos-atendimento` | GL / Administrador |
 | POST | `/api/catalogo/areas` | GL / Administrador |
 | POST | `/api/catalogo/responsaveis` | GL / Administrador |

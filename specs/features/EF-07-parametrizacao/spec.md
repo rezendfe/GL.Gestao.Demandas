@@ -35,7 +35,7 @@ O GL / Administrador grava na categoria um inteiro de 1 a 8760, ou deixa em bran
 **Trace:** RN-16 / RN-22 / RF-07.4
 
 ### RF-07.5 Modelo de abertura por categoria
-**Estado:** Não feito  
-O GL / Administrador grava, na categoria, assunto sugerido e campos sugeridos. O Cessionário vê o modelo ao escolher a categoria e pode alterar antes de abrir. Sem modelo, o formulário segue em branco. Outro perfil não grava.  
-**CA:** Dado GL / Administrador, quando grava o modelo da categoria, então o Cessionário o vê na abertura e pode corrigir. Dado categoria sem modelo, então o formulário abre em branco. Dado Responsável da Área ou Cessionário, quando tenta gravar, então a API recusa.  
+**Estado:** Feito  
+O GL / Administrador grava, na categoria, assunto sugerido e os campos que a abertura já tem: ponto, período e itens. O Cessionário vê o modelo ao escolher a categoria e pode alterar antes de abrir. Sem modelo, esses campos seguem em branco. Outro perfil não grava.  
+**CA:** Dado GL / Administrador, quando grava o modelo da categoria, então o Cessionário o vê na abertura e pode corrigir. Dado categoria sem modelo, então esses campos abrem em branco. Dado Responsável da Área ou Cessionário, quando tenta gravar, então a API recusa.  
 **Trace:** RN-16 / EnterCondo RF-C05 / PDR RF-07.5

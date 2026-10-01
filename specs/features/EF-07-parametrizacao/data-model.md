@@ -2,7 +2,7 @@
 
 | Tabela | Uso |
 |---|---|
-| Categoria | Nome, ativa, `NR_Prazo_Horas` nulo ou 1–8760 |
+| Categoria | Nome, ativa, `NR_Prazo_Horas` nulo ou 1–8760, modelo de abertura (`DS_Assunto_Sugerido`, `DS_Ponto_Sugerido`, `SG_Periodo_Sugerido`, `DS_Itens_Sugeridos`) |
 | Subcategoria | Tipo de atendimento, área, fluxo |
 | Area, Usuario | Área e Responsável da Área |
 | Etapa_Cadeia | Cinco nós, flag automática, tarefas comentário, previsão, anexo |

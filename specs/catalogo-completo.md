@@ -58,7 +58,7 @@ Decisão: **coberto**, **fase B**, **fase C**, **fase D** ou **fora**.
 | RF-C02 | Kanban | coberto | EF-12. As colunas são as da §4, não as seis do exemplo | — |
 | RF-C03 | Prazo no cartão | coberto | EF-12, RN-22. Atraso usa previsão e meta da categoria | — |
 | RF-C04 | Filtros combinados | coberto | EF-12 | — |
-| RF-C05 | Modelo de abertura | fase B | EF-07, RF-07.5, RN-16 | — |
+| RF-C05 | Modelo de abertura | coberto | EF-07, RF-07.5, RN-16. Assunto, ponto, período e itens da abertura | — |
 | RF-C06 | Gerar ordem de serviço | fora | Não há segunda entidade. A execução é o ciclo §4 / EF-02 | — |
 | RF-C07 | Fotos e conversa no chamado | coberto | EF-09, RN-18 | — |
 | RF-C08 | QR para abrir chamado sem login | fora | Abertura anônima não existe. QR autenticado é EF-19 | — |

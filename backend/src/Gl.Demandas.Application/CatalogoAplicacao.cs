@@ -23,7 +23,8 @@ public sealed class CatalogoAplicacao(ICatalogo catalogo, IUsuarios usuarios)
                         .Where(s => s.CategoriaId == c.Id)
                         .OrderBy(s => s.Nome)
                         .Select(s => new SubcategoriaDto(s.Id, s.Nome, s.AreaId, s.Fluxo.ParaTexto(), s.Ativa))
-                        .ToArray()))
+                        .ToArray(),
+                    c.Modelo is null ? null : new ModeloAberturaDto(c.Modelo.Assunto, c.Modelo.Ponto, c.Modelo.Periodo, c.Modelo.Itens)))
                 .ToArray(),
             areas.OrderBy(a => a.Nome).Select(a => new AreaDto(a.Id, a.Nome, a.Ativa)).ToArray(),
             pessoas

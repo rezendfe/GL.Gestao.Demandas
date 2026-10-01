@@ -32,7 +32,7 @@ public sealed class CatalogoAdministracaoAplicacao(ICatalogo catalogo, IUsuarios
         if (pessoas.Any(p => p.Id != id && string.Equals(p.Email, emailNormalizado, StringComparison.OrdinalIgnoreCase)))
             throw new RegraNegocioException("J? existe um usu?rio com este e-mail.");
         if (id.HasValue && !pessoas.Any(p => p.Id == id && p.Perfil == Perfil.ResponsavelArea))
-            throw new RegraNegocioException("Este cadastro n?o ? de um Respons?vel da ˇˇrea.");
+            throw new RegraNegocioException("Este cadastro n?o ? de um Respons?vel da ùùrea.");
         await usuarios.SalvarResponsavel(
             id,
             nomeNormalizado,
@@ -43,7 +43,7 @@ public sealed class CatalogoAdministracaoAplicacao(ICatalogo catalogo, IUsuarios
             ct);
     }
 
-    public async Task SalvarCategoria(Ator ator, Guid? id, string nome, bool ativa, int? prazoHoras, CancellationToken ct)
+    public async Task SalvarCategoria(Ator ator, Guid? id, string nome, bool ativa, int? prazoHoras, ModeloAbertura? modelo, CancellationToken ct)
     {
         ExigirGl(ator);
         if (prazoHoras is < 1 or > 8760)
@@ -54,7 +54,7 @@ public sealed class CatalogoAdministracaoAplicacao(ICatalogo catalogo, IUsuarios
             throw new RegraNegocioException("J? existe uma categoria com este nome.");
         if (!ativa && (await catalogo.ListarSubcategorias(ct)).Any(s => s.CategoriaId == id && s.Ativa))
             throw new RegraNegocioException("Desative os tipos de atendimento desta categoria antes de desativ?-la.");
-        await catalogo.SalvarCategoria(id, nomeNormalizado, ativa, prazoHoras, ct);
+        await catalogo.SalvarCategoria(id, nomeNormalizado, ativa, prazoHoras, modelo, ct);
     }
 
     public async Task SalvarTipo(Ator ator, Guid? id, Guid categoriaId, Guid areaId, string nome, string fluxo, bool ativo, CancellationToken ct)

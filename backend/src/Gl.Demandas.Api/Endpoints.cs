@@ -45,7 +45,7 @@ public static class Endpoints
         var catalogoAdmin = app.MapGroup("/api/catalogo").WithTags("Catálogo").RequireAuthorization();
         catalogoAdmin.MapPost("/categorias", async (CategoriaCadastroPedido pedido, ClaimsPrincipal user, IUsuarios usuarios, IConfiguration config, CatalogoAdministracaoAplicacao appCaso, CatalogoAplicacao catalogo, CancellationToken ct) =>
         {
-            await appCaso.SalvarCategoria(await AtorAtual(user, usuarios, config, ct), pedido.Id, pedido.Nome, pedido.Ativa, pedido.PrazoHoras, ct);
+            await appCaso.SalvarCategoria(await AtorAtual(user, usuarios, config, ct), pedido.Id, pedido.Nome, pedido.Ativa, pedido.PrazoHoras, ModeloAbertura.Interpretar(pedido.Modelo?.Assunto, pedido.Modelo?.Ponto, pedido.Modelo?.Periodo, pedido.Modelo?.Itens), ct);
             return Results.Ok(await catalogo.Obter(ct));
         })
             .WithName("SalvarCategoriaCatalogo")
@@ -414,7 +414,8 @@ public sealed record EtapaCadeiaPedido(string Codigo, bool Automatica, IReadOnly
 public sealed record CadeiaPedido(Guid SubcategoriaId, IReadOnlyList<EtapaCadeiaPedido> Etapas);
 public sealed record AreaCadastroPedido(Guid? Id, string Nome, bool Ativa);
 public sealed record ResponsavelCadastroPedido(Guid? Id, string Nome, string Email, Guid AreaId, bool Ativo);
-public sealed record CategoriaCadastroPedido(Guid? Id, string Nome, bool Ativa, int? PrazoHoras);
+public sealed record ModeloAberturaPedido(string? Assunto, string? Ponto, string? Periodo, IReadOnlyList<string>? Itens);
+public sealed record CategoriaCadastroPedido(Guid? Id, string Nome, bool Ativa, int? PrazoHoras, ModeloAberturaPedido? Modelo);
 public sealed record TipoAtendimentoCadastroPedido(Guid? Id, Guid CategoriaId, Guid AreaId, string Nome, string Fluxo, bool Ativo);
 public sealed record MensagemPedido(string Texto, bool Complemento = false);
 public sealed record PrevisaoPedido(DateTime Quando);

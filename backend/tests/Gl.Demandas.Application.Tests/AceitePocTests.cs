@@ -499,7 +499,7 @@ public sealed class AceitePocTests : IDisposable
     {
         var gl = new Ator(DemoIds.Gl, Perfil.GlAdministrador, null);
         var admin = new CatalogoAdministracaoAplicacao(new GlRepositorio(_db), new GlRepositorio(_db));
-        await admin.SalvarCategoria(gl, DemoIds.CatManutencao, "Manutenção", true, 48, CancellationToken.None);
+        await admin.SalvarCategoria(gl, DemoIds.CatManutencao, "Manutenção", true, 48, null, CancellationToken.None);
 
         var fila = await _atendimento.Listar(gl, CancellationToken.None);
         Assert.Contains(fila, item => item.SubcategoriaId == DemoIds.SubCivil && item.PrazoCategoriaHoras == 48);
