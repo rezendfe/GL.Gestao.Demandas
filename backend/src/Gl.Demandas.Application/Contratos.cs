@@ -52,6 +52,7 @@ public sealed record EtapaCadeiaDto(string Codigo, string Nome, int Ordem, bool 
 public sealed record CadeiaTipoDto(Guid SubcategoriaId, string Categoria, string Tipo, IReadOnlyList<EtapaCadeiaDto> Etapas);
 
 public sealed record AprovacaoComando(string Decisao, string? Motivo);
+public sealed record CancelamentoComando(string Motivo);
 
 public sealed record RedirecionarComando(Guid AreaId, Guid? ResponsavelId);
 
@@ -158,5 +159,11 @@ public sealed record ObraDto(
     IReadOnlyList<DocumentoObraDto> Documentos);
 
 public sealed record NotificacaoDto(Guid Id, Guid DemandaId, string Protocolo, string Texto, bool Lida, DateTime CriadaEm);
+
+public sealed record ChavePushDto(string ChavePublica);
+
+public sealed record InscricaoPushComando(string Endpoint, string ChaveP256dh, string SegredoAuth);
+
+public sealed record NotificacaoPush(Guid UsuarioId, Guid NotificacaoId, Guid DemandaId, string Protocolo, string Texto);
 
 public sealed record AnexoConteudo(string Nome, string Tipo, Stream Conteudo);

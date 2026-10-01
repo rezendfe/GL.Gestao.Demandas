@@ -126,7 +126,11 @@ public sealed class Demanda
     public string? ComentarioAvaliacao { get; private set; }
     public DateTime? AvaliadaEm { get; private set; }
 
-    public bool EmAberto => Situacao is not (SituacaoDemanda.Concluido or SituacaoDemanda.Reprovado);
+    public bool EmAberto => Situacao is not (
+        SituacaoDemanda.Concluido
+        or SituacaoDemanda.Reprovado
+        or SituacaoDemanda.Encerrada
+        or SituacaoDemanda.Cancelada);
 
     public IReadOnlyCollection<Mensagem> Mensagens => _mensagens;
     public IReadOnlyCollection<Anexo> Anexos => _anexos;
@@ -163,6 +167,9 @@ public sealed class Demanda
             throw new RegraNegocioException("Informe a sala ou unidade.");
         if (canal is not ("PORTAL" or "MENSAGERIA"))
             throw new RegraNegocioException("Canal inválido.");
+        descricao = FormatoCampo.Limitar(descricao, 2000, "A descrição tem no máximo 2000 caracteres.");
+        sala = FormatoCampo.Limitar(sala, 80, "O local tem no máximo 80 caracteres.");
+        ponto = string.IsNullOrWhiteSpace(ponto) ? null : FormatoCampo.Limitar(ponto, 200, "O ponto tem no máximo 200 caracteres.");
 
         var situacao = fluxo == FluxoDemanda.Aprovacao && !aprovacaoAutomatica
             ? SituacaoDemanda.AguardandoAprovacao
@@ -175,9 +182,9 @@ public sealed class Demanda
             CessionarioId = cessionarioId,
             EmpresaCessionariaId = empresaCessionariaId,
             Empresa = empresa,
-            Sala = sala.Trim(),
-            Descricao = descricao.Trim(),
-            Ponto = string.IsNullOrWhiteSpace(ponto) ? null : ponto.Trim(),
+            Sala = sala,
+            Descricao = descricao,
+            Ponto = ponto,
             CategoriaId = categoriaId,
             SubcategoriaId = subcategoriaId,
             AreaId = areaId,
@@ -381,6 +388,7 @@ public sealed class Demanda
 
         if (string.IsNullOrWhiteSpace(comentario))
             throw new RegraNegocioException("Registre o que foi feito.");
+        comentario = FormatoCampo.Limitar(comentario, 2000, "O comentário tem no máximo 2000 caracteres.");
 
         GarantirTransicao(nova);
         var anterior = Situacao;
@@ -411,6 +419,8 @@ public sealed class Demanda
         var devolve = Situacao == SituacaoDemanda.AguardandoValidacao && confirmacao == false;
         if (Situacao == SituacaoDemanda.AguardandoValidacao && confirmacao is null)
             throw new RegraNegocioException("Informe se o serviço foi realizado.");
+        if (!string.IsNullOrWhiteSpace(comentario))
+            comentario = FormatoCampo.Limitar(comentario, 2000, "O comentário tem no máximo 2000 caracteres.");
 
         if (devolve)
         {
@@ -480,14 +490,16 @@ public sealed class Demanda
         if (perfil != Perfil.Cessionario ||
             (autorId != CessionarioId && (EmpresaCessionariaId is not Guid empresaId || empresaCessionariaId != empresaId)))
             throw new AcessoNegadoException("A avaliação do atendimento é do Cessionário do chamado.");
-        if (Situacao != SituacaoDemanda.Concluido)
+        if (Situacao is not (SituacaoDemanda.Concluido or SituacaoDemanda.Encerrada))
             throw new RegraNegocioException("A avaliação fica disponível quando o serviço é concluído.");
         if (NotaAvaliacao is not null)
             throw new RegraNegocioException("Este serviço já foi avaliado.");
         if (nota is < 0 or > 10)
             throw new RegraNegocioException("A nota vai de 0 a 10.");
 
-        var texto = string.IsNullOrWhiteSpace(comentario) ? null : comentario.Trim();
+        var texto = string.IsNullOrWhiteSpace(comentario)
+            ? null
+            : FormatoCampo.Limitar(comentario, 500, "O comentário da avaliação tem no máximo 500 caracteres.");
         NotaAvaliacao = nota;
         ComentarioAvaliacao = texto;
         AvaliadaEm = agora;
@@ -503,6 +515,7 @@ public sealed class Demanda
         GarantirLeitura(perfil, autorId, areaDoAutor, empresaCessionariaId);
         if (string.IsNullOrWhiteSpace(texto))
             throw new RegraNegocioException("Escreva a mensagem.");
+        texto = FormatoCampo.Limitar(texto, 2000, "A mensagem tem no máximo 2000 caracteres.");
         if (finalidade is not ("mensagem" or "complemento"))
             throw new RegraNegocioException("Finalidade de mensagem inválida.");
         if (finalidade == "complemento" && perfil == Perfil.Cessionario)
@@ -550,6 +563,35 @@ public sealed class Demanda
         AtualizadoEm = agora;
     }
 
+    public void Encerrar(Perfil perfil, Guid autorId, DateTime agora)
+    {
+        if (perfil != Perfil.GlAdministrador)
+            throw new AcessoNegadoException("Encerrar o chamado é exclusivo do GL / Administrador.");
+        if (Situacao != SituacaoDemanda.Concluido)
+            throw new TransicaoInvalidaException("Só é possível encerrar um chamado concluído.");
+
+        var anterior = Situacao;
+        Situacao = SituacaoDemanda.Encerrada;
+        AtualizadoEm = agora;
+        RegistrarHistorico(autorId, anterior.ParaTexto(), Situacao.ParaTexto(), "Chamado encerrado.", "ENCERRAMENTO", agora);
+    }
+
+    public void Cancelar(Perfil perfil, Guid autorId, string motivo, DateTime agora)
+    {
+        if (perfil != Perfil.GlAdministrador)
+            throw new AcessoNegadoException("Cancelar o chamado é exclusivo do GL / Administrador.");
+        if (Situacao is SituacaoDemanda.Concluido or SituacaoDemanda.Encerrada or SituacaoDemanda.Reprovado or SituacaoDemanda.Cancelada)
+            throw new TransicaoInvalidaException("Este chamado já teve desfecho e não pode ser cancelado.");
+        if (string.IsNullOrWhiteSpace(motivo))
+            throw new RegraNegocioException("Informe o motivo.");
+        var texto = FormatoCampo.Limitar(motivo, 2000, "O motivo tem no máximo 2000 caracteres.");
+
+        var anterior = Situacao;
+        Situacao = SituacaoDemanda.Cancelada;
+        AtualizadoEm = agora;
+        RegistrarHistorico(autorId, anterior.ParaTexto(), Situacao.ParaTexto(), texto, "CANCELAMENTO", agora);
+    }
+
     public void Decidir(Perfil perfil, Guid autorId, string decisao, string? motivo, DateTime agora)
     {
         if (perfil != Perfil.GlAdministrador)
@@ -583,6 +625,8 @@ public sealed class Demanda
     {
         if (string.IsNullOrWhiteSpace(motivo))
             throw new RegraNegocioException("Informe o motivo.");
+        if (motivo.Trim().Length > 2000)
+            throw new RegraNegocioException("O motivo tem no máximo 2000 caracteres.");
         return (situacao, rotulo);
     }
 

@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSessao } from "../../application/session";
+import { mascaraEmail, validarEmail } from "../../domain/entrada";
 import { ApiError } from "../../infrastructure/api/client";
 import type { Perfil } from "../../domain/types";
 
@@ -20,6 +21,11 @@ export function LoginPage() {
 
   async function submit(event: FormEvent) {
     event.preventDefault();
+    const emailInvalido = validarEmail(email);
+    if (emailInvalido || senha.trim().length < 1) {
+      setErro(emailInvalido ?? "Informe a senha.");
+      return;
+    }
     setEnviando(true);
     setErro(null);
     try {
@@ -61,7 +67,7 @@ export function LoginPage() {
           </div>
           <label>
             E-mail
-            <input value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="username" />
+            <input type="email" inputMode="email" value={email} onChange={(event) => setEmail(mascaraEmail(event.target.value))} autoComplete="username" maxLength={320} required />
           </label>
           <label>
             Senha

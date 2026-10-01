@@ -381,6 +381,73 @@ textarea { min-height: 110px; resize: vertical; }
   text-transform: none;
 }
 .x-user button:hover { background: var(--red); color: white; }
+.x-sino-wrap { position: relative; }
+.x-user button.x-sino {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  color: var(--ink);
+}
+.x-user button.x-sino:hover { background: var(--nav-hover); color: var(--red); }
+.x-sino-contagem {
+  position: absolute;
+  top: 4px;
+  right: 2px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--red);
+  color: white;
+  font-size: 10px;
+  line-height: 16px;
+  font-weight: 800;
+}
+.x-sino-painel {
+  position: fixed;
+  top: calc(var(--bar-h) + 8px);
+  right: max(8px, env(safe-area-inset-right));
+  z-index: 40;
+  width: min(340px, calc(100vw - 16px));
+  max-height: min(420px, calc(100vh - var(--bar-h) - 24px));
+  overflow: auto;
+  background: white;
+  border-radius: 14px;
+  box-shadow: 0 12px 32px rgba(27, 29, 36, 0.16);
+  padding: 12px;
+}
+.x-sino-painel > strong { display: block; margin-bottom: 8px; font-size: 14px; }
+.x-sino-push { display: grid; gap: 8px; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+.x-sino-push p, .x-sino-vazio { margin: 0; color: var(--muted); font-size: 13px; }
+.x-user button.x-sino-acao {
+  width: 100%;
+  min-height: 44px;
+  background: var(--red);
+  color: white;
+  text-align: center;
+}
+.x-user button.x-sino-acao:hover { background: var(--red-dark); color: white; }
+.x-sino-painel ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.x-user button.x-sino-item {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  font-weight: 600;
+}
+.x-user button.x-sino-item span { display: flex; justify-content: space-between; gap: 8px; }
+.x-user button.x-sino-item time { color: var(--muted); font-size: 11px; font-weight: 700; }
+.x-user button.x-sino-item em { font-style: normal; color: var(--muted); font-size: 13px; font-weight: 500; }
+.x-user button.x-sino-item.pede-leitura { background: #f6f4ff; }
+.x-user button.x-sino-item:hover { background: var(--nav-hover); color: var(--ink); }
 .page-content-wrap { padding: 20px; }
 
 .page-container.is-mini { --sidebar-w: 64px; }

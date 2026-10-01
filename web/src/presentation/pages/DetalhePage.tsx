@@ -4,6 +4,7 @@ import { useCatalogo, useCadeia, useDetalhe } from "../../application/hooks";
 import { useLinhaDoTempo } from "../../application/preferenciaVisual";
 import { useSessao } from "../../application/session";
 import { cadeiaDoTipo, proximaEtapa } from "../../domain/cadeia";
+import { validarArquivo, validarTexto } from "../../domain/entrada";
 import { espacoPorSala } from "../../domain/espacos";
 import { hora, quandoAtende } from "../../domain/types";
 import { ApiError, api } from "../../infrastructure/api/client";
@@ -106,7 +107,7 @@ export function DetalhePage() {
               <p className="note">Nota do atendimento: {dados.notaAvaliacao}{dados.comentarioAvaliacao ? ` · ${dados.comentarioAvaliacao}` : ""}</p>
             )}
           </Panel>
-          {perfil === "Cessionário" && dados.situacao === "Concluído" && dados.notaAvaliacao === null && (
+          {perfil === "Cessionário" && (dados.situacao === "Concluído" || dados.situacao === "Encerrada") && dados.notaAvaliacao === null && (
             <Panel title="Como foi o atendimento">
               <PerguntaAtendimento id={dados.id} protocolo={dados.protocolo} aoEnviar={recarregar} />
             </Panel>
@@ -123,7 +124,7 @@ export function DetalhePage() {
             </div>
             <label>
               {responderId ? "Resposta da notificação" : "Mensagem"}
-              <textarea value={mensagem} onChange={(event) => setMensagem(event.target.value)} />
+              <textarea maxLength={2000} value={mensagem} onChange={(event) => setMensagem(event.target.value)} />
             </label>
             {perfil !== "Cessionário" && (
               <label className="preferencia-vista">
@@ -148,7 +149,14 @@ export function DetalhePage() {
               Adicionar documento ou foto
               <input type="file" accept="image/*,.pdf" capture="environment" onChange={(event) => {
                 const arquivo = event.target.files?.[0];
-                if (arquivo) void executar(() => api.anexar(dados.id, arquivo));
+                if (!arquivo) return;
+                const invalido = validarArquivo(arquivo);
+                if (invalido) {
+                  setFalha(invalido);
+                  event.target.value = "";
+                  return;
+                }
+                void executar(() => api.anexar(dados.id, arquivo));
               }} />
             </label>
           </Panel>
@@ -206,7 +214,13 @@ export function DetalhePage() {
                 <button
                   className="btn secondary"
                   type="button"
-                  onClick={() => void executar(() => api.previsao(dados.id, new Date(quando).toISOString()))}
+                  onClick={() => {
+                    if (!quando) {
+                      setFalha("Informe quando será atendido.");
+                      return;
+                    }
+                    void executar(() => api.previsao(dados.id, new Date(quando).toISOString()));
+                  }}
                 >
                   Salvar previsão
                 </button>
@@ -217,16 +231,47 @@ export function DetalhePage() {
                 Validar atendimento
               </button>
             )}
+            {perfil === "GL / Administrador" && dados.situacao === "Concluído" && (
+              <button className="btn" type="button" onClick={() => void executar(() => api.encerrar(dados.id))}>
+                Encerrar chamado
+              </button>
+            )}
+            {perfil === "GL / Administrador" && dados.situacao !== "Aguardando aprovação" && !["Concluído", "Reprovado", "Encerrada", "Cancelada"].includes(dados.situacao) && (
+              <>
+                <label>
+                  Motivo do cancelamento
+                  <textarea maxLength={2000} value={motivo} onChange={(event) => setMotivo(event.target.value)} />
+                </label>
+                <button className="btn danger" type="button" onClick={() => {
+                  const invalido = validarTexto(motivo, 1, 2000, motivo.trim() ? "O motivo tem no máximo 2000 caracteres." : "Informe o motivo.");
+                  if (invalido) { setFalha(invalido); return; }
+                  void executar(() => api.cancelar(dados.id, motivo));
+                }}>Cancelar chamado</button>
+              </>
+            )}
             {perfil === "GL / Administrador" && dados.situacao === "Aguardando aprovação" && (
               <>
                 <label>
-                  Motivo, se houver ajuste ou reprovação
-                  <textarea value={motivo} onChange={(event) => setMotivo(event.target.value)} />
+                  Motivo, se houver ajuste, reprovação ou cancelamento
+                  <textarea maxLength={2000} value={motivo} onChange={(event) => setMotivo(event.target.value)} />
                 </label>
                 <div className="row">
                   <button className="btn" type="button" onClick={() => void executar(() => api.aprovar(dados.id, "Aprovar"))}>Aprovar</button>
-                  <button className="btn secondary" type="button" onClick={() => void executar(() => api.aprovar(dados.id, "Solicitar ajuste", motivo))}>Solicitar ajuste</button>
-                  <button className="btn danger" type="button" onClick={() => void executar(() => api.aprovar(dados.id, "Reprovar", motivo))}>Reprovar</button>
+                  <button className="btn secondary" type="button" onClick={() => {
+                    const invalido = validarTexto(motivo, 1, 2000, motivo.trim() ? "O motivo tem no máximo 2000 caracteres." : "Informe o motivo.");
+                    if (invalido) { setFalha(invalido); return; }
+                    void executar(() => api.aprovar(dados.id, "Solicitar ajuste", motivo));
+                  }}>Solicitar ajuste</button>
+                  <button className="btn danger" type="button" onClick={() => {
+                    const invalido = validarTexto(motivo, 1, 2000, motivo.trim() ? "O motivo tem no máximo 2000 caracteres." : "Informe o motivo.");
+                    if (invalido) { setFalha(invalido); return; }
+                    void executar(() => api.aprovar(dados.id, "Reprovar", motivo));
+                  }}>Reprovar</button>
+                  <button className="btn danger" type="button" onClick={() => {
+                    const invalido = validarTexto(motivo, 1, 2000, motivo.trim() ? "O motivo tem no máximo 2000 caracteres." : "Informe o motivo.");
+                    if (invalido) { setFalha(invalido); return; }
+                    void executar(() => api.cancelar(dados.id, motivo));
+                  }}>Cancelar chamado</button>
                 </div>
               </>
             )}
@@ -268,6 +313,8 @@ export function DetalhePage() {
   }
 
   async function enviarMensagem() {
+    const invalida = validarTexto(mensagem, 1, 2000, mensagem.trim() ? "A mensagem tem no máximo 2000 caracteres." : "Escreva a mensagem.");
+    if (invalida) throw new ApiError(invalida, 400);
     if (responderId && perfil === "Cessionário") {
       await api.responderNotificacao(responderId, mensagem);
     } else {

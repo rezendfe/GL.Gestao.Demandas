@@ -240,6 +240,16 @@ public static class Endpoints
             .WithName("DecidirAprovacao")
             .WithSummary("GL aprova, solicita ajuste ou reprova.");
 
+        demandas.MapPost("/{id:guid}/encerramento", async (Guid id, ClaimsPrincipal user, IUsuarios usuarios, IConfiguration config, AtendimentoAplicacao appCaso, CancellationToken ct) =>
+            Results.Ok(await appCaso.Encerrar(await AtorAtual(user, usuarios, config, ct), id, ct)))
+            .WithName("EncerrarDemanda")
+            .WithSummary("GL / Administrador encerra um chamado já concluído.");
+
+        demandas.MapPost("/{id:guid}/cancelamento", async (Guid id, CancelamentoPedido pedido, ClaimsPrincipal user, IUsuarios usuarios, IConfiguration config, AtendimentoAplicacao appCaso, CancellationToken ct) =>
+            Results.Ok(await appCaso.Cancelar(await AtorAtual(user, usuarios, config, ct), id, new CancelamentoComando(pedido.Motivo), ct)))
+            .WithName("CancelarDemanda")
+            .WithSummary("GL / Administrador cancela um chamado em aberto, com motivo.");
+
         var obras = app.MapGroup("/api/obras").WithTags("Obras").RequireAuthorization();
         obras.MapGet("/", async (ObrasAplicacao obrasApp, CancellationToken ct) => Results.Ok(await obrasApp.Listar(ct)))
             .WithName("ListarObras")
@@ -265,6 +275,24 @@ public static class Endpoints
             Results.Ok(await appCaso.ResponderNotificacao(await AtorAtual(user, usuarios, config, ct), id, new RespostaNotificacaoComando(pedido.Texto), ct)))
             .WithName("ResponderNotificacao")
             .WithSummary("Grava no chamado em aberto a resposta dada à notificação do celular.");
+
+        notas.MapGet("/push/chave", (NotificacaoAplicacao notasApp) => Results.Ok(notasApp.ExigirChavePublica()))
+            .WithName("ChavePush")
+            .WithSummary("Entrega a chave pública para o celular autorizar as notificações do portal.");
+        notas.MapPost("/push", async (InscricaoPushPedido pedido, ClaimsPrincipal user, IUsuarios usuarios, IConfiguration config, NotificacaoAplicacao notasApp, CancellationToken ct) =>
+        {
+            await notasApp.Inscrever(await AtorAtual(user, usuarios, config, ct), new InscricaoPushComando(pedido.Endpoint, pedido.ChaveP256dh, pedido.SegredoAuth), ct);
+            return Results.NoContent();
+        })
+            .WithName("InscreverPush")
+            .WithSummary("Autoriza este celular a receber as notificações do usuário autenticado.");
+        notas.MapPost("/push/cancelamento", async (CancelarPushPedido pedido, ClaimsPrincipal user, IUsuarios usuarios, IConfiguration config, NotificacaoAplicacao notasApp, CancellationToken ct) =>
+        {
+            await notasApp.Cancelar(await AtorAtual(user, usuarios, config, ct), pedido.Endpoint, ct);
+            return Results.NoContent();
+        })
+            .WithName("CancelarPush")
+            .WithSummary("Retira a autorização de notificações deste celular.");
     }
 
     private static async Task<Ator> AtorAtual(ClaimsPrincipal user, IUsuarios usuarios, IConfiguration config, CancellationToken ct)
@@ -346,7 +374,10 @@ public sealed record MensagemPedido(string Texto, bool Complemento = false);
 public sealed record PrevisaoPedido(DateTime Quando);
 public sealed record AvaliacaoPedido(int Nota, string? Comentario);
 public sealed record RespostaPedido(string Texto);
+public sealed record InscricaoPushPedido(string Endpoint, string ChaveP256dh, string SegredoAuth);
+public sealed record CancelarPushPedido(string Endpoint);
 public sealed record AprovacaoPedido(string Decisao, string? Motivo);
+public sealed record CancelamentoPedido(string Motivo);
 public sealed record EspacoSalvarPedido(string Codigo, string Nome, string Localizacao, string Descricao, bool Ativo = true);
 public sealed record IniciarLocacaoPedido(Guid EmpresaId, DateOnly Inicio);
 public sealed record EncerrarLocacaoPedido(DateOnly Termino);

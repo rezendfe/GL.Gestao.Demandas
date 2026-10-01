@@ -24,6 +24,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     internal DbSet<ObraRegistro> Obras => Set<ObraRegistro>();
     internal DbSet<DocumentoObraRegistro> DocumentosObra => Set<DocumentoObraRegistro>();
     internal DbSet<NotificacaoRegistro> Notificacoes => Set<NotificacaoRegistro>();
+    internal DbSet<InscricaoPushRegistro> InscricoesPush => Set<InscricaoPushRegistro>();
     internal DbSet<EtapaCadeiaRegistro> EtapasCadeia => Set<EtapaCadeiaRegistro>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -366,6 +367,23 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             b.Property(x => x.CriadaEm).HasColumnName("DT_Criacao");
             b.HasOne(x => x.Demanda).WithMany().HasForeignKey(x => x.DemandaIdInterno).OnDelete(DeleteBehavior.Cascade);
             b.HasOne(x => x.Usuario).WithMany().HasForeignKey(x => x.UsuarioIdInterno).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<InscricaoPushRegistro>(b =>
+        {
+            b.ToTable("Inscricao_Push");
+            b.HasKey(x => x.IdInterno);
+            b.Property(x => x.IdInterno).HasColumnName("ID_Inscricao_Push").UseIdentityColumn();
+            b.Property(x => x.Id).HasColumnName("CD_Inscricao_Push");
+            b.HasIndex(x => x.Id).IsUnique().HasDatabaseName("UK_Inscricao_Push_CD");
+            b.Property(x => x.UsuarioIdInterno).HasColumnName("ID_Usuario");
+            b.Property(x => x.Endpoint).HasColumnName("DS_Endpoint").HasMaxLength(2000);
+            b.Property(x => x.EndpointHash).HasColumnName("DS_Endpoint_Hash").HasMaxLength(64).IsFixedLength();
+            b.HasIndex(x => x.EndpointHash).IsUnique().HasDatabaseName("UK_Inscricao_Push_Endpoint");
+            b.Property(x => x.ChaveP256dh).HasColumnName("DS_Chave_P256dh").HasMaxLength(200);
+            b.Property(x => x.SegredoAuth).HasColumnName("DS_Segredo_Auth").HasMaxLength(200);
+            b.Property(x => x.CriadaEm).HasColumnName("DT_Criacao");
+            b.HasOne(x => x.Usuario).WithMany().HasForeignKey(x => x.UsuarioIdInterno).OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<EtapaCadeiaRegistro>(b =>

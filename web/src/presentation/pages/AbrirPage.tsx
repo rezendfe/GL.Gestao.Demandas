@@ -2,6 +2,7 @@ import { useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { sugerir, useCatalogo } from "../../application/hooks";
 import { useSessao } from "../../application/session";
+import { validarArquivo, validarDataOpcional, validarOpcional, validarTexto } from "../../domain/entrada";
 import { espacosPorEmail } from "../../domain/espacos";
 import type { Sugestao } from "../../domain/types";
 import { ApiError, api } from "../../infrastructure/api/client";
@@ -204,6 +205,21 @@ export function AbrirPage() {
   }
 
   async function abrir() {
+    const texto = textoClassificavel(assunto, descricao);
+    const descricaoInvalida = texto.trim()
+      ? validarTexto(texto, 1, 2000, "A descrição tem no máximo 2000 caracteres.")
+      : "Descreva o que está acontecendo.";
+    const assuntoInvalido = validarOpcional(assunto, 120, "O assunto tem no máximo 120 caracteres.");
+    const pontoInvalido = validarOpcional(ponto, 200, "O ponto tem no máximo 200 caracteres.");
+    const dataInvalida = validarDataOpcional(dataDesejada, hojeIso(), "A data desejada não pode ficar no passado.");
+    const arquivoInvalido = arquivo ? validarArquivo(arquivo) : null;
+    const localInvalido = sala.trim() ? validarTexto(sala, 1, 80, "O local tem no máximo 80 caracteres.") : "Informe a sala ou unidade.";
+    const nota = complemento({ itens, telefone: telefoneEmpresa, dataDesejada, periodo, autorizaAcesso });
+    const notaInvalida = nota && nota.length > 2000 ? "A mensagem tem no máximo 2000 caracteres." : null;
+    if (!subcategoriaId || descricaoInvalida || assuntoInvalido || pontoInvalido || dataInvalida || arquivoInvalido || localInvalido || notaInvalida) {
+      setErro(!subcategoriaId ? "Selecione uma categoria válida." : (descricaoInvalida ?? assuntoInvalido ?? pontoInvalido ?? dataInvalida ?? arquivoInvalido ?? localInvalido ?? notaInvalida));
+      return;
+    }
     setEnviando(true);
     setErro(null);
     try {
@@ -316,7 +332,7 @@ export function AbrirPage() {
               <CampoLinha id="ponto" rotulo="Ponto" ajuda="Onde, dentro do local: teto, quadro elétrico, vaga ou balcão.">
                 <div className="grupo-campo">
                   <Addon><IconeAlvo /></Addon>
-                  <input id="ponto" value={ponto} onChange={(event) => setPonto(event.target.value)} />
+                  <input id="ponto" maxLength={200} value={ponto} onChange={(event) => setPonto(event.target.value)} />
                 </div>
               </CampoLinha>
 
@@ -364,6 +380,7 @@ export function AbrirPage() {
                   <input
                     id="itens"
                     value={rascunhoItem}
+                    maxLength={80}
                     placeholder="adicionar um item"
                     onChange={(event) => setRascunhoItem(event.target.value)}
                     onKeyDown={(event) => {

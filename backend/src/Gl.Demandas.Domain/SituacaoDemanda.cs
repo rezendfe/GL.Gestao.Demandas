@@ -10,7 +10,9 @@ public enum SituacaoDemanda
     AguardandoAjuste,
     AguardandoValidacao,
     Reprovado,
-    Concluido
+    Concluido,
+    Encerrada,
+    Cancelada
 }
 
 public static class SituacaoDemandaTexto
@@ -26,6 +28,8 @@ public static class SituacaoDemandaTexto
         SituacaoDemanda.AguardandoValidacao => "Aguardando validação",
         SituacaoDemanda.Reprovado => "Reprovado",
         SituacaoDemanda.Concluido => "Concluído",
+        SituacaoDemanda.Encerrada => "Encerrada",
+        SituacaoDemanda.Cancelada => "Cancelada",
         _ => throw new ArgumentOutOfRangeException(nameof(situacao))
     };
 
@@ -40,6 +44,8 @@ public static class SituacaoDemandaTexto
         "Aguardando validação" => SituacaoDemanda.AguardandoValidacao,
         "Reprovado" => SituacaoDemanda.Reprovado,
         "Concluído" => SituacaoDemanda.Concluido,
+        "Encerrada" => SituacaoDemanda.Encerrada,
+        "Cancelada" => SituacaoDemanda.Cancelada,
         _ => throw new ArgumentOutOfRangeException(nameof(texto), texto, "Situação desconhecida.")
     };
 }

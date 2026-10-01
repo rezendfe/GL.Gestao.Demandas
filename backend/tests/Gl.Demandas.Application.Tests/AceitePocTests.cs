@@ -24,9 +24,9 @@ public sealed class AceitePocTests : IDisposable
         var repo = new GlRepositorio(_db);
         _pasta = Path.Combine(Path.GetTempPath(), "gl-poc-tests", Guid.NewGuid().ToString("N"));
         var relogio = new RelogioFixo(agora);
-        _atendimento = new AtendimentoAplicacao(repo, repo, repo, repo, new ArmazenamentoLocal(_pasta), relogio, new ClassificadorDemanda(repo), new ExtratorNulo(), repo);
+        _atendimento = new AtendimentoAplicacao(repo, repo, repo, repo, new ArmazenamentoLocal(_pasta), relogio, new ClassificadorDemanda(repo), new ExtratorNulo(), repo, new EnvioPushNulo());
         _obras = new ObrasAplicacao(repo);
-        _notificacoes = new NotificacaoAplicacao(repo, repo);
+        _notificacoes = new NotificacaoAplicacao(repo, repo, repo, new ConfiguracaoPushMemoria(null), relogio);
         _login = new LoginAplicacao(repo, new EmissorTokenDemo(TokenDemo.ChaveDesenvolvimento));
     }
 
@@ -396,6 +396,36 @@ public sealed class AceitePocTests : IDisposable
             Cessionario(DemoIds.Joao),
             new AbrirComando("Tem água entrando pelo teto.", "Sala 205", "Teto", sugestao.SubcategoriaId, "PORTAL"),
             CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task Gl_encerra_concluido_e_cancela_em_aberto()
+    {
+        var gl = new Ator(DemoIds.Gl, Perfil.GlAdministrador, null);
+        var responsavel = new Ator(DemoIds.Resp02, Perfil.ResponsavelArea, DemoIds.AreaRecepcao);
+        var joao = Cessionario(DemoIds.Joao);
+
+        var encerrada = await _atendimento.Encerrar(gl, DemoIds.Demanda118, CancellationToken.None);
+        Assert.Equal("Encerrada", encerrada.Situacao);
+        Assert.Contains(encerrada.Historico, item => item.StatusAnterior == "Concluído" && item.StatusNovo == "Encerrada" && item.Tipo == "ENCERRAMENTO");
+
+        await Assert.ThrowsAsync<AcessoNegadoException>(() =>
+            _atendimento.Encerrar(joao, DemoIds.Demanda122, CancellationToken.None));
+        await Assert.ThrowsAsync<TransicaoInvalidaException>(() =>
+            _atendimento.Encerrar(gl, DemoIds.Demanda119, CancellationToken.None));
+
+        var avaliada = await _atendimento.Avaliar(joao, DemoIds.Demanda118, new AvaliacaoComando(9, "Depois do encerramento."), CancellationToken.None);
+        Assert.Equal(9, avaliada.NotaAvaliacao);
+
+        await Assert.ThrowsAsync<RegraNegocioException>(() =>
+            _atendimento.Cancelar(gl, DemoIds.Demanda119, new CancelamentoComando("  "), CancellationToken.None));
+        await Assert.ThrowsAsync<AcessoNegadoException>(() =>
+            _atendimento.Cancelar(responsavel, DemoIds.Demanda119, new CancelamentoComando("Não vamos seguir."), CancellationToken.None));
+        var cancelada = await _atendimento.Cancelar(gl, DemoIds.Demanda119, new CancelamentoComando("O cessionário desistiu do pedido."), CancellationToken.None);
+        Assert.Equal("Cancelada", cancelada.Situacao);
+        Assert.Contains(cancelada.Historico, item => item.Tipo == "CANCELAMENTO" && item.Comentario == "O cessionário desistiu do pedido.");
+        await Assert.ThrowsAsync<TransicaoInvalidaException>(() =>
+            _atendimento.Cancelar(gl, DemoIds.Demanda118, new CancelamentoComando("Tarde demais."), CancellationToken.None));
     }
 
     [Fact]

@@ -23,9 +23,27 @@ JSON em camelCase. Erros: `{ "codigo", "mensagem" }` com 400, 403, 404 ou 422.
 | POST | `/api/demandas/{id}/anexos` | quem pode ver |
 | GET | `/api/demandas/{id}/anexos/{anexoId}` | quem pode ver |
 | POST | `/api/demandas/{id}/aprovacao` | GL |
+| POST | `/api/demandas/{id}/avancar` | área, GL ou Cessionário na validação |
+| POST | `/api/demandas/{id}/previsao` | área ou GL |
+| POST | `/api/demandas/{id}/avaliacao` | Cessionário do chamado |
+| POST | `/api/demandas/{id}/encerramento` | GL |
+| POST | `/api/demandas/{id}/cancelamento` | GL, com motivo |
+| GET | `/api/cadeia` | autenticado |
+| PUT | `/api/cadeia` | GL |
+| POST | `/api/catalogo/categorias`, `/tipos-atendimento`, `/areas`, `/responsaveis` | GL |
+| GET | `/api/espacos` | conforme o perfil |
+| POST | `/api/espacos`, PUT `/api/espacos/{id}` | GL |
+| POST | `/api/espacos/{id}/locacoes`, `/locacao/encerramento` | GL |
+| GET | `/api/empresas-cessionarias` | autenticado, recorte da empresa quando Cessionário |
+| GET | `/api/empresas-cessionarias/administracao` | GL |
+| POST e PUT | `/api/empresas-cessionarias` e representantes e funções | GL |
 | GET | `/api/obras` e `/api/obras/{id}` | autenticado |
 | GET | `/api/notificacoes` | autenticado |
 | POST | `/api/notificacoes/{id}/leitura` | dono da notificação |
+| POST | `/api/notificacoes/{id}/resposta` | Cessionário |
+| GET | `/api/notificacoes/push/chave` | autenticado |
+| POST | `/api/notificacoes/push` | autenticado, inscreve o aparelho |
+| POST | `/api/notificacoes/push/cancelamento` | autenticado, retira o aparelho |
 | GET | `/health` | anônimo |
 
 Preenchimento após o ditado. Pedido: `{ "texto": "..." }`. Resposta: campos nulos quando a fala não os cita; `origem` é `modelo` ou `leitura-local`.

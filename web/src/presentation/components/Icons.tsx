@@ -1,4 +1,4 @@
-export type NomeIcone = "menu" | "lista" | "mais" | "mensagem" | "grade" | "obra" | "caixa" | "casa" | "quadro" | "alerta" | "configuracao";
+export type NomeIcone = "menu" | "lista" | "mais" | "mensagem" | "grade" | "obra" | "caixa" | "casa" | "quadro" | "alerta" | "configuracao" | "sino";
 
 type IconeProps = { name: NomeIcone };
 
@@ -72,6 +72,14 @@ export function Icone({ name }: IconeProps) {
       <svg {...comum}>
         <path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z" />
         <path d="m19.4 15 .1.1a1.7 1.7 0 1 1-2.4 2.4l-.1-.1a1.7 1.7 0 0 0-2.9 1.2v.2a1.7 1.7 0 1 1-3.4 0v-.2a1.7 1.7 0 0 0-2.9-1.2l-.1.1a1.7 1.7 0 1 1-2.4-2.4l.1-.1a1.7 1.7 0 0 0-1.2-2.9H4a1.7 1.7 0 1 1 0-3.4h.2a1.7 1.7 0 0 0 1.2-2.9l-.1-.1a1.7 1.7 0 1 1 2.4-2.4l.1.1a1.7 1.7 0 0 0 2.9-1.2V2a1.7 1.7 0 1 1 3.4 0v.2a1.7 1.7 0 0 0 2.9 1.2l.1-.1a1.7 1.7 0 1 1 2.4 2.4l-.1.1a1.7 1.7 0 0 0 1.2 2.9h.2a1.7 1.7 0 1 1 0 3.4h-.2a1.7 1.7 0 0 0-1.2 2.9z" transform="translate(1 1) scale(.92)" />
+      </svg>
+    );
+  }
+  if (name === "sino") {
+    return (
+      <svg {...comum}>
+        <path d="M6 16V10a6 6 0 1 1 12 0v6l1.5 2h-15L6 16z" />
+        <path d="M10 18a2 2 0 0 0 4 0" />
       </svg>
     );
   }

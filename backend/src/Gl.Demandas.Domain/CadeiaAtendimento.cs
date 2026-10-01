@@ -99,13 +99,13 @@ public static class CadeiaAtendimento
         SituacaoDemanda.AguardandoAprovacao or SituacaoDemanda.AguardandoAjuste => Aprovacao,
         SituacaoDemanda.EmAndamento or SituacaoDemanda.LiberadoParaExecucao => Atendimento,
         SituacaoDemanda.AguardandoValidacao => Validacao,
-        SituacaoDemanda.Concluido or SituacaoDemanda.Reprovado => Conclusao,
+        SituacaoDemanda.Concluido or SituacaoDemanda.Reprovado or SituacaoDemanda.Encerrada or SituacaoDemanda.Cancelada => Conclusao,
         _ => throw new ArgumentOutOfRangeException(nameof(situacao))
     };
 
     public static EtapaCadeia? Proxima(SituacaoDemanda atual, IReadOnlyList<EtapaCadeia> cadeia)
     {
-        if (atual is SituacaoDemanda.Concluido or SituacaoDemanda.Reprovado or SituacaoDemanda.AguardandoAjuste)
+        if (atual is SituacaoDemanda.Concluido or SituacaoDemanda.Reprovado or SituacaoDemanda.Encerrada or SituacaoDemanda.Cancelada or SituacaoDemanda.AguardandoAjuste)
             return null;
 
         var ordem = cadeia.First(e => e.Codigo == Coluna(atual)).Ordem;

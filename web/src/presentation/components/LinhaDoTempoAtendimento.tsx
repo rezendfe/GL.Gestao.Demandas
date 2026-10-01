@@ -83,6 +83,7 @@ export function LinhaDoTempoAtendimento({
             <label className="lt-campo">
               Escreva uma mensagem
               <textarea
+                maxLength={2000}
                 value={mensagem}
                 onChange={(event) => onMensagem(event.target.value)}
                 placeholder="Escreva uma mensagem"

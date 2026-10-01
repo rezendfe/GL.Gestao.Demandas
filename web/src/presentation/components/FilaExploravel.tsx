@@ -276,7 +276,7 @@ function Grade({ itens, destacar, onAbrir }: { itens: FilaItem[]; destacar?: Set
             <td>{item.servico}</td>
             <td><Badge valor={item.situacao} />{emAtraso(item) && <> <Badge valor="Em atraso" /></>}</td>
             <td>{item.responsavel}</td>
-            <td>{item.situacao === "Concluído" ? "—" : tempoRelativo(item.abertoEm)}</td>
+            <td>{encerrada(item.situacao) ? "—" : tempoRelativo(item.abertoEm)}</td>
           </tr>
         ))}
       </tbody>
@@ -305,7 +305,7 @@ function Cartoes({ itens, destacar, onAbrir }: { itens: FilaItem[]; destacar?: S
             <Badge valor={item.situacao} />
             {emAtraso(item) && <Badge valor="Em atraso" />}
           </span>
-          <span className="note">{item.responsavel} · {item.situacao === "Concluído" ? "Concluído" : tempoRelativo(item.abertoEm)}</span>
+          <span className="note">{item.responsavel} · {encerrada(item.situacao) ? item.situacao : tempoRelativo(item.abertoEm)}</span>
         </a>
       ))}
     </div>
@@ -315,7 +315,7 @@ function Cartoes({ itens, destacar, onAbrir }: { itens: FilaItem[]; destacar?: S
 function Pulso({ itens, destacar, onAbrir }: { itens: FilaItem[]; destacar?: Set<string>; onAbrir: (id: string) => void }) {
   const agora = Date.now();
   const idades = itens
-    .filter((item) => item.situacao !== "Concluído")
+    .filter((item) => !encerrada(item.situacao))
     .map((item) => agora - new Date(item.abertoEm).getTime());
   const maior = Math.max(1, ...idades);
   const conhecidas = new Set(FAIXAS);
@@ -337,9 +337,10 @@ function Pulso({ itens, destacar, onAbrir }: { itens: FilaItem[]; destacar?: Set
               .slice()
               .sort((a, b) => new Date(a.abertoEm).getTime() - new Date(b.abertoEm).getTime())
               .map((item) => {
-                const idade = item.situacao === "Concluído" ? 0 : Math.max(0, agora - new Date(item.abertoEm).getTime());
-                const largura = item.situacao === "Concluído" ? 100 : Math.max(12, Math.round((idade / maior) * 100));
-                const tom = item.situacao === "Concluído" ? "encerrado" : item.prioridade === "Alta" ? "alta" : item.prioridade === "Média" ? "media" : "normal";
+                const fechada = encerrada(item.situacao);
+                const idade = fechada ? 0 : Math.max(0, agora - new Date(item.abertoEm).getTime());
+                const largura = fechada ? 100 : Math.max(12, Math.round((idade / maior) * 100));
+                const tom = fechada ? "encerrado" : item.prioridade === "Alta" ? "alta" : item.prioridade === "Média" ? "media" : "normal";
                 return (
                   <li key={item.id}>
                     <a
@@ -359,7 +360,7 @@ function Pulso({ itens, destacar, onAbrir }: { itens: FilaItem[]; destacar?: Set
                       <span className="pulso-meta">
                         <Badge valor={item.situacao} />
                         {emAtraso(item) && <Badge valor="Em atraso" />}
-                        <span className="note">{item.responsavel} · {item.situacao === "Concluído" ? "Concluído" : tempoRelativo(item.abertoEm)}</span>
+                        <span className="note">{item.responsavel} · {encerrada(item.situacao) ? item.situacao : tempoRelativo(item.abertoEm)}</span>
                       </span>
                     </a>
                   </li>

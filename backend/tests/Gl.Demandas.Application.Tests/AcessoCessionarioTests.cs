@@ -46,6 +46,18 @@ public sealed class AcessoCessionarioTests
     }
 
     [Fact]
+    public void Telefone_e_email_seguem_o_formato_do_cadastro()
+    {
+        var telefone = new ContatoCessionario(Guid.NewGuid(), CanalContato.Telefone, "21994684864", false);
+        var whatsApp = new ContatoCessionario(Guid.NewGuid(), CanalContato.WhatsApp, "+55 (21) 99999-9999", true);
+
+        Assert.Equal("(21) 99468-4864", telefone.Valor);
+        Assert.Equal("(21) 99999-9999", whatsApp.Valor);
+        Assert.Throws<RegraNegocioException>(() => new ContatoCessionario(Guid.NewGuid(), CanalContato.Telefone, "123", false));
+        Assert.Throws<RegraNegocioException>(() => new ContatoCessionario(Guid.NewGuid(), CanalContato.Email, "sem-arroba", false));
+    }
+
+    [Fact]
     public void Identidade_estavel_nao_pode_ser_trocada_apos_vinculacao()
     {
         var representante = NovoRepresentante(Guid.NewGuid());

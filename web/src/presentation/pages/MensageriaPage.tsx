@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { sugerir, useFila } from "../../application/hooks";
 import { useSessao } from "../../application/session";
+import { validarArquivo, validarOpcional, validarTexto } from "../../domain/entrada";
 import { tempoRelativo, type Sugestao } from "../../domain/types";
 import { ApiError, api } from "../../infrastructure/api/client";
 import { PageHeader } from "../components/PageHeader";
@@ -33,6 +34,20 @@ export function MensageriaPage() {
     event.preventDefault();
     const mensagem = texto.trim();
     if (!mensagem && passo !== "foto") return;
+    if (passo === "texto") {
+      const invalida = validarTexto(mensagem, 1, 2000, "A descrição tem no máximo 2000 caracteres.");
+      if (invalida) {
+        setErro(invalida);
+        return;
+      }
+    }
+    if (passo === "ponto") {
+      const invalido = validarTexto(mensagem, 1, 200, "O ponto tem no máximo 200 caracteres.");
+      if (invalido) {
+        setErro(invalido);
+        return;
+      }
+    }
     setTexto("");
     setErro(null);
     if (passo === "texto") {
@@ -64,6 +79,13 @@ export function MensageriaPage() {
 
   async function confirmar() {
     if (!sugestao) return;
+    const descricaoInvalida = validarTexto(descricao, 1, 2000, "A descrição tem no máximo 2000 caracteres.");
+    const pontoInvalido = validarOpcional(ponto, 200, "O ponto tem no máximo 200 caracteres.");
+    const arquivoInvalido = arquivo ? validarArquivo(arquivo) : null;
+    if (descricaoInvalida || pontoInvalido || arquivoInvalido) {
+      setErro(descricaoInvalida ?? pontoInvalido ?? arquivoInvalido);
+      return;
+    }
     try {
       const detalhe = await api.abrir({
         descricao,
@@ -122,7 +144,20 @@ export function MensageriaPage() {
             {passo === "foto" && (
               <label>
                 Foto
-                <input type="file" accept="image/*" capture="environment" onChange={(event) => setArquivo(event.target.files?.[0] ?? null)} />
+                <input type="file" accept="image/*,.pdf" capture="environment" onChange={(event) => {
+                  const escolhido = event.target.files?.[0] ?? null;
+                  if (escolhido) {
+                    const invalido = validarArquivo(escolhido);
+                    if (invalido) {
+                      setErro(invalido);
+                      event.target.value = "";
+                      setArquivo(null);
+                      return;
+                    }
+                  }
+                  setErro(null);
+                  setArquivo(escolhido);
+                }} />
               </label>
             )}
             {passo === "confirma" && (
@@ -135,7 +170,7 @@ export function MensageriaPage() {
           </div>
           {passo !== "confirma" && (
             <form onSubmit={(event) => void enviar(event)}>
-              <input value={texto} onChange={(event) => setTexto(event.target.value)} placeholder="Escreva a mensagem" />
+              <input maxLength={passo === "ponto" ? 200 : 2000} value={texto} onChange={(event) => setTexto(event.target.value)} placeholder="Escreva a mensagem" />
               <button className="btn" type="submit">Enviar</button>
             </form>
           )}

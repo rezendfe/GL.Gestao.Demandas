@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Navigate } from "react-router-dom";
 import { useSessao } from "../../application/session";
+import { formatarContato, mascaraEmail, validarContato, validarEmail, validarLogo, validarTexto } from "../../domain/entrada";
 import type { ContatoRepresentante, EmpresaCessionariaCadastro, FuncaoRepresentante, PermissaoCessionario, RepresentanteCessionario } from "../../domain/types";
 import { ApiError, api } from "../../infrastructure/api/client";
 import { PageHeader } from "../components/PageHeader";
@@ -77,7 +78,7 @@ export function EmpresasCessionariasPage() {
       nome: representante.nome,
       email: representante.email,
       ativo: representante.ativo,
-      contatos: representante.contatos.map((contato) => ({ ...contato })),
+      contatos: representante.contatos.map((contato) => ({ ...contato, valor: formatarContato(contato.canal, contato.valor) })),
       funcoes: representante.funcoes.map((funcao) => funcao.id),
     });
     setMensagem(null);
@@ -85,6 +86,12 @@ export function EmpresasCessionariasPage() {
 
   async function salvarEmpresa(event: FormEvent) {
     event.preventDefault();
+    const nomeInvalido = validarTexto(empresaForm.nome, 2, 200, "A razão social deve ter entre 2 e 200 caracteres.");
+    const logoInvalido = validarLogo(empresaForm.logo);
+    if (nomeInvalido || logoInvalido) {
+      setErro(nomeInvalido ?? logoInvalido);
+      return;
+    }
     setSalvando(true);
     setErro(null);
     try {
@@ -102,6 +109,11 @@ export function EmpresasCessionariasPage() {
   async function salvarFuncao(event: FormEvent) {
     event.preventDefault();
     if (!selecionada) return;
+    const nomeInvalido = validarTexto(funcaoForm.nome, 2, 100, "O nome da função deve ter entre 2 e 100 caracteres.");
+    if (nomeInvalido) {
+      setErro(nomeInvalido);
+      return;
+    }
     setSalvando(true);
     setErro(null);
     try {
@@ -119,6 +131,13 @@ export function EmpresasCessionariasPage() {
   async function salvarRepresentante(event: FormEvent) {
     event.preventDefault();
     if (!selecionada) return;
+    const nomeInvalido = validarTexto(representanteForm.nome, 2, 200, "O nome do representante deve ter entre 2 e 200 caracteres.");
+    const emailInvalido = validarEmail(representanteForm.email);
+    const contatoInvalido = representanteForm.contatos.map((contato) => validarContato(contato.canal, contato.valor)).find((erro) => erro) ?? null;
+    if (nomeInvalido || emailInvalido || contatoInvalido) {
+      setErro(nomeInvalido ?? emailInvalido ?? contatoInvalido);
+      return;
+    }
     setSalvando(true);
     setErro(null);
     try {
@@ -200,11 +219,14 @@ export function EmpresasCessionariasPage() {
             {selecionada.representantes.length > 0 && <div className="representantes-lista">{selecionada.representantes.map((representante) => <button key={representante.usuarioId} type="button" className="funcao-linha" onClick={() => editarRepresentante(representante)}><span><strong>{representante.nome}</strong><small>{representante.email} · {representante.funcoes.map((funcao) => funcao.nome).join(", ") || "Sem funções"}</small></span><span className={representante.ativo ? "cadastro-status ativo" : "cadastro-status"}>{representante.ativo ? "Ativo" : "Inativo"}</span></button>)}</div>}
             <form className="empresas-form" onSubmit={(event) => void salvarRepresentante(event)}>
               <label>Nome<input required maxLength={200} value={representanteForm.nome} onChange={(event) => setRepresentanteForm({ ...representanteForm, nome: event.target.value })} /></label>
-              <label>E-mail de login Entra<input type="email" required maxLength={320} value={representanteForm.email} onChange={(event) => setRepresentanteForm({ ...representanteForm, email: event.target.value })} /></label>
+              <label>E-mail de login Entra<input type="email" inputMode="email" autoComplete="email" required maxLength={320} value={representanteForm.email} onChange={(event) => setRepresentanteForm({ ...representanteForm, email: mascaraEmail(event.target.value) })} /></label>
               <div className="empresas-permissoes"><strong>Funções</strong>{selecionada.funcoes.map((funcao) => <label className="cadastro-check" key={funcao.id}><input type="checkbox" checked={representanteForm.funcoes.includes(funcao.id)} onChange={(event) => setRepresentanteForm({ ...representanteForm, funcoes: event.target.checked ? [...representanteForm.funcoes, funcao.id] : representanteForm.funcoes.filter((id) => id !== funcao.id) })} /><span>{funcao.nome}{!funcao.ativa ? " (inativa)" : ""}</span></label>)}</div>
               <div className="empresas-permissoes"><div className="cadastro-lista-cabecalho"><strong>Contatos</strong><button className="cadastro-editar" type="button" onClick={adicionarContato}>Adicionar contato</button></div>{representanteForm.contatos.map((contato, indice) => <div className="contato-linha" key={contato.id || `novo-${indice}`}>
-                <label>Canal<select value={contato.canal} onChange={(event) => alterarContato(indice, { canal: event.target.value as ContatoRepresentante["canal"] })}><option value="EMAIL">E-mail</option><option value="TELEFONE">Telefone</option><option value="WHATSAPP">WhatsApp</option></select></label>
-                <label>Contato<input required value={contato.valor} onChange={(event) => alterarContato(indice, { valor: event.target.value })} /></label>
+                <label>Canal<select value={contato.canal} onChange={(event) => {
+                  const canal = event.target.value as ContatoRepresentante["canal"];
+                  alterarContato(indice, { canal, valor: formatarContato(canal, contato.valor) });
+                }}><option value="EMAIL">E-mail</option><option value="TELEFONE">Telefone</option><option value="WHATSAPP">WhatsApp</option></select></label>
+                <label>Contato<input required inputMode={contato.canal === "EMAIL" ? "email" : "tel"} autoComplete={contato.canal === "EMAIL" ? "email" : "tel"} maxLength={contato.canal === "EMAIL" ? 320 : 20} placeholder={contato.canal === "EMAIL" ? "nome@empresa.com" : "(00) 00000-0000"} value={contato.valor} onChange={(event) => alterarContato(indice, { valor: formatarContato(contato.canal, event.target.value) })} /></label>
                 <label className="cadastro-check"><input type="radio" name={`principal-${contato.canal}`} checked={contato.principal} onChange={() => alterarContato(indice, { principal: true })} /><span>Principal</span></label>
                 <button className="cadastro-editar" type="button" onClick={() => setRepresentanteForm({ ...representanteForm, contatos: representanteForm.contatos.filter((_, itemIndice) => itemIndice !== indice) })}>Remover</button>
               </div>)}</div>

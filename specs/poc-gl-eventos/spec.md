@@ -1,6 +1,6 @@
-# POC GL Eventos / Riocentro
+# Baseline GL Eventos / Riocentro
 
-Prova de conceito navegável. Não é o produto do PDR. Perfis, somente: **Cessionário**, **GL / Administrador**, **Responsável da Área**.
+Registro do que já está em execução no portal e na API. As specs de aceite do produto estão em [specs/features](../features/README.md). Perfis, somente: **Cessionário**, **GL / Administrador**, **Responsável da Área**.
 
 ## Histórias
 
@@ -12,11 +12,11 @@ Prova de conceito navegável. Não é o produto do PDR. Perfis, somente: **Cessi
 6. O portal usa o padrão visual de painel claro (barra lateral, barra superior e cartões), no espírito do demonstrativo CRMi, sem copiar assets do tema. A mensageria segue o exemplo de comunicação: lista, thread e ficha lateral. O Cessionário abre Meu espaço e vê a própria foto, a sala, como o espaço foi entregue e as fotos da última vistoria. Cada cartão abre o detalhe. Outro cessionário não vê essa ficha. GL / Administrador abre a mesma ficha pela lista de espaços. Foto, entrega e vistoria são demonstração por sala.
 7. GL / Administrador e Responsável da Área veem, no início, o que está em atraso e a ação agora. O menu abre o Quadro (Solicitação, Aprovação, Atendimento, Validação do cliente e Conclusão) e a Operação (ação agora, atraso, reclamações, pontos de atenção e nota dos serviços). Avançar o cartão abre o modal do que a próxima etapa exige. Cada informação da etapa pode ser obrigatória ou opcional; só a obrigatória bloqueia o avanço. Etapa automática não exige tarefa obrigatória. O GL / Administrador configura essa cadeia por tipo de atendimento (infraestrutura, refrigeração e os demais) e pode deixar a aprovação automática só naquele tipo. A validação é do Cessionário do chamado. O Cessionário marca reclamação na abertura e, no serviço concluído, dá uma nota de 0 a 10. Atraso é previsão vencida. Sem previsão, a meta de prazo em horas da categoria, gravada pelo GL / Administrador, também marca atraso quando o tempo desde a abertura já passou; previsão ainda no futuro não marca. Sem meta e sem previsão, o chamado não entra em atraso.
 
-## Situações da POC
+## Situações em uso
 
-Novo, Recebido, Em andamento, Aguardando aprovação, Liberado para execução, Aguardando ajuste, Aguardando validação, Reprovado, Concluído.
+Novo, Recebido, Em andamento, Aguardando aprovação, Liberado para execução, Aguardando ajuste, Aguardando validação, Reprovado, Concluído, Encerrada, Cancelada.
 
-O ciclo longo do PDR §4.1 fica para o produto. Aqui Novo corresponde à abertura, Recebido ao direcionamento, Em andamento ao atendimento e Liberado para execução à aprovação.
+Novo corresponde à abertura, Recebido ao direcionamento, Em andamento ao atendimento e Liberado para execução à aprovação. O mapa completo está no PDR §4.1. Encerrada e Cancelada são desfechos do GL / Administrador (RF-02.3, RF-02.4).
 
 ## Persistência
 

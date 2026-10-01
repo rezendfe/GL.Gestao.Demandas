@@ -80,7 +80,7 @@ export function ModalAvanco({
           <label>
             {pedeConfirmacao && confirmacao === false ? "O que ainda falta" : rotuloCampo(destino.codigo, "comentario")}
             {comentarioObrigatorio ? "" : " (opcional)"}
-            <textarea value={comentario} onChange={(event) => setComentario(event.target.value)} required={comentarioObrigatorio} />
+            <textarea maxLength={2000} value={comentario} onChange={(event) => setComentario(event.target.value)} required={comentarioObrigatorio} />
           </label>
         )}
         {pedePrevisao && (

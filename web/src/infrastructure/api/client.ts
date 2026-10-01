@@ -106,6 +106,10 @@ export const api = {
   },
   aprovar: (id: string, decisao: string, motivo?: string) =>
     request<DetalheDemanda>(`/api/demandas/${id}/aprovacao`, { method: "POST", body: JSON.stringify({ decisao, motivo }) }),
+  encerrar: (id: string) =>
+    request<DetalheDemanda>(`/api/demandas/${id}/encerramento`, { method: "POST" }),
+  cancelar: (id: string, motivo: string) =>
+    request<DetalheDemanda>(`/api/demandas/${id}/cancelamento`, { method: "POST", body: JSON.stringify({ motivo }) }),
   obras: () => request<Obra[]>("/api/obras"),
   obra: (id: string) => request<Obra>(`/api/obras/${id}`),
   inventarioEspacos: () => request<EspacoInventario[]>("/api/espacos"),
@@ -156,6 +160,11 @@ export const api = {
     request<DetalheDemanda>(`/api/demandas/${id}/avancar`, { method: "POST", body: JSON.stringify(payload) }),
   notificacoes: () => request<Notificacao[]>("/api/notificacoes"),
   marcarLida: (id: string) => request<void>(`/api/notificacoes/${id}/leitura`, { method: "POST" }),
+  chavePush: () => request<{ chavePublica: string }>("/api/notificacoes/push/chave"),
+  inscreverPush: (inscricao: { endpoint: string; chaveP256dh: string; segredoAuth: string }) =>
+    request<void>("/api/notificacoes/push", { method: "POST", body: JSON.stringify(inscricao) }),
+  cancelarPush: (endpoint: string) =>
+    request<void>("/api/notificacoes/push/cancelamento", { method: "POST", body: JSON.stringify({ endpoint }) }),
   baixarAnexo: async (demandaId: string, anexoId: string, nome: string) => {
     const token = sessionStorage.getItem(TOKEN);
     const response = await fetch(`${base}/api/demandas/${demandaId}/anexos/${anexoId}`, {

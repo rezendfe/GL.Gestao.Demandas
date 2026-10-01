@@ -72,13 +72,9 @@ public sealed class ContatoCessionario
     {
         if (id == Guid.Empty)
             throw new RegraNegocioException("Identificador do contato inválido.");
-        var valorNormalizado = valor.Trim();
-        if (valorNormalizado.Length is < 3 or > 320)
-            throw new RegraNegocioException("Informe um contato válido.");
-
         Id = id;
         Canal = canal;
-        Valor = valorNormalizado;
+        Valor = canal == CanalContato.Email ? FormatoCampo.Email(valor) : FormatoCampo.Telefone(valor);
         Principal = principal;
     }
 
@@ -105,14 +101,10 @@ public sealed class RepresentanteCessionario
     {
         if (id == Guid.Empty || empresaId == Guid.Empty || usuarioId == Guid.Empty)
             throw new RegraNegocioException("Identificadores do representante, empresa e usuário são obrigatórios.");
-        var emailNormalizado = emailLogin.Trim().ToLowerInvariant();
-        if (emailNormalizado.Length is < 3 or > 320 || !emailNormalizado.Contains('@'))
-            throw new RegraNegocioException("Informe o e-mail de login do representante.");
-
         Id = id;
         EmpresaId = empresaId;
         UsuarioId = usuarioId;
-        EmailLogin = emailNormalizado;
+        EmailLogin = FormatoCampo.Email(emailLogin);
         IdentidadeEstavel = string.IsNullOrWhiteSpace(identidadeEstavel) ? null : identidadeEstavel.Trim();
         Ativo = ativo;
     }

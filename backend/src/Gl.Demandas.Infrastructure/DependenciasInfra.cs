@@ -1,5 +1,6 @@
 using Gl.Demandas.Application;
 using Gl.Demandas.Infrastructure.Persistence;
+using Gl.Demandas.Infrastructure.Push;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -26,6 +27,9 @@ public static class DependenciasInfra
         services.AddScoped<IDemandas>(sp => sp.GetRequiredService<GlRepositorio>());
         services.AddScoped<IObras>(sp => sp.GetRequiredService<GlRepositorio>());
         services.AddScoped<INotificacoes>(sp => sp.GetRequiredService<GlRepositorio>());
+        services.AddScoped<IInscricoesPush>(sp => sp.GetRequiredService<GlRepositorio>());
+        services.AddSingleton<IConfiguracaoPush, ConfiguracaoPush>();
+        services.AddScoped<IEnvioPush, EnvioPushWeb>();
         services.AddScoped<ICadeia>(sp => sp.GetRequiredService<GlRepositorio>());
         services.AddScoped<IInventarioEspacos>(sp => sp.GetRequiredService<GlRepositorio>());
         services.AddScoped<IGestaoCessionarios>(sp => sp.GetRequiredService<GlRepositorio>());

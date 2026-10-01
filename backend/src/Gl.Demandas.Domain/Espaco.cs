@@ -28,10 +28,10 @@ public sealed class Espaco
         return new Espaco
         {
             Id = id,
-            Codigo = Validar(codigo, "Informe o código do espaço.", 40),
-            Nome = Validar(nome, "Informe o nome do espaço.", 120),
+            Codigo = FormatoCampo.CodigoEspaco(codigo),
+            Nome = FormatoCampo.Texto(nome, 2, 120, "O nome do espaço deve ter entre 2 e 120 caracteres."),
             Localizacao = Validar(localizacao, "Informe a localização do espaço.", 240),
-            Descricao = string.IsNullOrWhiteSpace(descricao) ? "" : descricao.Trim(),
+            Descricao = NormalizarDescricao(descricao),
             Ativo = true
         };
     }
@@ -48,10 +48,10 @@ public sealed class Espaco
 
     public void Atualizar(string codigo, string nome, string localizacao, string descricao)
     {
-        Codigo = Validar(codigo, "Informe o código do espaço.", 40);
-        Nome = Validar(nome, "Informe o nome do espaço.", 120);
+        Codigo = FormatoCampo.CodigoEspaco(codigo);
+        Nome = FormatoCampo.Texto(nome, 2, 120, "O nome do espaço deve ter entre 2 e 120 caracteres.");
         Localizacao = Validar(localizacao, "Informe a localização do espaço.", 240);
-        Descricao = string.IsNullOrWhiteSpace(descricao) ? "" : descricao.Trim();
+        Descricao = NormalizarDescricao(descricao);
     }
 
     public void Inativar(bool possuiLocacaoVigente)
@@ -68,6 +68,15 @@ public sealed class Espaco
         : possuiLocacaoVigente
             ? SituacaoEspaco.Locado
             : SituacaoEspaco.Disponivel;
+
+    private static string NormalizarDescricao(string descricao)
+    {
+        if (string.IsNullOrWhiteSpace(descricao)) return "";
+        var texto = descricao.Trim();
+        if (texto.Length > 1000)
+            throw new RegraNegocioException("A descrição do espaço tem no máximo 1000 caracteres.");
+        return texto;
+    }
 
     private static string Validar(string valor, string mensagem, int limite)
     {

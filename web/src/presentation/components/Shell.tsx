@@ -2,9 +2,8 @@ import { useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useSessao } from "../../application/session";
 import { espacoPorEmail } from "../../domain/espacos";
-import { api } from "../../infrastructure/api/client";
-import { mostrarAvisoCelular, registrarWorker } from "../notificacaoCelular";
 import { Icone, type NomeIcone } from "./Icons";
+import { SinoNotificacoes } from "./SinoNotificacoes";
 
 function iniciais(nome: string) {
   return nome
@@ -114,7 +113,6 @@ export function Shell() {
         </nav>
       </aside>
       {menuAberto && <button className="nav-backdrop" type="button" aria-label="Fechar menu" onClick={() => setMenuAberto(false)} />}
-      <VigiaCelular />
       <div className="page-content">
         <header className="x-bar">
           <button className="x-toggle" type="button" aria-label="Alternar menu" onClick={alternarMenu}>
@@ -122,6 +120,7 @@ export function Shell() {
           </button>
           <span className="x-context">{nomeSessao}</span>
           <div className="x-user">
+            <SinoNotificacoes />
             {espaco ? (
               <Link className="x-espaco" to="/meu-espaco" aria-label={`Meu espaço, ${espaco.sala}`}>
                 {logo && <img className="logo-empresa sm" src={logo} alt="" />}
@@ -164,42 +163,3 @@ export function Shell() {
   );
 }
 
-function VigiaCelular() {
-  const { sessao } = useSessao();
-  const navigate = useNavigate();
-  const perfil = sessao?.usuario.perfil;
-
-  useEffect(() => {
-    if (perfil !== "Cessionário") return;
-    void registrarWorker();
-    let ativo = true;
-
-    async function olhar() {
-      try {
-        const notas = await api.notificacoes();
-        if (!ativo) return;
-        for (const nota of notas.filter((item) => !item.lida)) {
-          await mostrarAvisoCelular(nota.id, nota.protocolo, nota.texto, nota.demandaId);
-        }
-      } catch {
-        /* o resumo na tela continua disponível */
-      }
-    }
-
-    void olhar();
-    const timer = window.setInterval(() => void olhar(), 12000);
-    const aoMensagem = (event: MessageEvent) => {
-      if (event.data?.tipo === "abrir-chamado" && typeof event.data.url === "string") {
-        navigate(event.data.url);
-      }
-    };
-    navigator.serviceWorker?.addEventListener("message", aoMensagem);
-    return () => {
-      ativo = false;
-      window.clearInterval(timer);
-      navigator.serviceWorker?.removeEventListener("message", aoMensagem);
-    };
-  }, [perfil, navigate]);
-
-  return null;
-}

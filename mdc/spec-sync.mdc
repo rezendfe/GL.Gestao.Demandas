@@ -10,16 +10,16 @@ encerrar a resposta, atualize os artefatos SDD afetados:
 
 ## Checklist obrigatório
 
-1. **`tasks.md`** — marcar tarefas ✅ (ou 🔄 se parcial)
-2. **Contratos** — se endpoints/schemas mudaram: `specs/001-mvp-ads-plataforma/contracts/*.md`
-3. **`quickstart.md`** — se setup ou smoke mudou (portas, URLs, env vars)
-4. **`data-model.md`** — se entidades SQL, FKs ou mapeamento API↔DB mudaram
+1. **`tasks.md` da feature** — `specs/features/<pasta>/tasks.md`. Marcar tarefas feitas ou parciais.
+2. **Contratos da feature** — `specs/features/<pasta>/contracts/*.md` quando endpoint ou schema dessa feature mudou.
+3. **`quickstart.md` da feature** — se o jeito de exercitar aquela feature mudou.
+4. **`data-model.md` da feature** — se entidade, FK ou mapeamento API↔DB dessa feature mudou.
 5. **`.cursor/rules/database-naming.mdc`** e **`Util/mdc/database-naming.mdc`** — se convenção SQL mudou
 6. **`infra/database/sql-server/README.md`** — se scripts, seeds ou ordem de deploy mudaram
 7. **`backend/README.md`** / **`web/README.md`** — comandos e URLs locais
-8. **`architecture.md`** — se camadas, ports ou fluxo de clique mudaram
-9. **`research.md`** — apenas se houve ADR/decisão técnica nova
-10. **`architecture-audit.md`** — se o código passou a existir ou mudou de camada
+8. **`architecture.md` da feature** — se camada, porta ou fluxo de clique dessa feature mudou.
+9. **`research.md` da feature** — apenas se houve decisão nova ou pergunta em aberto.
+10. **`architecture-audit.md` da feature** — se o código passou a existir ou mudou de camada.
 
 ## Quando NÃO pular
 

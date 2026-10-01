@@ -76,7 +76,7 @@ export function porCessionario(fila: FilaItem[]) {
 export function oQueMaisVolta(fila: FilaItem[]) {
   const mapa = new Map<string, FilaItem[]>();
   for (const item of fila) {
-    if (item.situacao === "Concluído" || item.situacao === "Reprovado") continue;
+    if (item.situacao === "Concluído" || item.situacao === "Reprovado" || item.situacao === "Encerrada" || item.situacao === "Cancelada") continue;
     const nome = areaManutencao(item) ?? item.servico;
     const grupo = mapa.get(nome) ?? [];
     grupo.push(item);

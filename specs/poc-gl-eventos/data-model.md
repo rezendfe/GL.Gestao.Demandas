@@ -12,6 +12,11 @@ Schema `app`. PK `ID_* BIGINT IDENTITY`, nunca exposta. API `id` = `CD_*`. Sem p
 | Obra, Obra_Documento | Fluxo de obras |
 | Notificacao | `SG_Leitura` = `NAO_LIDA` ou `LIDA` |
 | Etapa_Cadeia | Quadro por subcategoria. Vazio: a API usa a cadeia padrão |
+| Empresa_Cessionaria | Empresa do Cessionário, ativa ou inativa, logo |
+| Espaco, Locacao | Inventário e locação vigente. Situação do espaço deriva da locação |
+| Representante_Contato | E-mail, telefone ou WhatsApp do representante; um principal por tipo |
+| Funcao_Cessionario, Funcao_Cessionario_Permissao, Representante_Funcao | Funções e união de permissões do Cessionário |
+| Inscricao_Push | Aparelho autorizado a receber aviso com o portal fechado |
 
 Colunas acrescentadas em `13_alinhamento_modelo.sql`: `Usuario.DS_Logo_Empresa`, `Usuario.DS_Foto`, `Demanda.DT_Previsao_Atendimento`, `Demanda.SG_Natureza`, `Demanda.NR_Nota_Avaliacao`, `Demanda.DS_Comentario_Avaliacao`, `Demanda.DT_Avaliacao`, `Mensagem.SG_Finalidade`.
 

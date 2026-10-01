@@ -22,9 +22,7 @@ public sealed class CatalogoAdministracaoAplicacao(ICatalogo catalogo, IUsuarios
         var nomeNormalizado = nome.Trim();
         if (nomeNormalizado.Length is < 2 or > 200)
             throw new RegraNegocioException("O nome do respons?vel deve ter entre 2 e 200 caracteres.");
-        var emailNormalizado = email.Trim().ToLowerInvariant();
-        if (emailNormalizado.Length is < 6 or > 320 || !emailNormalizado.Contains('@') || emailNormalizado.Contains(' '))
-            throw new RegraNegocioException("Informe um e-mail v?lido.");
+        var emailNormalizado = FormatoCampo.Email(email);
         var areas = await catalogo.ListarAreas(ct);
         var area = areas.FirstOrDefault(a => a.Id == areaId)
             ?? throw new RegraNegocioException("Selecione uma ?rea respons?vel v?lida.");

@@ -88,6 +88,29 @@ public interface INotificacoes
     Task Salvar(Notificacao notificacao, CancellationToken ct);
 }
 
+public interface IInscricoesPush
+{
+    Task Salvar(InscricaoPush inscricao, CancellationToken ct);
+    Task<IReadOnlyList<InscricaoPush>> ListarPorUsuario(Guid usuarioId, CancellationToken ct);
+    Task<InscricaoPush?> ObterPorEndpoint(string endpoint, CancellationToken ct);
+    Task Remover(string endpoint, CancellationToken ct);
+}
+
+public interface IConfiguracaoPush
+{
+    string? ChavePublica { get; }
+}
+
+public interface IEnvioPush
+{
+    Task Enviar(NotificacaoPush pedido, CancellationToken ct);
+}
+
+public sealed class EnvioPushNulo : IEnvioPush
+{
+    public Task Enviar(NotificacaoPush pedido, CancellationToken ct) => Task.CompletedTask;
+}
+
 public sealed record EmpresaOpcao(Guid Id, string Nome, bool Ativa);
 
 public sealed record LocacaoResumo(Guid Id, Guid EmpresaId, string Empresa, DateOnly Inicio, DateOnly? Termino);

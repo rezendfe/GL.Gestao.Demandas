@@ -78,8 +78,9 @@ export function CampoDitado({ id, value, onChange, onConcluido, placeholder }: C
   valorRef.current = value;
 
   function publicar(texto: string) {
-    valorRef.current = texto;
-    onChange(texto);
+    const limitado = texto.slice(0, 2000);
+    valorRef.current = limitado;
+    onChange(limitado);
   }
 
   useEffect(() => {
@@ -206,6 +207,7 @@ export function CampoDitado({ id, value, onChange, onConcluido, placeholder }: C
           id={id}
           ref={areaRef}
           value={value}
+          maxLength={2000}
           placeholder={placeholder}
           onChange={(evento) => {
             if (ativoRef.current) parar(false);

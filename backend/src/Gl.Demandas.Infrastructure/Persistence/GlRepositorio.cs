@@ -1,10 +1,12 @@
+using System.Security.Cryptography;
+using System.Text;
 using Gl.Demandas.Application;
 using Gl.Demandas.Domain;
 using Microsoft.EntityFrameworkCore;
 
 namespace Gl.Demandas.Infrastructure.Persistence;
 
-public sealed class GlRepositorio(AppDbContext db) : IUsuarios, ICatalogo, IDemandas, IObras, INotificacoes, ICadeia, IInventarioEspacos, IGestaoCessionarios
+public sealed class GlRepositorio(AppDbContext db) : IUsuarios, ICatalogo, IDemandas, IObras, INotificacoes, IInscricoesPush, ICadeia, IInventarioEspacos, IGestaoCessionarios
 {
     public async Task<IReadOnlyList<EmpresaCadastro>> ListarEmpresasAdministracao(CancellationToken ct)
     {
@@ -498,6 +500,67 @@ public sealed class GlRepositorio(AppDbContext db) : IUsuarios, ICatalogo, IDema
         row.Leitura = notificacao.Lida ? "LIDA" : "NAO_LIDA";
         await db.SaveChangesAsync(ct);
     }
+
+    public async Task Salvar(InscricaoPush inscricao, CancellationToken ct)
+    {
+        var usuario = await db.Usuarios.FirstAsync(u => u.Id == inscricao.UsuarioId, ct);
+        var hash = HashEndpoint(inscricao.Endpoint);
+        var row = await db.InscricoesPush.FirstOrDefaultAsync(x => x.EndpointHash == hash, ct);
+        if (row is null)
+        {
+            db.InscricoesPush.Add(new InscricaoPushRegistro
+            {
+                Id = inscricao.Id,
+                UsuarioIdInterno = usuario.IdInterno,
+                Endpoint = inscricao.Endpoint,
+                EndpointHash = hash,
+                ChaveP256dh = inscricao.ChaveP256dh,
+                SegredoAuth = inscricao.SegredoAuth,
+                CriadaEm = inscricao.CriadaEm
+            });
+        }
+        else
+        {
+            row.UsuarioIdInterno = usuario.IdInterno;
+            row.Endpoint = inscricao.Endpoint;
+            row.ChaveP256dh = inscricao.ChaveP256dh;
+            row.SegredoAuth = inscricao.SegredoAuth;
+        }
+
+        await db.SaveChangesAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<InscricaoPush>> ListarPorUsuario(Guid usuarioId, CancellationToken ct)
+    {
+        var rows = await db.InscricoesPush.Include(x => x.Usuario)
+            .Where(x => x.Usuario!.Id == usuarioId)
+            .ToListAsync(ct);
+        return rows.Select(MapearInscricao).ToArray();
+    }
+
+    public async Task<InscricaoPush?> ObterPorEndpoint(string endpoint, CancellationToken ct)
+    {
+        var hash = HashEndpoint(endpoint.Trim());
+        var row = await db.InscricoesPush.Include(x => x.Usuario)
+            .FirstOrDefaultAsync(x => x.EndpointHash == hash, ct);
+        return row is null ? null : MapearInscricao(row);
+    }
+
+    public async Task Remover(string endpoint, CancellationToken ct)
+    {
+        var hash = HashEndpoint(endpoint.Trim());
+        var row = await db.InscricoesPush.FirstOrDefaultAsync(x => x.EndpointHash == hash, ct);
+        if (row is null)
+            return;
+        db.InscricoesPush.Remove(row);
+        await db.SaveChangesAsync(ct);
+    }
+
+    private static string HashEndpoint(string endpoint) =>
+        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(endpoint)));
+
+    private static InscricaoPush MapearInscricao(InscricaoPushRegistro row) =>
+        new(row.Id, row.Usuario!.Id, row.Endpoint, row.ChaveP256dh, row.SegredoAuth, row.CriadaEm);
 
     private IQueryable<DemandaRegistro> Consulta() =>
         db.Demandas

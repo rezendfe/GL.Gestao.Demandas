@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { useSessao } from "../../application/session";
+import { mascaraCodigo, validarCodigo, validarData, validarOpcional, validarTexto } from "../../domain/entrada";
 import { espacoPorChave, espacoPorEmail, type EspacoCessionario } from "../../domain/espacos";
 import type { EmpresaCessionariaOpcao, EspacoInventario } from "../../domain/types";
 import { ApiError, api } from "../../infrastructure/api/client";
@@ -117,6 +118,14 @@ export function EspacosListaPage() {
   async function salvarEspaco(event: FormEvent) {
     event.preventDefault();
     if (!formulario) return;
+    const codigoInvalido = validarCodigo(formulario.codigo);
+    const nomeInvalido = validarTexto(formulario.nome, 2, 120, "O nome do espaço deve ter entre 2 e 120 caracteres.");
+    const localInvalido = validarTexto(formulario.localizacao, 1, 240, "Informe a localização do espaço.");
+    const descricaoInvalida = validarOpcional(formulario.descricao, 1000, "A descrição do espaço tem no máximo 1000 caracteres.");
+    if (codigoInvalido || nomeInvalido || localInvalido || descricaoInvalida) {
+      setErro(codigoInvalido ?? nomeInvalido ?? localInvalido ?? descricaoInvalida);
+      return;
+    }
     setSalvando(true);
     setErro(null);
     try {
@@ -133,6 +142,11 @@ export function EspacosListaPage() {
 
   async function iniciarLocacao(event: FormEvent) {
     event.preventDefault();
+    const dataInvalida = validarData(locacaoInicio);
+    if (!locacaoEmpresaId || dataInvalida) {
+      setErro(dataInvalida ?? "Selecione uma empresa Cessionária ativa.");
+      return;
+    }
     setSalvando(true);
     setErro(null);
     try {
@@ -149,6 +163,12 @@ export function EspacosListaPage() {
 
   async function encerrarLocacao(event: FormEvent) {
     event.preventDefault();
+    const inicioVigente = itens.find((item) => item.id === encerramentoEspacoId)?.historico.find((locacao) => !locacao.termino)?.inicio.slice(0, 10);
+    const dataInvalida = validarData(locacaoTermino, inicioVigente, "A data de término não pode ser anterior ao início da locação.");
+    if (dataInvalida) {
+      setErro(dataInvalida);
+      return;
+    }
     setSalvando(true);
     setErro(null);
     try {
@@ -210,7 +230,7 @@ export function EspacosListaPage() {
       </Panel>
       {formulario && <Panel title={formulario.id ? "Editar espaço" : "Novo espaço"}>
         <form className="espacos-form" onSubmit={(event) => void salvarEspaco(event)}>
-          <label>Código<input required maxLength={40} value={formulario.codigo} onChange={(event) => setFormulario({ ...formulario, codigo: event.target.value })} /></label>
+          <label>Código<input required maxLength={40} autoComplete="off" value={formulario.codigo} onChange={(event) => setFormulario({ ...formulario, codigo: mascaraCodigo(event.target.value) })} /></label>
           <label>Nome<input required maxLength={120} value={formulario.nome} onChange={(event) => setFormulario({ ...formulario, nome: event.target.value })} /></label>
           <label>Localização<input required maxLength={240} value={formulario.localizacao} onChange={(event) => setFormulario({ ...formulario, localizacao: event.target.value })} /></label>
           <label>Descrição<textarea maxLength={1000} rows={3} value={formulario.descricao} onChange={(event) => setFormulario({ ...formulario, descricao: event.target.value })} /></label>
@@ -227,7 +247,7 @@ export function EspacosListaPage() {
       </Panel>}
       {encerramentoEspacoId && <Panel title="Encerrar locação">
         <form className="espacos-form" onSubmit={(event) => void encerrarLocacao(event)}>
-          <label>Término<input type="date" required value={locacaoTermino} onChange={(event) => setLocacaoTermino(event.target.value)} /></label>
+          <label>Término<input type="date" required min={itens.find((item) => item.id === encerramentoEspacoId)?.historico.find((locacao) => !locacao.termino)?.inicio.slice(0, 10)} value={locacaoTermino} onChange={(event) => setLocacaoTermino(event.target.value)} /></label>
           <div className="row"><button className="btn" type="submit" disabled={salvando}>{salvando ? "Salvando..." : "Confirmar encerramento"}</button><button className="btn secondary" type="button" onClick={() => setEncerramentoEspacoId("")}>Cancelar</button></div>
         </form>
       </Panel>}

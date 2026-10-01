@@ -2,7 +2,7 @@ import { areaManutencao } from "./atuacao";
 import type { FilaItem, Perfil } from "./types";
 
 export function encerrada(situacao: string) {
-  return situacao === "Concluído" || situacao === "Reprovado";
+  return situacao === "Concluído" || situacao === "Reprovado" || situacao === "Encerrada" || situacao === "Cancelada";
 }
 
 export function itensDoRecorte(

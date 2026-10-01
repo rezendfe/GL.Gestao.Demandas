@@ -33,7 +33,8 @@ public sealed class PreenchimentoSolicitacaoTests : IDisposable
             new RelogioFixo(agora),
             new ClassificadorDemanda(repo),
             new ExtratorNulo(),
-            repo);
+            repo,
+            new EnvioPushNulo());
     }
 
     [Fact]
@@ -101,7 +102,8 @@ public sealed class PreenchimentoSolicitacaoTests : IDisposable
                 ["infiltração", "ar condicionado"],
                 true,
                 "Refrigeração")),
-            repo);
+            repo,
+            new EnvioPushNulo());
 
         var preenchimento = await atendimento.Preencher(Fala, CancellationToken.None);
 

@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { Navigate, useSearchParams } from "react-router-dom";
 import { useSessao } from "../../application/session";
 import type { Catalogo } from "../../domain/types";
+import { apenasDigitos, mascaraEmail, validarEmail, validarHoras, validarTexto } from "../../domain/entrada";
 import { ApiError, api } from "../../infrastructure/api/client";
 import { PageHeader } from "../components/PageHeader";
 import { Panel } from "../components/Panel";
@@ -176,13 +177,20 @@ export function CadastrosPage() {
     setSalvando(true);
     limparAviso();
     try {
-      const prazo = categoriaPrazo.trim();
-      const prazoHoras = prazo === "" ? null : Number(prazo);
-      if (prazoHoras !== null && (!Number.isInteger(prazoHoras) || prazoHoras < 1 || prazoHoras > 8760)) {
-        setErro("A meta de prazo fica entre 1 e 8760 horas, ou em branco.");
+      const prazoInvalido = validarHoras(categoriaPrazo);
+      if (prazoInvalido) {
+        setErro(prazoInvalido);
         setSalvando(false);
         return;
       }
+      const nomeInvalido = validarTexto(categoriaNome, 2, 120, "O nome da categoria deve ter entre 2 e 120 caracteres.");
+      if (nomeInvalido) {
+        setErro(nomeInvalido);
+        setSalvando(false);
+        return;
+      }
+      const prazo = categoriaPrazo.trim();
+      const prazoHoras = prazo === "" ? null : Number(prazo);
       const atualizado = await api.salvarCategoria({ id: categoriaId || null, nome: categoriaNome, ativa: categoriaAtiva, prazoHoras });
       setCatalogo(atualizado);
       setCategoriaId("");
@@ -201,6 +209,12 @@ export function CadastrosPage() {
     event.preventDefault();
     setSalvando(true);
     limparAviso();
+    const nomeInvalido = validarTexto(tipoNome, 2, 120, "O nome do tipo de atendimento deve ter entre 2 e 120 caracteres.");
+    if (nomeInvalido || !tipoCategoriaId || !areaId || !fluxo) {
+      setErro(nomeInvalido ?? "Selecione categoria, área e fluxo.");
+      setSalvando(false);
+      return;
+    }
     try {
       const atualizado = await api.salvarTipoAtendimento({
         id: tipoId || null,
@@ -226,6 +240,12 @@ export function CadastrosPage() {
     event.preventDefault();
     setSalvando(true);
     limparAviso();
+    const nomeInvalido = validarTexto(areaNome, 2, 120, "O nome da área deve ter entre 2 e 120 caracteres.");
+    if (nomeInvalido) {
+      setErro(nomeInvalido);
+      setSalvando(false);
+      return;
+    }
     try {
       const atualizado = await api.salvarArea({ id: areaCadastroId || null, nome: areaNome, ativa: areaAtiva });
       setCatalogo(atualizado);
@@ -244,6 +264,13 @@ export function CadastrosPage() {
     event.preventDefault();
     setSalvando(true);
     limparAviso();
+    const nomeInvalido = validarTexto(responsavelNome, 2, 200, "O nome do responsável deve ter entre 2 e 200 caracteres.");
+    const emailInvalido = validarEmail(responsavelEmail);
+    if (nomeInvalido || emailInvalido || !responsavelAreaId) {
+      setErro(nomeInvalido ?? emailInvalido ?? "Selecione uma área responsável válida.");
+      setSalvando(false);
+      return;
+    }
     try {
       const atualizado = await api.salvarResponsavel({
         id: responsavelId || null,
@@ -316,7 +343,14 @@ export function CadastrosPage() {
                 <form id="cadastro-form" onSubmit={(event) => void enviarCategoria(event)}>
                   <label>Nome da categoria<input value={categoriaNome} onChange={(event) => setCategoriaNome(event.target.value)} maxLength={120} required /></label>
                   <label>Meta de prazo (horas)
-                    <input inputMode="numeric" value={categoriaPrazo} onChange={(event) => setCategoriaPrazo(event.target.value)} placeholder="Em branco, sem meta" />
+                    <input
+                      inputMode="numeric"
+                      autoComplete="off"
+                      maxLength={4}
+                      value={categoriaPrazo}
+                      onChange={(event) => setCategoriaPrazo(apenasDigitos(event.target.value, 4))}
+                      placeholder="Em branco, sem meta"
+                    />
                   </label>
                   <p className="campo-ajuda">Chamado sem previsão entra em atraso quando passa dessa meta desde a abertura. Previsão ainda no futuro não marca atraso.</p>
                   <label className="cadastro-check"><input type="checkbox" checked={categoriaAtiva} onChange={(event) => setCategoriaAtiva(event.target.checked)} /><span>Categoria ativa</span></label>
@@ -419,7 +453,7 @@ export function CadastrosPage() {
               <Panel title={responsavelId ? "Editar responsável" : "Novo responsável"}>
                 <form id="cadastro-form" onSubmit={(event) => void enviarResponsavel(event)}>
                   <label>Nome<input value={responsavelNome} onChange={(event) => setResponsavelNome(event.target.value)} maxLength={200} required /></label>
-                  <label>E-mail<input type="email" value={responsavelEmail} onChange={(event) => setResponsavelEmail(event.target.value)} maxLength={320} required /></label>
+                  <label>E-mail<input type="email" inputMode="email" autoComplete="email" value={responsavelEmail} onChange={(event) => setResponsavelEmail(mascaraEmail(event.target.value))} maxLength={320} required /></label>
                   <label>Área<select value={responsavelAreaId} onChange={(event) => setResponsavelAreaId(event.target.value)} required>
                     <option value="">Selecione</option>
                     {areasDoResponsavel.map((area) => <option key={area.id} value={area.id}>{area.nome}</option>)}

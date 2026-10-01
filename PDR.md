@@ -30,9 +30,17 @@ Plataforma centralizada para registro, classificação, roteamento, acompanhamen
 | Abertura e gestão de demandas | Integração ERP/financeiro |
 | Categorias/subcategorias e fluxo Obras | Chat WhatsApp bidirecional completo |
 | Notificação WhatsApp outbound | Provisionamento automático de infraestrutura Azure |
-| Notificação no celular do Cessionário (navegador) e resposta no chamado | Web Push com o portal fechado |
-| Histórico/auditoria | BI avançado além de relatórios básicos |
+| Notificação no celular do Cessionário (navegador), com o portal aberto ou fechado depois da autorização do aparelho, e resposta no chamado | BI avançado além de relatórios básicos |
+| Histórico/auditoria | |
 | Parametrização administrativa de categorias, espaços e acessos (GL) | |
+
+### 1.3 Baseline de implementação
+
+A 1ª entrega é o monólito hexagonal já em execução (portal React e uma API .NET no catálogo `gl-demandas`, schema `app`). As jornadas dos três perfis que esse código já cobre permanecem. Os bounded contexts do §7.2 e o Service Bus continuam sendo o alvo de integração; não se reparte o monólito enquanto a feature não precisar da fila.
+
+As specs de aceite estão em `specs/features/`, uma pasta por épico (`spec.md`, `tasks.md`, modelo, arquitetura, contrato e quickstart). O registro do que já foi demonstrado está em `specs/poc-gl-eventos/`. Objetos validados: `specs/modelo/objetos-do-sistema.md`.
+
+O login Azure AD (RN-17) segue no escopo. Nesta baseline o portal ainda autentica com sessão de demonstração até a spec de segurança ser implementada. WhatsApp outbound (EF-04) e o gate documental de Obras (RN-09) seguem no escopo e ainda não estão no código.
 
 ---
 
@@ -122,6 +130,22 @@ Aberta → Recebida → Em análise → Aguardando informação/documentação
 ```
 
 Terminais negativos: **Reprovada** | **Cancelada**.
+
+A tela e a base desta entrega usam as situações operacionais abaixo. Elas não são renomeadas. O mapa liga cada uma ao nome do ciclo acima. Encerrada e Cancelada usam esses nomes também na gravação.
+
+| Situação gravada | Nó do quadro (§4.5) | Nome deste ciclo |
+|---|---|---|
+| Novo | Solicitação | Aberta |
+| Recebido | Solicitação | Recebida |
+| Aguardando aprovação | Aprovação | Em análise |
+| Aguardando ajuste | Aprovação | Aguardando informação/documentação |
+| Liberado para execução | Atendimento | Aprovada |
+| Em andamento | Atendimento | Em execução |
+| Aguardando validação | Validação do cliente | Aguardando conclusão |
+| Concluído | Conclusão | Concluída |
+| Reprovado | Conclusão | Reprovada |
+| Encerrada | Conclusão | Encerrada |
+| Cancelada | Conclusão | Cancelada |
 
 ### 4.2 Fluxo principal
 
@@ -230,6 +254,7 @@ As tarefas configuráveis usam componentes nativos e tipados, não texto livre i
 | RN-35 | Cada demanda pertence a uma empresa Cessionária identificada por chave referencial, além de preservar o representante que a abriu. A migração relaciona cada usuário Cessionário existente à empresa correspondente e cada demanda ao vínculo empresarial de seu representante; o nome empresarial legado permanece apenas como snapshot de exibição. A autorização e as consultas usam a chave empresarial, nunca comparação de nome livre. |
 | RN-36 | Empresa Cessionária pode ser inativada somente pelo GL / Administrador. A empresa inativa não pode receber novas locações, e seus representantes não podem autenticar ações de Cessionário; locações e demandas históricas permanecem consultáveis pelo GL / Administrador e mantêm seus vínculos. |
 | RN-37 | Nome de função é único dentro da empresa. Função inativa não concede permissões, mesmo que continue associada a um representante. Inativar função não altera o histórico de ações já realizadas. |
+| RN-38 | Todo campo editável tem tipo declarado. O portal aplica a máscara na digitação e recusa o envio fora do formato. A API repete a mesma regra e não grava valor inválido. |
 
 ---
 
@@ -247,6 +272,8 @@ As tarefas configuráveis usam componentes nativos e tipados, não texto livre i
 
 - RF-02.1 Direcionamento automático à área.
 - RF-02.2 Atualização de status e andamento pelo Responsável da Área / GL.
+- RF-02.3 O GL / Administrador encerra demanda já Concluída. A situação passa a Encerrada, distinta de Concluído. Responsável da Área e Cessionário não encerram. Demanda que não está Concluída não encerra por este comando. A avaliação 0–10 continua possível se ainda não foi dada.
+- RF-02.4 O GL / Administrador cancela demanda em aberto com motivo obrigatório. A situação passa a Cancelada. Não cancela Concluído, Encerrada, Reprovado nem Cancelada. O Cessionário só cancela quando existir o parâmetro da §4.4 (Q-09); até lá a API recusa.
 
 ### EF-03 Visibilidade GL
 
@@ -311,12 +338,14 @@ Os números saem somente da fila que o perfil já pode ver (RN-04, RN-05). O tem
 
 ### EF-11 Notificação no celular do Cessionário
 
-O canal de maior uso do Cessionário é o celular. A notificação usa a API de notificações do navegador no portal (não há app nativo nesta versão). Com o portal aberto, a mensagem aparece no celular. O envio com o portal fechado (Web Push) permanece em aberto até a escolha do provedor.
+O canal de maior uso do Cessionário é o celular. A notificação usa a API de notificações do navegador no portal (não há app nativo nesta versão). No topo, à direita, ao lado do nome, o ícone de notificações lista o que ainda pede leitura. No celular, o usuário autenticado autoriza aquele aparelho por esse ícone. Com a autorização, o aviso chega com o portal aberto e também com o portal em segundo plano ou fechado. As chaves desse envio ficam no Key Vault.
 
 - RF-11.1 Quando o Responsável da Área ou o GL / Administrador envia mensagem em chamado ainda em aberto, o Cessionário recebe notificação no celular com o texto dessa mensagem e o protocolo.
 - RF-11.2 A resposta escrita a partir dessa notificação entra no mesmo chamado, junto com a mensagem de quem atende e com a mensagem da gestão da GL (RN-21).
 - RF-11.3 Mensagem marcada como complemento aparece no resumo do Cessionário como pendência até ele responder.
 - RF-11.4 Em 360px, o resumo, a notificação na tela e a resposta usam a largura do celular, com alvos de toque adequados e sem rolagem horizontal.
+- RF-11.5 O usuário autenticado vê o ícone de notificações no topo à direita, ao lado do nome, com a quantidade ainda não lida. Ao acionar, a lista abre nesse mesmo topo e cada item abre o chamado.
+- RF-11.6 No celular, o painel do ícone oferece a autorização para receber as notificações do portal neste aparelho. A inscrição fica do usuário autenticado. Sem autorização, o portal não envia o aviso com a tela fechada. O usuário pode retirar a autorização daquele aparelho.
 
 ### EF-12 Operação, quadro e avaliação do atendimento
 
@@ -351,6 +380,28 @@ Ponto de atenção é mais largo que a ação agora: inclui complemento ainda se
 - RF-14.6 Cada demanda nova e migrada mantém referência à empresa Cessionária proprietária. Consultas e comandos do representante verificam a empresa por essa referência; o nome empresarial exibido é dado de apresentação, não chave de autorização.
 - RF-14.7 A migração do cadastro legado cria uma empresa para cada empresa Cessionária existente, associa os usuários Cessionários por seu cadastro atual e preenche a chave empresarial de cada demanda pelo representante que a abriu. Usuários sem empresa resolvida e demandas sem representante Cessionário válido não recebem associação implícita por comparação de texto e devem ser reportados para correção antes de habilitar a autorização empresarial.
 - RF-14.8 GL / Administrador pode ativar ou inativar empresa e função. Empresa inativa não pode iniciar locação nem executar ações Cessionário; função inativa deixa de contribuir para as permissões efetivas do representante. A inativação não exclui locações, demandas, contatos ou trilha de auditoria.
+
+### EF-15 Entrada tipada e máscaras
+
+Cada campo editável declara o que aceita (RN-38). O portal bloqueia, na digitação, o que não pertence ao tipo e mostra o formato. A API recusa o mesmo valor. Pesquisa, filtro e seleção de opção não recebem máscara.
+
+| Campo | Tipo | Máscara e limite |
+| --- | --- | --- |
+| Meta de prazo da categoria | Horas inteiras | Só dígitos. De 1 a 8760, ou em branco (RF-07.4). |
+| E-mail de login, do Responsável da Área e de contato | E-mail | Sem espaços. Parte local, @ e domínio com ponto. De 6 a 320 caracteres. |
+| Telefone e WhatsApp do representante | Telefone | `(00) 0000-0000` ou `(00) 00000-0000`, com DDD. O prefixo 55 é aceito e gravado sem ele. |
+| Código do espaço | Código | Letras, números e hífen, em maiúsculas, até 40 caracteres. |
+| Nomes de categoria, tipo, área, empresa, função, espaço, representante e responsável | Texto | Sem ficar só com espaços. Mínimo de 2 caracteres e máximo da coluna. |
+| Logo | Endereço ou caminho | Opcional, até 300 caracteres. Se começar com http, precisa ser uma URL absoluta. |
+| Descrição do espaço | Texto | Opcional, até 1000 caracteres. |
+| Assunto, descrição, ponto e mensagem do chamado | Texto | Assunto até 120, ponto até 200, descrição e mensagem até 2000. Descrição obrigatória na abertura. |
+| Data desejada, início e término de locação, previsão | Data ou data/hora | Controle nativo. Data desejada não fica no passado. Término da locação não fica antes do início. |
+| Comentário da avaliação | Texto | Opcional, até 500 caracteres. A nota continua de 0 a 10 (RN-25). |
+| Motivo e comentário de avanço | Texto | Até 2000 caracteres. Motivo continua obrigatório em ajuste e reprovação (RN-11). |
+| Anexo | Arquivo | JPG, JPEG, PNG, WEBP ou PDF, até 5 MB (RN-18). |
+
+- RF-15.1 O GL / Administrador, o Responsável da Área e o Cessionário preenchem os campos da tabela acima com o tipo correspondente. Letra na meta de prazo não entra no campo. Telefone e WhatsApp ganham a máscara enquanto se digita. E-mail sem domínio e código de espaço com caractere fora do permitido não são gravados.
+- RF-15.2 A API aplica os mesmos limites e formatos em categoria, responsável, empresa, representante, contato, espaço, locação, abertura, mensagem, avaliação, motivo e anexo. O portal não é a única barreira.
 
 ---
 
@@ -473,6 +524,10 @@ Padrão recomendado: **Transactional Outbox** no serviço de origem antes de pub
 - Dado notificação no celular, quando o Cessionário responde, então a resposta fica no mesmo chamado, junto com a mensagem de quem atende ou da gestão.
 - Dado chamado já concluído ou reprovado, quando se tenta avisar o celular, então não nasce notificação nova.
 - Dado viewport de 360px, quando o Cessionário lê e responde a notificação, então a tela usa a largura do celular e não há rolagem horizontal.
+- Dado usuário autenticado, quando o portal abre, então o topo à direita mostra o ícone de notificações ao lado do nome, com a quantidade ainda não lida.
+- Dado celular sem autorização, quando o usuário autoriza no ícone, então este aparelho fica apto a receber as notificações do portal. Quando retira a autorização, o aparelho deixa de recebê-las.
+- Dado aparelho autorizado e notificação nova para esse usuário, quando o portal está em segundo plano ou fechado, então o aviso chega no celular com o texto e o protocolo.
+- Dado viewport de 360px, quando o usuário abre o ícone, então o painel cabe na largura do celular.
 
 ### CA — Operação, quadro e avaliação
 
@@ -514,6 +569,8 @@ Padrão recomendado: **Transactional Outbox** no serviço de origem antes de pub
 ### CA — Roteamento
 
 - Dado categoria/subcategoria com responsável cadastrado, quando a demanda é criada, então ela aparece na fila da área e na visão GL.
+- Dado demanda Concluída, quando o GL / Administrador encerra, então a situação fica Encerrada e o histórico registra a transição. Dado outro perfil, ou demanda que não está Concluída, quando tenta encerrar, então a API recusa.
+- Dado demanda em aberto, quando o GL / Administrador cancela com motivo, então a situação fica Cancelada e o motivo fica no histórico. Dado sem motivo, outro perfil, ou demanda já concluída, encerrada, reprovada ou cancelada, quando se tenta cancelar, então a API recusa.
 
 ### CA — GL
 
@@ -570,6 +627,15 @@ Padrão recomendado: **Transactional Outbox** no serviço de origem antes de pub
 - Dado empresa Cessionária inativa, quando um representante autenticado tenta executar ação Cessionário ou iniciar locação para a empresa, então a operação é negada e os registros históricos permanecem preservados.
 - Dado função inativada, quando se recalculam as permissões do representante associado, então nenhuma permissão dessa função é concedida, sem remover o histórico de ações anteriores.
 
+### CA — Entrada tipada
+
+- Dado GL / Administrador na meta de prazo, quando digita letras ou um número fora de 1 a 8760, então o campo fica só com dígitos e o valor inválido é recusado no portal e na API; em branco continua sem meta.
+- Dado contato de telefone ou WhatsApp, quando o número é digitado, então a máscara com DDD aparece na hora; número incompleto é recusado no portal e na API.
+- Dado e-mail de responsável, de representante ou de contato sem @ e domínio, quando se tenta gravar, então o cadastro é recusado.
+- Dado código de espaço, quando se digita, então só permanecem letras, números e hífen, em maiúsculas.
+- Dado arquivo que não é JPG, PNG, WEBP ou PDF, ou que passa de 5 MB, quando se anexa, então o envio é recusado.
+- Dado descrição, mensagem, ponto, assunto, motivo ou comentário de avaliação acima do limite, quando se envia, então o sistema recusa sem gravar o excedente.
+
 ### CA — Segurança
 
 - Dado usuário sem perfil adequado, quando tenta ação restrita (ex.: aprovar obra), então recebe 403.
@@ -596,8 +662,9 @@ Padrão recomendado: **Transactional Outbox** no serviço de origem antes de pub
 | Portal — ditado e preenchimento da abertura | §3.2, RF-01.3, RF-01.5, RN-16, RNF-04 |
 | Ficha do espaço do Cessionário | §2.1, EF-09, RF-09.1 a RF-09.4 |
 | Inventário de espaços, locações e representantes do Cessionário | §2, EF-13, EF-14, RN-29 a RN-37 |
+| Entrada tipada e máscaras | EF-15, RF-15.1, RF-15.2, RN-38, RN-18, RF-07.4 |
 | Início operacional por perfil | §2, EF-10, RF-10.1 a RF-10.8, RN-04, RN-05, RN-16, RN-19, RN-20 |
-| Notificação no celular do Cessionário | §2.1, EF-11, RF-11.1 a RF-11.4, RN-21 |
+| Notificação no celular do Cessionário | §2.1, EF-11, RF-11.1 a RF-11.6, RN-21 |
 | Operação, quadro, reclamação e nota do atendimento | EF-12, RF-12.1 a RF-12.8, RN-14, RN-16, RN-22 a RN-28 |
 
 ---
@@ -614,7 +681,6 @@ Documentados em detalhe (Q-01 a Q-19) em `docs/Analise-Funcional-Pontos-Atencao.
 - Política de versão de documentos em reenvio de Obras; alerta de seguro.
 - Escopo de parametrização de status/fluxos na v1; abertura de demanda pelo GL.
 - Dono do cadastro de entrega do espaço e da vistoria fotográfica (interpretação atual: ficha de leitura do Cessionário, consulta do GL / Administrador e do Responsável da Área no contexto da demanda; gravação ainda não especificada).
-- Web Push com o portal fechado (a notificação desta versão aparece com o portal aberto no celular).
 - Se a reclamação deve ser categoria própria ou permanecer uma marca na abertura (RN-24). Nesta versão, é uma marca do chamado, no mesmo fluxo e nos mesmos três perfis.
 - Se a nota de 0 a 10 e o índice promotor/detrator (RN-25) são a escala definitiva do cliente, ou se haverá outra pergunta por serviço.
 - Q-19 — Validar o limite da parametrização da cadeia: tarefas compostas apenas por campos e ações disponíveis no catálogo do sistema ou criação de ações/status livres; e se alterações na configuração passam a valer apenas para novas demandas ou também para demandas em andamento.

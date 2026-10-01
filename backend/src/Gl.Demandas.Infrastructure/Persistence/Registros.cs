@@ -273,6 +273,19 @@ internal sealed class NotificacaoRegistro
     public DateTime CriadaEm { get; set; }
 }
 
+internal sealed class InscricaoPushRegistro
+{
+    public long IdInterno { get; set; }
+    public Guid Id { get; set; }
+    public long UsuarioIdInterno { get; set; }
+    public UsuarioRegistro? Usuario { get; set; }
+    public string Endpoint { get; set; } = "";
+    public string EndpointHash { get; set; } = "";
+    public string ChaveP256dh { get; set; } = "";
+    public string SegredoAuth { get; set; } = "";
+    public DateTime CriadaEm { get; set; }
+}
+
 internal sealed class EtapaCadeiaRegistro
 {
     public long IdInterno { get; set; }

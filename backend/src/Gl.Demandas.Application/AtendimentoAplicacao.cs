@@ -11,8 +11,10 @@ public sealed class AtendimentoAplicacao(
     IRelogio relogio,
     IClassificadorDemanda classificador,
     IExtratorSolicitacao extrator,
-    ICadeia cadeia)
+    ICadeia cadeia,
+    IEnvioPush envioPush)
 {
+    private readonly List<Notificacao> avisosPendentes = [];
     private const long TamanhoMaximo = 5 * 1024 * 1024;
     private static readonly HashSet<string> Extensoes = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -209,12 +211,13 @@ public sealed class AtendimentoAplicacao(
             var agora = relogio.UtcNow;
             var textoPortal = $"Sua solicitação {demanda.Protocolo} está em atendimento.";
             var textoMensageria = $"Sua solicitação {demanda.Protocolo} teve uma atualização. Acompanhe os detalhes no portal GL.";
-            await notificacoes.Adicionar(Notificacao.Criar(demanda.Id, demanda.CessionarioId, textoPortal, agora), ct);
+            await RegistrarAviso(demanda, textoPortal, ct);
             demanda.IncluirMensagem(ator.Id, textoMensageria, "MENSAGERIA", agora);
             demanda.RegistrarEvento(ator.Id, "Notificação complementar registrada para o cessionário.", "NOTIFICACAO", agora);
         }
 
         await demandas.Salvar(demanda, ct);
+        await PublicarAvisos(demanda, ct);
         return await Detalhe(demanda, ct);
     }
 
@@ -241,7 +244,7 @@ public sealed class AtendimentoAplicacao(
         if (resultado.EntrouEmAtendimento)
         {
             var texto = $"Sua solicitação {demanda.Protocolo} está em atendimento.";
-            await notificacoes.Adicionar(Notificacao.Criar(demanda.Id, demanda.CessionarioId, texto, relogio.UtcNow), ct);
+            await RegistrarAviso(demanda, texto, ct);
             demanda.IncluirMensagem(ator.Id, texto, "MENSAGERIA", relogio.UtcNow);
             demanda.RegistrarEvento(ator.Id, "Notificação complementar registrada para o cessionário.", "NOTIFICACAO", relogio.UtcNow);
         }
@@ -249,12 +252,13 @@ public sealed class AtendimentoAplicacao(
         if (resultado.AguardaValidacao)
         {
             var texto = $"Sua solicitação {demanda.Protocolo} aguarda a sua validação.";
-            await notificacoes.Adicionar(Notificacao.Criar(demanda.Id, demanda.CessionarioId, texto, relogio.UtcNow), ct);
+            await RegistrarAviso(demanda, texto, ct);
             demanda.IncluirMensagem(ator.Id, texto, "MENSAGERIA", relogio.UtcNow);
             demanda.RegistrarEvento(ator.Id, "Validação do Cessionário solicitada.", "NOTIFICACAO", relogio.UtcNow);
         }
 
         await demandas.Salvar(demanda, ct);
+        await PublicarAvisos(demanda, ct);
         return await Detalhe(demanda, ct);
     }
 
@@ -281,6 +285,7 @@ public sealed class AtendimentoAplicacao(
         demanda.AdicionarMensagem(ator.Perfil, ator.Id, ator.AreaId, comando.Texto, "PORTAL", relogio.UtcNow, finalidade, ator.EmpresaId);
         await AvisarCelular(demanda, ator.Id, comando.Texto, ct);
         await demandas.Salvar(demanda, ct);
+        await PublicarAvisos(demanda, ct);
         return await Detalhe(demanda, ct);
     }
 
@@ -347,6 +352,22 @@ public sealed class AtendimentoAplicacao(
         return await Detalhe(demanda, ct);
     }
 
+    public async Task<DetalheDemandaDto> Encerrar(Ator ator, Guid id, CancellationToken ct)
+    {
+        var demanda = await Exigir(id, ct);
+        demanda.Encerrar(ator.Perfil, ator.Id, relogio.UtcNow);
+        await demandas.Salvar(demanda, ct);
+        return await Detalhe(demanda, ct);
+    }
+
+    public async Task<DetalheDemandaDto> Cancelar(Ator ator, Guid id, CancelamentoComando comando, CancellationToken ct)
+    {
+        var demanda = await Exigir(id, ct);
+        demanda.Cancelar(ator.Perfil, ator.Id, comando.Motivo, relogio.UtcNow);
+        await demandas.Salvar(demanda, ct);
+        return await Detalhe(demanda, ct);
+    }
+
     public async Task<DetalheDemandaDto> Avaliar(Ator ator, Guid id, AvaliacaoComando comando, CancellationToken ct)
     {
         var demanda = await Exigir(id, ct);
@@ -368,7 +389,26 @@ public sealed class AtendimentoAplicacao(
         var aviso = texto.Trim();
         if (aviso.Length > 500)
             aviso = aviso[..500];
-        await notificacoes.Adicionar(Notificacao.Criar(demanda.Id, demanda.CessionarioId, aviso, relogio.UtcNow), ct);
+        await RegistrarAviso(demanda, aviso, ct);
+    }
+
+    private async Task RegistrarAviso(Demanda demanda, string texto, CancellationToken ct)
+    {
+        var nota = Notificacao.Criar(demanda.Id, demanda.CessionarioId, texto, relogio.UtcNow);
+        await notificacoes.Adicionar(nota, ct);
+        avisosPendentes.Add(nota);
+    }
+
+    private async Task PublicarAvisos(Demanda demanda, CancellationToken ct)
+    {
+        var pendentes = avisosPendentes.ToArray();
+        avisosPendentes.Clear();
+        foreach (var nota in pendentes)
+        {
+            await envioPush.Enviar(
+                new NotificacaoPush(nota.UsuarioId, nota.Id, demanda.Id, demanda.Protocolo, nota.Texto),
+                ct);
+        }
     }
 
     private async Task<Demanda> Exigir(Guid id, CancellationToken ct) =>

@@ -5,7 +5,7 @@ export const COLUNAS_CADEIA = [
   { codigo: "aprovacao", nome: "Aprovação", detalhe: "Aguarda o GL / Administrador", situacoes: ["Aguardando aprovação", "Aguardando ajuste"] },
   { codigo: "atendimento", nome: "Atendimento", detalhe: "A área está executando", situacoes: ["Em andamento", "Liberado para execução"] },
   { codigo: "validacao", nome: "Validação do cliente", detalhe: "O Cessionário confirma o serviço", situacoes: ["Aguardando validação"] },
-  { codigo: "conclusao", nome: "Conclusão", detalhe: "Já teve desfecho", situacoes: ["Concluído", "Reprovado"] },
+  { codigo: "conclusao", nome: "Conclusão", detalhe: "Já teve desfecho", situacoes: ["Concluído", "Reprovado", "Encerrada", "Cancelada"] },
 ];
 
 export const CAMPOS_DA_ETAPA: Record<string, { id: string; rotulo: string }[]> = {
@@ -65,7 +65,7 @@ export function colunaDe(situacao: string) {
 }
 
 export function proximaEtapa(situacao: string, etapas: EtapaCadeia[]) {
-  if (situacao === "Concluído" || situacao === "Reprovado" || situacao === "Aguardando ajuste") return null;
+  if (situacao === "Concluído" || situacao === "Reprovado" || situacao === "Encerrada" || situacao === "Cancelada" || situacao === "Aguardando ajuste") return null;
   const codigo = colunaDe(situacao);
   const atual = etapas.find((etapa) => etapa.codigo === codigo);
   if (!atual) return null;

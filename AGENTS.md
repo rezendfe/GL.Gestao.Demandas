@@ -53,6 +53,7 @@ Mudanças de fluxo, status ou permissões **passam pelo PDR** antes do merge.
 | Artefato | Uso |
 |----------|-----|
 | `PDR.md` | Fonte da verdade de produto e aceite |
+| `specs/features/` | Uma pasta por feature: spec, tarefas, modelo, arquitetura, contrato e quickstart |
 | `docs/Analise-Funcional-Pontos-Atencao.docx` | Gaps e dúvidas para workshop com cliente |
 | `presentation/jornada-demandas.html` | Apresentação explorável de jornadas |
 | `Fluxo de Demandas.docx` | Documento funcional original |

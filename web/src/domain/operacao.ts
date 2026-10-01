@@ -57,7 +57,7 @@ export const COLUNAS_QUADRO = [
   { id: "aprovacao", nome: "Aprovação", detalhe: "Aguarda o GL / Administrador", situacoes: ["Aguardando aprovação", "Aguardando ajuste"] },
   { id: "atendimento", nome: "Atendimento", detalhe: "A área está executando", situacoes: ["Em andamento", "Liberado para execução"] },
   { id: "validacao", nome: "Validação do cliente", detalhe: "O Cessionário confirma o serviço", situacoes: ["Aguardando validação"] },
-  { id: "encerramento", nome: "Conclusão", detalhe: "Já teve desfecho", situacoes: ["Concluído", "Reprovado"] },
+  { id: "encerramento", nome: "Conclusão", detalhe: "Já teve desfecho", situacoes: ["Concluído", "Reprovado", "Encerrada", "Cancelada"] },
 ];
 
 export interface FaixaNps {
@@ -91,7 +91,7 @@ function mediaDe(notas: number[]) {
 }
 
 export function resumirNps(fila: FilaItem[]): ResumoNps {
-  const avaliados = fila.filter((item) => item.situacao === "Concluído" && item.notaAvaliacao !== null);
+  const avaliados = fila.filter((item) => (item.situacao === "Concluído" || item.situacao === "Encerrada") && item.notaAvaliacao !== null);
   const notas = avaliados.map((item) => item.notaAvaliacao as number);
   const porNome = new Map<string, number[]>();
   for (const item of avaliados) {
