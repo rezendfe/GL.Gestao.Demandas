@@ -283,6 +283,7 @@ function Grade({ itens, destacar, onAbrir }: { itens: FilaItem[]; destacar?: Set
         ))}
       </tbody>
     </table>
+    <Cartoes itens={itens} destacar={destacar} onAbrir={onAbrir} />
     </>
   );
 }

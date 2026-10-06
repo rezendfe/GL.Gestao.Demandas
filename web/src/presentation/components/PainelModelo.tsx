@@ -156,11 +156,11 @@ export function PainelModelo({
             <tbody>
               {atrasos.map((item) => (
                 <tr key={item.id}>
-                  <td className={item.dias >= 10 ? "atraso-alto" : item.dias >= 4 ? "atraso-medio" : "atraso-baixo"}>
+                  <td data-label="Atraso" className={item.dias >= 10 ? "atraso-alto" : item.dias >= 4 ? "atraso-medio" : "atraso-baixo"}>
                     {item.dias === 1 ? "1 dia" : `${item.dias} dias`}
                   </td>
-                  <td><Link to={item.para}>{item.chamado}</Link></td>
-                  <td>{item.prazo}</td>
+                  <td data-label="Chamado"><Link to={item.para}>{item.chamado}</Link></td>
+                  <td data-label="Prazo">{item.prazo}</td>
                 </tr>
               ))}
             </tbody>

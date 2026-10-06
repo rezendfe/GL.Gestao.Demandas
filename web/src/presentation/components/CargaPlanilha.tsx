@@ -120,9 +120,9 @@ export function CargaPlanilha({
                 <tbody>
                   {linhas.map((linha) => (
                     <tr key={linha.numero}>
-                      <td>{linha.numero}</td>
-                      {definicao.colunas.map((coluna) => <td key={coluna.chave}>{linha.valores[coluna.chave] || "—"}</td>)}
-                      <td>{linha.erro ?? "Pronta"}</td>
+                      <td data-label="Linha">{linha.numero}</td>
+                      {definicao.colunas.map((coluna) => <td key={coluna.chave} data-label={coluna.titulo}>{linha.valores[coluna.chave] || "—"}</td>)}
+                      <td data-label="Situação">{linha.erro ?? "Pronta"}</td>
                     </tr>
                   ))}
                 </tbody>

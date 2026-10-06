@@ -47,7 +47,6 @@ export function Shell() {
             ["/inicio", "Início", "casa"],
             ["/central", "Central operacional", "grade"],
             ["/comunicados", "Comunicados", "sino"],
-            ["/cadeia", "Cadeia", "grade"],
             ["/cadastros", "Cadastros", "configuracao"],
             ["/espacos", "Espaços", "lista"],
             ["/empresas-cessionarias", "Empresas e acessos", "lista"],

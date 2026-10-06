@@ -750,7 +750,7 @@ function Tabela({ colunas, linhas, vazio }: { colunas: string[]; linhas: ReactNo
         <tbody>
           {linhas.map((celulas, indice) => (
             <tr key={indice}>
-              {celulas.map((celula, coluna) => <td key={coluna}>{celula}</td>)}
+              {celulas.map((celula, coluna) => <td key={coluna} data-label={colunas[coluna]}>{celula}</td>)}
             </tr>
           ))}
           {linhas.length === 0 && <tr><td colSpan={colunas.length}>{vazio}</td></tr>}

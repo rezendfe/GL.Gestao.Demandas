@@ -1,43 +1,81 @@
 import { expect, test, type Page } from "@playwright/test";
 
+const contas: Record<string, string> = {
+  "Cessionário": "joao.silva@empresaexemplo.com.br",
+  "GL / Administrador": "patricia.lima@gleventos.com.br",
+  "Responsável da Área": "responsavel.01@gleventos.com.br",
+};
+
 const rotas: Record<string, string[]> = {
-  "Cessionário": ["/inicio", "/meu-espaco", "/minhas", "/abrir"],
-  "GL / Administrador": ["/inicio", "/quadro", "/cadeia", "/operacao", "/central", "/espacos", "/empresas-cessionarias", "/obras"],
-  "Responsável da Área": ["/inicio", "/quadro", "/operacao", "/central"],
+  "Cessionário": ["/inicio", "/meu-espaco", "/minhas", "/comunicados", "/abrir"],
+  "GL / Administrador": [
+    "/inicio",
+    "/central",
+    "/central?visao=quadro",
+    "/central?visao=operacao",
+    "/central?visao=agenda",
+    "/comunicados",
+    "/cadeia",
+    "/cadastros",
+    "/espacos",
+    "/empresas-cessionarias",
+    "/obras",
+    "/auditoria",
+  ],
+  "Responsável da Área": ["/inicio", "/central", "/central?visao=agenda"],
 };
 
 async function entrar(page: Page, perfil: string) {
   await page.goto("/login");
   await page.evaluate(() => sessionStorage.clear());
   await page.goto("/login");
-  await page.getByRole("button", { name: perfil }).click();
+  await page.locator("#login-pessoa").selectOption(contas[perfil]);
   await page.getByRole("button", { name: "Entrar" }).click();
   await page.waitForURL("**/inicio");
 }
 
-async function estouro(page: Page) {
+async function medida(page: Page) {
   return page.evaluate(() => {
     const largura = document.documentElement.clientWidth;
     const pagina = document.documentElement.scrollWidth - largura;
-    const internos: string[] = [];
-    for (const el of document.querySelectorAll(".page-content, .kanban, .fluxo-trilho, .crm-chat, .fila-periodo, .x-bar, .fila-vista")) {
-      if (el.scrollWidth > el.clientWidth + 4) {
-        internos.push(`${String(el.className).split(" ")[0]}:${el.scrollWidth - el.clientWidth}`);
+    const raiz = document.querySelector(".page-content") ?? document.body;
+    const cortes: string[] = [];
+    for (const el of raiz.querySelectorAll("*")) {
+      const rect = el.getBoundingClientRect();
+      if (rect.width < 8 || rect.height < 8) continue;
+      if (rect.bottom < 0 || rect.top > window.innerHeight) continue;
+      if (rect.right <= largura + 1 && rect.left >= -1) continue;
+      const classe = typeof el.className === "string" ? el.className.split(" ").filter(Boolean)[0] : el.tagName;
+      cortes.push(`${el.tagName.toLowerCase()}.${classe ?? "sem"}:${Math.round(rect.right)}`);
+      if (cortes.length >= 6) break;
+    }
+    const miudos: string[] = [];
+    for (const el of document.querySelectorAll(".x-user button.x-caixa, .x-user button.x-audit, .x-user button.x-sino, .ditado-mic")) {
+      const rect = el.getBoundingClientRect();
+      if (rect.width < 2 || rect.height < 2) continue;
+      if (rect.width < 44 || rect.height < 44) {
+        miudos.push(`${el.getAttribute("aria-label") ?? el.className}:${Math.round(rect.width)}x${Math.round(rect.height)}`);
       }
     }
-    return { pagina, internos };
+    const folga = parseFloat(getComputedStyle(document.querySelector(".page-content-wrap") ?? document.body).paddingBottom);
+    return { pagina, cortes, miudos, folga };
   });
 }
 
 test.describe("portal em 360px e em 1440px", () => {
   for (const perfil of Object.keys(rotas)) {
     test(`${perfil} usa a largura da tela`, async ({ page }) => {
+      const celular = page.viewportSize()!.width <= 900;
       await entrar(page, perfil);
       for (const rota of rotas[perfil]) {
         await page.goto(rota);
-        const medida = await estouro(page);
-        expect(medida.pagina, rota).toBeLessThanOrEqual(1);
-        expect(medida.internos, rota).toEqual([]);
+        await page.locator(".page-content").waitFor();
+        const resultado = await medida(page);
+        expect(resultado.pagina, rota).toBeLessThanOrEqual(1);
+        if (!celular) continue;
+        expect(resultado.cortes, rota).toEqual([]);
+        expect(resultado.miudos, rota).toEqual([]);
+        expect(resultado.folga, rota).toBeGreaterThanOrEqual(72);
       }
     });
   }

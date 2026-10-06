@@ -3093,8 +3093,7 @@ a.aviso-linha,
 .audit-exportar p { margin: 0; color: var(--muted); font-size: 13px; max-width: 52ch; }
 .panel .audit-filtros .btn { min-height: 40px; align-self: end; }
 
-/* As regras de celular anteriores ficam antes de estilos de computador que as anulam.
-   Este bloco precisa permanecer no fim da folha. */
+/* Regras de celular. O fecho da folha, no final do arquivo, prevalece sobre este bloco. */
 html, body { max-width: 100%; overflow-x: clip; }
 .page-content, .page-content-wrap, .panel, .panel-body, .crm-chat, .kanban, .fluxo-trilho { min-width: 0; }
 .bubble, .conversa em, .pulso-corpo span, .chamado-resumo dd, .kanban-card { overflow-wrap: anywhere; }
@@ -3149,9 +3148,9 @@ html, body { max-width: 100%; overflow-x: clip; }
   .periodo-atalhos, .fila-contagem { grid-column: 1 / -1; }
   .fila-periodo label, .fila-check { min-width: 0; max-width: 100%; }
   .fila-vistas { align-items: stretch; }
-  .fila-vista.vista-grade { overflow-x: auto; }
-  .fila-vista.vista-grade table { display: table; min-width: 720px; }
-  .fila-vista.vista-grade .cards { display: none; }
+  .fila-vista.vista-grade { overflow-x: visible; }
+  .fila-vista.vista-grade table { display: none; min-width: 0; }
+  .fila-vista.vista-grade .cards { display: grid; grid-template-columns: 1fr; }
   .kanban { display: grid; grid-template-columns: 1fr; overflow-x: visible; }
   .kanban-col { min-width: 0; width: auto; flex: none; }
   .fluxo-tipo { max-width: 100%; }
@@ -3512,3 +3511,99 @@ html, body { max-width: 100%; overflow-x: clip; }
 .trilha-ajustes summary:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 .trilha-ajuste { padding: 4px 0 12px; }
 .trilha-ajuste .btn + .btn, .trilha-ajuste .trilha-fato + .btn { margin-top: 8px; }
+
+/* Portal em 360px. Este bloco fica por último: estilo novo de componente entra antes dele.
+   Tabela larga vira linha com o nome da coluna. A Grade da fila vira cartão.
+   Ícone de ação e o microfone medem 44px. A página reserva folga para o botão flutuante. */
+@media (max-width: 900px) {
+  .etapas-modelo {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    justify-items: center;
+    gap: 16px 8px;
+  }
+  .etapas-modelo li, .etapas-modelo a { min-width: 0; max-width: 100%; }
+  .etapas-modelo strong,
+  .etapas-modelo a > span:last-child { max-width: 100%; overflow-wrap: anywhere; }
+
+  .x-user { gap: 4px; min-width: 0; }
+  .x-user button.x-caixa,
+  .x-user button.x-audit,
+  .x-user button.x-sino {
+    flex: none;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+  }
+  .x-user > a.btn {
+    flex: none;
+    min-height: 44px;
+    padding: 6px 10px;
+    line-height: 1.15;
+    white-space: normal;
+    text-align: center;
+  }
+  .ditado-mic { width: 44px; height: 44px; right: 8px; bottom: 8px; }
+  .campo-ditado textarea { padding-right: 60px; padding-bottom: 52px; }
+  .agenda-seta, .cadastro-editar { min-width: 44px; min-height: 44px; }
+  .page-content-wrap { padding-bottom: calc(88px + env(safe-area-inset-bottom)); }
+
+  .fila-vista.vista-grade { overflow-x: visible; }
+  .fila-vista.vista-grade table { display: none; min-width: 0; }
+  .fila-vista.vista-grade .cards { display: grid; grid-template-columns: minmax(0, 1fr); }
+
+  .cadastro-tabela-wrap,
+  .carga-tabela,
+  .espacos-grade-wrap,
+  .modelo-tabela { overflow-x: visible; max-width: 100%; }
+  .cadastro-tabela,
+  .carga-tabela table,
+  .espacos-grade,
+  .modelo-tabela table {
+    display: block;
+    min-width: 0;
+    width: 100%;
+  }
+  .cadastro-tabela thead,
+  .carga-tabela thead,
+  .espacos-grade thead,
+  .modelo-tabela thead { display: none; }
+  .cadastro-tabela tbody,
+  .carga-tabela tbody,
+  .espacos-grade tbody,
+  .modelo-tabela tbody,
+  .cadastro-tabela tr,
+  .carga-tabela tr,
+  .espacos-grade tr,
+  .modelo-tabela tr { display: block; width: auto; min-width: 0; }
+  .cadastro-tabela tr,
+  .carga-tabela tr,
+  .espacos-grade tr,
+  .modelo-tabela tr {
+    padding: 10px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .cadastro-tabela td,
+  .carga-tabela td,
+  .espacos-grade td,
+  .espacos-grade td:nth-child(2),
+  .modelo-tabela td {
+    display: block;
+    width: auto;
+    min-width: 0;
+    white-space: normal;
+    border: 0;
+    padding: 2px 8px;
+  }
+  .cadastro-tabela td[data-label]::before,
+  .carga-tabela td[data-label]::before,
+  .espacos-grade td[data-label]::before,
+  .modelo-tabela td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 2px;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 700;
+  }
+}
