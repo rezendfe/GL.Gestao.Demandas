@@ -27,7 +27,10 @@ public sealed class EnvioPushWeb(IConfiguration configuracao, IInscricoesPush in
         var privada = configuracao["Push:PrivateKey"];
         var assunto = configuracao["Push:Subject"];
         if (string.IsNullOrWhiteSpace(publica) || string.IsNullOrWhiteSpace(privada) || string.IsNullOrWhiteSpace(assunto))
+        {
+            logger.LogWarning("O alerta não foi enviado: faltam as chaves de push neste ambiente.");
             return;
+        }
 
         var aparelhos = await inscricoes.ListarPorUsuario(pedido.UsuarioId, ct);
         if (aparelhos.Count == 0)
@@ -39,7 +42,7 @@ public sealed class EnvioPushWeb(IConfiguration configuracao, IInscricoesPush in
             body = pedido.Texto,
             tag = pedido.NotificacaoId.ToString(),
             url = string.IsNullOrWhiteSpace(pedido.Url)
-                ? $"/demandas/{pedido.DemandaId}?responder={pedido.NotificacaoId}"
+                ? $"/demandas/{pedido.DemandaId}?aba=comunicacao"
                 : pedido.Url
         });
         var vapid = new VapidDetails(assunto.Trim(), publica.Trim(), privada.Trim());

@@ -163,9 +163,12 @@ BEGIN
         SG_Tipo_Midia NVARCHAR(120) NOT NULL,
         MD_Tamanho_Bytes BIGINT NOT NULL,
         DT_Envio DATETIME2 NOT NULL,
+        SG_Finalidade NVARCHAR(20) NOT NULL CONSTRAINT DF_Anexo_SG_Finalidade DEFAULT N'documento',
+        ID_Mensagem BIGINT NULL,
         CONSTRAINT PK_Anexo PRIMARY KEY (ID_Anexo),
         CONSTRAINT UK_Anexo_CD_Anexo UNIQUE (CD_Anexo),
-        CONSTRAINT FK_Anexo_Demanda FOREIGN KEY (ID_Demanda) REFERENCES app.Demanda (ID_Demanda)
+        CONSTRAINT FK_Anexo_Demanda FOREIGN KEY (ID_Demanda) REFERENCES app.Demanda (ID_Demanda),
+        CONSTRAINT FK_Anexo_Mensagem FOREIGN KEY (ID_Mensagem) REFERENCES app.Mensagem (ID_Mensagem)
     );
 END
 GO
@@ -259,10 +262,12 @@ BEGIN
         DS_Texto NVARCHAR(500) NOT NULL,
         SG_Leitura NVARCHAR(20) NOT NULL,
         DT_Criacao DATETIME2 NOT NULL,
+        ID_Mensagem BIGINT NULL,
         CONSTRAINT PK_Notificacao PRIMARY KEY (ID_Notificacao),
         CONSTRAINT UK_Notificacao_CD_Notificacao UNIQUE (CD_Notificacao),
         CONSTRAINT FK_Notificacao_Demanda FOREIGN KEY (ID_Demanda) REFERENCES app.Demanda (ID_Demanda),
-        CONSTRAINT FK_Notificacao_Usuario FOREIGN KEY (ID_Usuario) REFERENCES app.Usuario (ID_Usuario)
+        CONSTRAINT FK_Notificacao_Usuario FOREIGN KEY (ID_Usuario) REFERENCES app.Usuario (ID_Usuario),
+        CONSTRAINT FK_Notificacao_Mensagem FOREIGN KEY (ID_Mensagem) REFERENCES app.Mensagem (ID_Mensagem)
     );
 END
 GO

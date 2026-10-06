@@ -1,10 +1,16 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { Navigate, useSearchParams } from "react-router-dom";
 import { useSessao } from "../../application/session";
+import { fotoPorPessoa } from "../../domain/fotos";
 import type { Catalogo } from "../../domain/types";
+import { GaleriaLightbox } from "../components/GaleriaLightbox";
 import { apenasDigitos, mascaraEmail, validarEmail, validarHoras, validarOpcional, validarTexto } from "../../domain/entrada";
 import { PERIODOS_ABERTURA } from "../../domain/modeloAbertura";
+import { acharPorNome, baixarPlanilha, DEFINICOES_CARGA, fluxoCanonico, interpretarAtivo, periodoCanonico } from "../../domain/cargaCadastro";
 import { ApiError, api } from "../../infrastructure/api/client";
+import { useAcoesDaPagina } from "../components/AcoesRapidas";
+import { CargaPlanilha } from "../components/CargaPlanilha";
+import { ModalCadastro } from "../components/ModalCadastro";
 import { PageHeader } from "../components/PageHeader";
 import { Panel } from "../components/Panel";
 
@@ -17,6 +23,13 @@ const ABAS = [
 ] as const;
 
 type Aba = (typeof ABAS)[number]["id"];
+
+const ROTULO_NOVO: Record<Aba, string> = {
+  categorias: "Nova categoria",
+  tipos: "Novo tipo",
+  areas: "Nova área",
+  responsaveis: "Novo responsável",
+};
 
 const INTRO: Record<Aba, string> = {
   categorias: "A categoria agrupa os tipos de atendimento, pode ter uma meta de prazo e um modelo de abertura.",
@@ -43,6 +56,7 @@ export function CadastrosPage() {
   const [parametros, setParametros] = useSearchParams();
   const aba = abaValida(parametros.get("aba"));
   const [catalogo, setCatalogo] = useState<Catalogo | null>(null);
+  const [fotoIndice, setFotoIndice] = useState<number | null>(null);
   const [busca, setBusca] = useState<Record<Aba, string>>({ categorias: "", tipos: "", areas: "", responsaveis: "" });
   const [categoriaId, setCategoriaId] = useState("");
   const [categoriaNome, setCategoriaNome] = useState("");
@@ -70,6 +84,15 @@ export function CadastrosPage() {
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [mensagem, setMensagem] = useState<string | null>(null);
+  const [cargaAberta, setCargaAberta] = useState(false);
+  const [editorAberto, setEditorAberto] = useState(false);
+
+  const rotuloAba = ABAS.find((item) => item.id === aba)?.rotulo.toLowerCase() ?? "cadastros";
+  useAcoesDaPagina([
+    { id: "nova", rotulo: ROTULO_NOVO[aba], icone: "mais", executar: () => { setCargaAberta(false); criarAtual(); } },
+    { id: "importar", rotulo: `Importar ${rotuloAba}`, icone: "importar", executar: () => { setEditorAberto(false); setCargaAberta(true); } },
+    { id: "exportar-planilha", rotulo: "Exportar planilha", rotuloOcupado: "Gerando planilha...", icone: "planilha", executar: () => exportarGrade() },
+  ]);
 
   useEffect(() => {
     void api.catalogo()
@@ -98,13 +121,63 @@ export function CadastrosPage() {
   const areasVisiveis = catalogo?.areas.filter((area) => combina(termo, `${area.nome} ${area.ativa ? "ativa" : "inativa"}`)) ?? [];
   const responsaveisVisiveis = catalogo?.responsaveis.filter((pessoa) => combina(termo, `${pessoa.nome} ${pessoa.email} ${catalogo.areas.find((area) => area.id === pessoa.areaId)?.nome ?? ""} ${pessoa.ativo ? "ativo" : "inativo"}`)) ?? [];
 
+  function criarAtual() {
+    if (aba === "categorias") novaCategoria();
+    else if (aba === "tipos") novoTipo();
+    else if (aba === "areas") novaArea();
+    else novoResponsavel();
+  }
+
+  function exportarGrade() {
+    if (!catalogo) return;
+    if (aba === "categorias") {
+      baixarPlanilha("categorias.csv", ["Categoria", "Meta", "Modelo", "Tipos", "Situação"], categoriasVisiveis.map((categoria) => [
+        categoria.nome,
+        categoria.prazoHoras ? `${categoria.prazoHoras} h` : "Sem meta",
+        categoria.modelo?.assunto || categoria.modelo?.ponto || categoria.modelo?.periodo || (categoria.modelo?.itens.length ?? 0) > 0 ? "Com modelo" : "Em branco",
+        String(categoria.subcategorias.length),
+        categoria.ativa ? "Ativa" : "Inativa",
+      ]));
+      return;
+    }
+    if (aba === "tipos") {
+      baixarPlanilha("tipos-de-atendimento.csv", ["Tipo", "Categoria", "Área", "Fluxo", "Situação"], tiposVisiveis.map((tipo) => [
+        tipo.nome,
+        tipo.categoriaNome,
+        catalogo.areas.find((area) => area.id === tipo.areaId)?.nome ?? "",
+        tipo.fluxo,
+        tipo.ativa ? "Ativo" : "Inativo",
+      ]));
+      return;
+    }
+    if (aba === "areas") {
+      baixarPlanilha("areas.csv", ["Área", "Situação"], areasVisiveis.map((area) => [area.nome, area.ativa ? "Ativa" : "Inativa"]));
+      return;
+    }
+    baixarPlanilha("responsaveis.csv", ["Nome", "E-mail", "Área", "Situação"], responsaveisVisiveis.map((pessoa) => [
+      pessoa.nome,
+      pessoa.email,
+      catalogo.areas.find((area) => area.id === pessoa.areaId)?.nome ?? "",
+      pessoa.ativo ? "Ativo" : "Inativo",
+    ]));
+  }
+
+  function fecharEditor() {
+    if (salvando) return;
+    setEditorAberto(false);
+    setErro(null);
+  }
+
   function selecionarAba(proxima: Aba) {
+    setCargaAberta(false);
+    setEditorAberto(false);
     setParametros(proxima === "categorias" ? {} : { aba: proxima });
     setErro(null);
     setMensagem(null);
   }
 
   function limparAviso() {
+    setCargaAberta(false);
     setErro(null);
     setMensagem(null);
   }
@@ -119,6 +192,7 @@ export function CadastrosPage() {
     setPeriodoSugerido("");
     setItensSugeridos("");
     limparAviso();
+    setEditorAberto(true);
   }
 
   function editarCategoria(categoria: NonNullable<Catalogo>["categorias"][number]) {
@@ -131,6 +205,7 @@ export function CadastrosPage() {
     setPeriodoSugerido(categoria.modelo?.periodo ?? "");
     setItensSugeridos(categoria.modelo?.itens?.join("\n") ?? "");
     limparAviso();
+    setEditorAberto(true);
   }
 
   function novoTipo() {
@@ -141,6 +216,7 @@ export function CadastrosPage() {
     setTipoCategoriaId(catalogo?.categorias.find((categoria) => categoria.ativa)?.id ?? "");
     setAreaId(catalogo?.areas.find((area) => area.ativa)?.id ?? "");
     limparAviso();
+    setEditorAberto(true);
   }
 
   function editarTipo(tipo: (typeof tipos)[number]) {
@@ -151,6 +227,7 @@ export function CadastrosPage() {
     setFluxo(tipo.fluxo);
     setTipoAtivo(tipo.ativa);
     limparAviso();
+    setEditorAberto(true);
   }
 
   function novaArea() {
@@ -158,6 +235,7 @@ export function CadastrosPage() {
     setAreaNome("");
     setAreaAtiva(true);
     limparAviso();
+    setEditorAberto(true);
   }
 
   function editarArea(area: NonNullable<Catalogo>["areas"][number]) {
@@ -165,6 +243,7 @@ export function CadastrosPage() {
     setAreaNome(area.nome);
     setAreaAtiva(area.ativa);
     limparAviso();
+    setEditorAberto(true);
   }
 
   function novoResponsavel() {
@@ -174,6 +253,7 @@ export function CadastrosPage() {
     setResponsavelAtivo(true);
     setResponsavelAreaId(catalogo?.areas.find((area) => area.ativa)?.id ?? "");
     limparAviso();
+    setEditorAberto(true);
   }
 
   function editarResponsavel(pessoa: NonNullable<Catalogo>["responsaveis"][number]) {
@@ -183,6 +263,7 @@ export function CadastrosPage() {
     setResponsavelAreaId(pessoa.areaId ?? "");
     setResponsavelAtivo(pessoa.ativo);
     limparAviso();
+    setEditorAberto(true);
   }
 
   async function enviarCategoria(event: FormEvent) {
@@ -235,6 +316,7 @@ export function CadastrosPage() {
       setPeriodoSugerido("");
       setItensSugeridos("");
       setMensagem("Categoria salva.");
+      setEditorAberto(false);
     } catch (error) {
       setErro(error instanceof ApiError ? error.message : "Não foi possível salvar a categoria.");
     } finally {
@@ -266,6 +348,7 @@ export function CadastrosPage() {
       setTipoNome("");
       setTipoAtivo(true);
       setMensagem("Tipo de atendimento salvo.");
+      setEditorAberto(false);
     } catch (error) {
       setErro(error instanceof ApiError ? error.message : "Não foi possível salvar o tipo de atendimento.");
     } finally {
@@ -290,6 +373,7 @@ export function CadastrosPage() {
       setAreaNome("");
       setAreaAtiva(true);
       setMensagem("Área salva.");
+      setEditorAberto(false);
     } catch (error) {
       setErro(error instanceof ApiError ? error.message : "Não foi possível salvar a área.");
     } finally {
@@ -322,6 +406,7 @@ export function CadastrosPage() {
       setResponsavelEmail("");
       setResponsavelAtivo(true);
       setMensagem("Responsável salvo.");
+      setEditorAberto(false);
     } catch (error) {
       setErro(error instanceof ApiError ? error.message : "Não foi possível salvar o responsável.");
     } finally {
@@ -332,9 +417,79 @@ export function CadastrosPage() {
   const areasDoTipo = catalogo?.areas.filter((area) => area.ativa || area.id === areaId) ?? [];
   const areasDoResponsavel = catalogo?.areas.filter((area) => area.ativa || area.id === responsavelAreaId) ?? [];
 
+  async function gravarCarga(linhas: { numero: number; valores: Record<string, string> }[]) {
+    if (!catalogo) return;
+    let atual = catalogo;
+    for (const linha of linhas) {
+      const valores = linha.valores;
+      try {
+        if (aba === "categorias") {
+          const itens = valores.itens.split("|").map((item) => item.trim()).filter(Boolean);
+          atual = await api.salvarCategoria({
+            id: null,
+            nome: valores.nome.trim(),
+            ativa: interpretarAtivo(valores.ativa) === true,
+            prazoHoras: valores.prazo.trim() === "" ? null : Number(valores.prazo),
+            modelo: {
+              assunto: valores.assunto.trim() || null,
+              ponto: valores.ponto.trim() || null,
+              periodo: periodoCanonico(valores.periodo),
+              itens,
+            },
+          });
+        } else if (aba === "areas") {
+          atual = await api.salvarArea({ id: null, nome: valores.nome.trim(), ativa: interpretarAtivo(valores.ativa) === true });
+        } else if (aba === "tipos") {
+          const categoria = acharPorNome(atual.categorias, valores.categoria);
+          const area = acharPorNome(atual.areas, valores.area);
+          const fluxo = fluxoCanonico(valores.fluxo);
+          if (!categoria || !area || !fluxo) throw new Error("Categoria, área ou fluxo não encontrado.");
+          atual = await api.salvarTipoAtendimento({
+            id: null,
+            categoriaId: categoria.id,
+            areaId: area.id,
+            nome: valores.nome.trim(),
+            fluxo,
+            ativo: interpretarAtivo(valores.ativo) === true,
+          });
+        } else {
+          const area = acharPorNome(atual.areas, valores.area);
+          if (!area) throw new Error("Área não encontrada.");
+          atual = await api.salvarResponsavel({
+            id: null,
+            nome: valores.nome.trim(),
+            email: valores.email.trim(),
+            areaId: area.id,
+            ativo: interpretarAtivo(valores.ativo) === true,
+          });
+        }
+      } catch (error) {
+        setCatalogo(atual);
+        const texto = error instanceof ApiError ? error.message : error instanceof Error ? error.message : "Não foi possível gravar.";
+        throw new Error(`Linha ${linha.numero}: ${texto}`);
+      }
+    }
+    setCatalogo(atual);
+    const rotulo = ABAS.find((item) => item.id === aba)?.rotulo.toLowerCase() ?? "cadastros";
+    setMensagem(linhas.length === 1 ? `1 cadastro importado em ${rotulo}.` : `${linhas.length} cadastros importados em ${rotulo}.`);
+    setCargaAberta(false);
+  }
+
   return (
     <>
       <PageHeader title="Cadastros de domínios" trail={["Início", "Cadastros"]} />
+      {cargaAberta && catalogo && (
+        <CargaPlanilha
+          tipo={aba}
+          definicao={DEFINICOES_CARGA[aba]}
+          nomes={nomesDaAba(aba, catalogo)}
+          categorias={catalogo.categorias.map((categoria) => categoria.nome)}
+          areas={catalogo.areas.map((area) => area.nome)}
+          tipos={tipos.map((tipo) => ({ categoria: tipo.categoriaNome, nome: tipo.nome }))}
+          onFechar={() => setCargaAberta(false)}
+          onGravar={gravarCarga}
+        />
+      )}
       <div className="visoes-centrais" role="tablist" aria-label="Domínios">
         {ABAS.map((item) => (
           <button
@@ -352,7 +507,7 @@ export function CadastrosPage() {
         ))}
       </div>
       <p className="muted" style={{ marginTop: -8, marginBottom: 16 }}>{INTRO[aba]}</p>
-      {erro && <p className="erro" role="alert">{erro}</p>}
+      {erro && !editorAberto && <p className="erro" role="alert">{erro}</p>}
       {mensagem && <p className="cadastro-ok" role="status">{mensagem}</p>}
       {carregando ? <p>Carregando cadastros...</p> : catalogo && (
         <div className="cadastro-layout" role="tabpanel" id={`painel-${aba}`} aria-labelledby={`aba-${aba}`}>
@@ -362,7 +517,6 @@ export function CadastrosPage() {
                 <Pesquisa valor={termo} onChange={(valor) => setBusca({ ...busca, categorias: valor })} />
                 <div className="cadastro-lista-cabecalho">
                   <span>{categoriasVisiveis.length} de {catalogo.categorias.length}</span>
-                  <button className="btn secondary" type="button" onClick={novaCategoria}>Nova categoria</button>
                 </div>
                 <Tabela
                   colunas={["Categoria", "Meta", "Modelo", "Tipos", "Situação", "Ação"]}
@@ -377,7 +531,9 @@ export function CadastrosPage() {
                   ])}
                 />
               </Panel>
-              <Panel title={categoriaId ? "Editar categoria" : "Nova categoria"}>
+              {editorAberto && (
+              <ModalCadastro titulo={categoriaId ? "Editar categoria" : "Nova categoria"} onFechar={fecharEditor}>
+                {erro && <p className="erro" role="alert">{erro}</p>}
                 <form id="cadastro-form" onSubmit={(event) => void enviarCategoria(event)}>
                   <label>Nome da categoria<input value={categoriaNome} onChange={(event) => setCategoriaNome(event.target.value)} maxLength={120} required /></label>
                   <label>Meta de prazo (horas)
@@ -408,9 +564,13 @@ export function CadastrosPage() {
                   </label>
                   <p className="campo-ajuda">O Cessionário vê esse modelo ao escolher a categoria e pode alterar antes de abrir. Sem esses campos, o formulário segue em branco.</p>
                   <label className="cadastro-check"><input type="checkbox" checked={categoriaAtiva} onChange={(event) => setCategoriaAtiva(event.target.checked)} /><span>Categoria ativa</span></label>
-                  <button className="btn" type="submit" disabled={salvando}>{salvando ? "Salvando..." : "Salvar categoria"}</button>
+                  <div className="row">
+                    <button className="btn" type="submit" disabled={salvando}>{salvando ? "Salvando..." : "Salvar categoria"}</button>
+                    <button className="btn secondary" type="button" disabled={salvando} onClick={fecharEditor}>Cancelar</button>
+                  </div>
                 </form>
-              </Panel>
+              </ModalCadastro>
+              )}
             </>
           )}
 
@@ -420,7 +580,6 @@ export function CadastrosPage() {
                 <Pesquisa valor={termo} onChange={(valor) => setBusca({ ...busca, tipos: valor })} />
                 <div className="cadastro-lista-cabecalho">
                   <span>{tiposVisiveis.length} de {tipos.length}</span>
-                  <button className="btn secondary" type="button" onClick={novoTipo}>Novo tipo</button>
                 </div>
                 <Tabela
                   colunas={["Tipo", "Categoria", "Área", "Fluxo", "Situação", "Ação"]}
@@ -435,7 +594,9 @@ export function CadastrosPage() {
                   ])}
                 />
               </Panel>
-              <Panel title={tipoId ? "Editar tipo de atendimento" : "Novo tipo de atendimento"}>
+              {editorAberto && (
+              <ModalCadastro titulo={tipoId ? "Editar tipo de atendimento" : "Novo tipo de atendimento"} onFechar={fecharEditor}>
+                {erro && <p className="erro" role="alert">{erro}</p>}
                 <form id="cadastro-form" onSubmit={(event) => void enviarTipo(event)}>
                   <label>Nome do tipo<input value={tipoNome} onChange={(event) => setTipoNome(event.target.value)} maxLength={120} required /></label>
                   <label>Categoria<select value={tipoCategoriaId} onChange={(event) => setTipoCategoriaId(event.target.value)} required>
@@ -450,9 +611,13 @@ export function CadastrosPage() {
                     {FLUXOS.map((opcao) => <option key={opcao} value={opcao}>{opcao}</option>)}
                   </select></label>
                   <label className="cadastro-check"><input type="checkbox" checked={tipoAtivo} onChange={(event) => setTipoAtivo(event.target.checked)} /><span>Tipo de atendimento ativo</span></label>
-                  <button className="btn" type="submit" disabled={salvando || !tipoCategoriaId || !areaId}>{salvando ? "Salvando..." : "Salvar tipo"}</button>
+                  <div className="row">
+                    <button className="btn" type="submit" disabled={salvando || !tipoCategoriaId || !areaId}>{salvando ? "Salvando..." : "Salvar tipo"}</button>
+                    <button className="btn secondary" type="button" disabled={salvando} onClick={fecharEditor}>Cancelar</button>
+                  </div>
                 </form>
-              </Panel>
+              </ModalCadastro>
+              )}
             </>
           )}
 
@@ -462,7 +627,6 @@ export function CadastrosPage() {
                 <Pesquisa valor={termo} onChange={(valor) => setBusca({ ...busca, areas: valor })} />
                 <div className="cadastro-lista-cabecalho">
                   <span>{areasVisiveis.length} de {catalogo.areas.length}</span>
-                  <button className="btn secondary" type="button" onClick={novaArea}>Nova área</button>
                 </div>
                 <Tabela
                   colunas={["Área", "Situação", "Ação"]}
@@ -474,13 +638,19 @@ export function CadastrosPage() {
                   ])}
                 />
               </Panel>
-              <Panel title={areaCadastroId ? "Editar área" : "Nova área"}>
+              {editorAberto && (
+              <ModalCadastro titulo={areaCadastroId ? "Editar área" : "Nova área"} onFechar={fecharEditor}>
+                {erro && <p className="erro" role="alert">{erro}</p>}
                 <form id="cadastro-form" onSubmit={(event) => void enviarArea(event)}>
                   <label>Nome da área<input value={areaNome} onChange={(event) => setAreaNome(event.target.value)} maxLength={120} required /></label>
                   <label className="cadastro-check"><input type="checkbox" checked={areaAtiva} onChange={(event) => setAreaAtiva(event.target.checked)} /><span>Área ativa</span></label>
-                  <button className="btn" type="submit" disabled={salvando}>{salvando ? "Salvando..." : "Salvar área"}</button>
+                  <div className="row">
+                    <button className="btn" type="submit" disabled={salvando}>{salvando ? "Salvando..." : "Salvar área"}</button>
+                    <button className="btn secondary" type="button" disabled={salvando} onClick={fecharEditor}>Cancelar</button>
+                  </div>
                 </form>
-              </Panel>
+              </ModalCadastro>
+              )}
             </>
           )}
 
@@ -490,21 +660,33 @@ export function CadastrosPage() {
                 <Pesquisa valor={termo} onChange={(valor) => setBusca({ ...busca, responsaveis: valor })} />
                 <div className="cadastro-lista-cabecalho">
                   <span>{responsaveisVisiveis.length} de {catalogo.responsaveis.length}</span>
-                  <button className="btn secondary" type="button" onClick={novoResponsavel}>Novo responsável</button>
                 </div>
                 <Tabela
                   colunas={["Nome", "E-mail", "Área", "Situação", "Ação"]}
                   vazio={catalogo.responsaveis.length === 0 ? "Nenhum responsável cadastrado." : "Nenhum responsável encontrado na pesquisa."}
-                  linhas={responsaveisVisiveis.map((pessoa) => [
-                    pessoa.nome,
+                  linhas={responsaveisVisiveis.map((pessoa) => {
+                    const foto = fotoPorPessoa(pessoa.nome, pessoa.email, pessoa.foto);
+                    const fotos = responsaveisVisiveis.flatMap((item) => {
+                      const url = fotoPorPessoa(item.nome, item.email, item.foto);
+                      return url ? [{ id: item.id, url, legenda: item.nome }] : [];
+                    });
+                    const indice = fotos.findIndex((item) => item.id === pessoa.id);
+                    return [
+                    <span key={pessoa.id} className="pessoa-celula">
+                      {foto && <button type="button" className="pessoa-foto" onClick={() => setFotoIndice(indice)}><img src={foto} alt="" /></button>}
+                      {pessoa.nome}
+                    </span>,
                     pessoa.email,
                     catalogo.areas.find((area) => area.id === pessoa.areaId)?.nome ?? "-",
                     <Situacao key={pessoa.id} ativo={pessoa.ativo} ativoTexto="Ativo" inativoTexto="Inativo" />,
                     <button key={`${pessoa.id}-editar`} className="cadastro-editar" type="button" onClick={() => editarResponsavel(pessoa)}>Editar</button>,
-                  ])}
+                  ];
+                  })}
                 />
               </Panel>
-              <Panel title={responsavelId ? "Editar responsável" : "Novo responsável"}>
+              {editorAberto && (
+              <ModalCadastro titulo={responsavelId ? "Editar responsável" : "Novo responsável"} onFechar={fecharEditor}>
+                {erro && <p className="erro" role="alert">{erro}</p>}
                 <form id="cadastro-form" onSubmit={(event) => void enviarResponsavel(event)}>
                   <label>Nome<input value={responsavelNome} onChange={(event) => setResponsavelNome(event.target.value)} maxLength={200} required /></label>
                   <label>E-mail<input type="email" inputMode="email" autoComplete="email" value={responsavelEmail} onChange={(event) => setResponsavelEmail(mascaraEmail(event.target.value))} maxLength={320} required /></label>
@@ -514,15 +696,35 @@ export function CadastrosPage() {
                   </select></label>
                   <label className="cadastro-check"><input type="checkbox" checked={responsavelAtivo} onChange={(event) => setResponsavelAtivo(event.target.checked)} /><span>Responsável ativo</span></label>
                   {!responsavelId && <p className="muted">Na demonstração, o acesso usa a senha já usada no portal.</p>}
-                  <button className="btn" type="submit" disabled={salvando || !responsavelAreaId}>{salvando ? "Salvando..." : "Salvar responsável"}</button>
+                  <div className="row">
+                    <button className="btn" type="submit" disabled={salvando || !responsavelAreaId}>{salvando ? "Salvando..." : "Salvar responsável"}</button>
+                    <button className="btn secondary" type="button" disabled={salvando} onClick={fecharEditor}>Cancelar</button>
+                  </div>
                 </form>
-              </Panel>
+              </ModalCadastro>
+              )}
             </>
           )}
         </div>
       )}
+      <GaleriaLightbox
+        fotos={responsaveisVisiveis.flatMap((pessoa) => {
+          const url = fotoPorPessoa(pessoa.nome, pessoa.email, pessoa.foto);
+          return url ? [{ id: pessoa.id, url, legenda: pessoa.nome }] : [];
+        })}
+        indice={fotoIndice}
+        onIndice={setFotoIndice}
+        onFechar={() => setFotoIndice(null)}
+      />
     </>
   );
+}
+
+function nomesDaAba(aba: Aba, catalogo: Catalogo) {
+  if (aba === "categorias") return catalogo.categorias.map((categoria) => categoria.nome);
+  if (aba === "areas") return catalogo.areas.map((area) => area.nome);
+  if (aba === "responsaveis") return catalogo.responsaveis.map((pessoa) => pessoa.email);
+  return [];
 }
 
 function Pesquisa({ valor, onChange }: { valor: string; onChange: (valor: string) => void }) {

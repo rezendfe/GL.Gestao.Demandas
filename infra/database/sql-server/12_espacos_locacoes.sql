@@ -208,12 +208,12 @@ GO
 INSERT INTO app.Espaco (CD_Espaco, CD_Identificacao, NM_Espaco, DS_Localizacao, DS_Descricao, SG_Status)
 SELECT origem.CD_Espaco, origem.CD_Identificacao, origem.NM_Espaco, origem.DS_Localizacao, origem.DS_Descricao, N'ATIVO'
 FROM (VALUES
-    ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa01', N'SALA-205', N'Sala 205', N'Riocentro, Pavilhão 2, 2º piso', N'Sala comercial de 86 m².'),
-    ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa02', N'SALA-118', N'Sala 118', N'Riocentro, Pavilhão 1, 1º piso', N'Sala comercial de 42 m².'),
-    ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa03', N'SALA-102', N'Sala 102', N'Riocentro, Pavilhão 1, térreo', N'Sala comercial de 54 m².'),
-    ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa04', N'SALA-014', N'Sala 014', N'Riocentro, acesso de serviço', N'Sala de apoio de 32 m².'),
-    ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa05', N'ACESSO-NORTE', N'Acesso norte', N'Riocentro, portaria norte', N'Ponto de credenciamento.'),
-    ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa06', N'SALA-310', N'Sala 310', N'Riocentro, Pavilhão 3, 3º piso', N'Sala de operação de rede de 70 m².')
+    ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa01', N'SALA-205', N'Loja 205', N'Shopping, 2º piso, loja 205', N'Loja de moda de 86 m² para locação, com vitrine para o corredor.'),
+    ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa02', N'SALA-118', N'Loja 118', N'Shopping, 1º piso, loja 118', N'Loja de vestuário de 42 m² para locação.'),
+    ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa03', N'SALA-102', N'Loja 102', N'Shopping, térreo, loja 102', N'Loja de café de 54 m² para locação, ao lado da praça de alimentação.'),
+    ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa04', N'SALA-014', N'Loja 014', N'Shopping, piso de serviço, loja 014', N'Loja de mercado de 32 m² para locação, com acesso de carga.'),
+    ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa05', N'ACESSO-NORTE', N'Loja Norte', N'Shopping, praça de alimentação, loja norte', N'Loja de restaurante para locação, com salão e cozinha.'),
+    ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa06', N'SALA-310', N'Loja 310', N'Shopping, 3º piso, loja 310', N'Loja de 70 m² para locação, com vitrine para o átrio.')
 ) origem(CD_Espaco, CD_Identificacao, NM_Espaco, DS_Localizacao, DS_Descricao)
 WHERE NOT EXISTS
 (

@@ -8,7 +8,7 @@ Fonte: [spec.md](spec.md).
 - [x] T111 Resposta da notificação entra no mesmo chamado (RF-11.2)
 - [x] T112 Complemento fica como pendência até a resposta (RF-11.3)
 - [x] T113 Resumo, sino e resposta em 360px (RF-11.4)
-- [x] T114 Sino com quantidade não lida; item abre o chamado (RF-11.5)
+- [x] T114 Sino com quantidade não lida; item abre a comunicação no evento (RF-11.5)
 - [x] T115 Inscrição de push do aparelho, cancelamento e recusa de endpoint que não é HTTPS (RF-11.6)
 
 ## Em aberto

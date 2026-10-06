@@ -33,8 +33,8 @@ Mensagem marcada como complemento aparece no resumo do Cessionário como pendên
 
 ### RF-11.5 Sino no topo
 **Estado:** Feito  
-O ícone à direita, ao lado do nome, mostra a quantidade não lida. Cada item abre o chamado.  
-**CA:** Dado duas notificações não lidas, quando o usuário autenticado olha o topo, então o ícone mostra 2. Dado um item, quando ele aciona, então o detalhe daquele chamado abre.  
+O ícone à direita, ao lado do nome, mostra a quantidade não lida. A lista segue o modelo das ações rápidas: dia, hora, faixa colorida, texto e protocolo. Cada item abre a aba Comunicação do chamado no evento correspondente. Áudio enviado mostra o áudio; imagem, arquivo ou texto mostram a mensagem da conversa.  
+**CA:** Dado duas notificações não lidas, quando o usuário autenticado olha o topo, então o ícone mostra 2. Dado o item «Áudio enviado», quando ele aciona, então a aba Comunicação abre na mensagem que contém esse áudio. Dado imagem, arquivo ou texto, quando ele aciona, então a mesma aba mostra essa mensagem.  
 **Trace:** PDR RF-11.5
 
 ### RF-11.6 Push com o portal fechado

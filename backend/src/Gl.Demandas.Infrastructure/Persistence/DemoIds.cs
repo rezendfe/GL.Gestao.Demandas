@@ -60,6 +60,10 @@ public static class DemoIds
     public static readonly Guid NotaComplemento = Guid.Parse("88888888-8888-4888-8888-888888888802");
     public static readonly Guid MsgComplemento = Guid.Parse("88888888-8888-4888-8888-888888888812");
     public static readonly Guid AnexoFibra = Guid.Parse("55555555-5555-4555-8555-555555555191");
+    public static readonly Guid AnexoVitrine = Guid.Parse("55555555-5555-4555-8555-555555555192");
+    public static readonly Guid AnexoWord = Guid.Parse("55555555-5555-4555-8555-555555555193");
+    public static readonly Guid AnexoExcel = Guid.Parse("55555555-5555-4555-8555-555555555194");
+    public static readonly Guid AnexoAudio = Guid.Parse("55555555-5555-4555-8555-555555555195");
 
     public static readonly Guid ObraFoyer = Guid.Parse("66666666-6666-4666-8666-666666666601");
     public static readonly Guid DocProjeto = Guid.Parse("66666666-6666-4666-8666-666666666611");

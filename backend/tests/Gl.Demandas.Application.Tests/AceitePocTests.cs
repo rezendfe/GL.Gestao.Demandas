@@ -156,7 +156,8 @@ public sealed class AceitePocTests : IDisposable
             h.Comentario.Contains("Vistoria realizada"));
 
         var notas = await _notificacoes.Listar(Cessionario(DemoIds.Joao), CancellationToken.None);
-        Assert.Contains(notas, n => n.DemandaId == detalhe.Id && !n.Lida && n.Texto.Contains("está em atendimento"));
+        var avisoAtendimento = Assert.Single(notas, n => n.DemandaId == detalhe.Id && !n.Lida && n.Texto.Contains("está em atendimento"));
+        Assert.Contains(atualizado.Mensagens, m => m.Id == avisoAtendimento.MensagemId);
 
         await Assert.ThrowsAsync<AcessoNegadoException>(() =>
             _atendimento.Obter(Cessionario(DemoIds.EmpresaB), detalhe.Id, CancellationToken.None));
@@ -302,6 +303,7 @@ public sealed class AceitePocTests : IDisposable
 
         var notas = await _notificacoes.Listar(joao, CancellationToken.None);
         var aviso = notas.Single(n => n.Texto == textoGestao && !n.Lida);
+        Assert.Equal(aposGestao.Mensagens.Single(m => m.Texto == textoGestao).Id, aviso.MensagemId);
 
         var aposResposta = await _atendimento.ResponderNotificacao(
             joao,
@@ -327,6 +329,42 @@ public sealed class AceitePocTests : IDisposable
             _atendimento.Mensagem(joao, DemoIds.Demanda123, new MensagemComando("eu mesmo peço complemento", true), CancellationToken.None));
         await Assert.ThrowsAsync<AcessoNegadoException>(() =>
             _atendimento.DefinirPrevisao(joao, DemoIds.Demanda123, new PrevisaoComando(new DateTime(2026, 9, 30, 9, 0, 0, DateTimeKind.Utc)), CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Conversa_aceita_imagem_com_ou_sem_texto()
+    {
+        var joao = Cessionario(DemoIds.Joao);
+        var gl = new Ator(DemoIds.Gl, Perfil.GlAdministrador, null);
+        await using var png = new MemoryStream([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
+        var somenteImagem = await _atendimento.MensagemComAnexo(gl, DemoIds.Demanda120, "", "ponto.png", "image/png", png, png.Length, CancellationToken.None);
+        var mensagem = Assert.Single(somenteImagem.Mensagens, m => m.AnexoId is not null);
+        Assert.Equal("", mensagem.Texto);
+        Assert.Contains(somenteImagem.Anexos, a => a.Id == mensagem.AnexoId && a.Nome == "ponto.png");
+
+        var notas = await _notificacoes.Listar(joao, CancellationToken.None);
+        var avisoImagem = Assert.Single(notas, n => n.Texto == "Imagem enviada." && !n.Lida);
+        Assert.Equal(mensagem.Id, avisoImagem.MensagemId);
+
+        await using var jpg = new MemoryStream([0xFF, 0xD8, 0xFF, 0xD9]);
+        var comTexto = await _atendimento.MensagemComAnexo(gl, DemoIds.Demanda120, "Foto do ponto.", "ponto.jpg", "image/jpeg", jpg, jpg.Length, CancellationToken.None);
+        Assert.Contains(comTexto.Mensagens, m => m.Texto == "Foto do ponto." && m.AnexoId is not null);
+
+        await using var pdf = new MemoryStream([0x25, 0x50, 0x44, 0x46]);
+        var documento = await _atendimento.MensagemComAnexo(gl, DemoIds.Demanda120, "documento", "doc.pdf", "application/pdf", pdf, pdf.Length, CancellationToken.None);
+        Assert.Contains(documento.Mensagens, m => m.Texto == "documento" && m.AnexoId is not null);
+
+        await using var webm = new MemoryStream([0x1A, 0x45, 0xDF, 0xA3]);
+        var audio = await _atendimento.MensagemComAnexo(gl, DemoIds.Demanda120, "", "recado.webm", "audio/webm", webm, webm.Length, CancellationToken.None);
+        var anexoAudio = Assert.Single(audio.Anexos, a => a.Nome == "recado.webm");
+        var mensagemAudio = Assert.Single(audio.Mensagens, m => m.AnexoId == anexoAudio.Id);
+        var notasAudio = await _notificacoes.Listar(joao, CancellationToken.None);
+        var avisoAudio = Assert.Single(notasAudio, n => n.Texto == "Áudio enviado." && !n.Lida);
+        Assert.Equal(mensagemAudio.Id, avisoAudio.MensagemId);
+
+        await using var exe = new MemoryStream([0x4D, 0x5A]);
+        await Assert.ThrowsAsync<RegraNegocioException>(() =>
+            _atendimento.MensagemComAnexo(gl, DemoIds.Demanda120, "arquivo", "virus.exe", "application/octet-stream", exe, exe.Length, CancellationToken.None));
     }
 
     [Fact]
@@ -371,8 +409,26 @@ public sealed class AceitePocTests : IDisposable
             CancellationToken.None);
         Assert.Equal("Liberado para execução", aprovada.Situacao);
 
+        await Assert.ThrowsAsync<AcessoNegadoException>(() =>
+            _atendimento.Avancar(Cessionario(DemoIds.Marina), DemoIds.Demanda131, new AvancarComando("Fibra instalada e testada.", null, null), CancellationToken.None));
+        await Assert.ThrowsAsync<AcessoNegadoException>(() =>
+            _atendimento.Avancar(responsavel, DemoIds.Demanda131, new AvancarComando("Fibra instalada e testada.", null, null), CancellationToken.None));
+
+        var semFoto = await Assert.ThrowsAsync<RegraNegocioException>(() =>
+            _atendimento.Avancar(gl, DemoIds.Demanda131, new AvancarComando("Fibra instalada e testada.", null, null), CancellationToken.None));
+        Assert.Contains("foto", semFoto.Message, StringComparison.OrdinalIgnoreCase);
+
+        await using var pdfObra = new MemoryStream([0x25, 0x50, 0x44, 0x46]);
+        await Assert.ThrowsAsync<RegraNegocioException>(() =>
+            _atendimento.Anexar(gl, DemoIds.Demanda131, "obra.pdf", "application/pdf", pdfObra, pdfObra.Length, CancellationToken.None, "obra"));
+
+        await using var pngObra = new MemoryStream([0x89, 0x50, 0x4E, 0x47]);
+        var comFoto = await _atendimento.Anexar(gl, DemoIds.Demanda131, "obra-executada.png", "image/png", pngObra, pngObra.Length, CancellationToken.None, "obra");
+        Assert.Contains(comFoto.Anexos, a => a.Finalidade == "obra" && a.Nome == "obra-executada.png");
+        Assert.Contains(comFoto.Historico, h => h.Comentario.Contains("Foto da obra executada"));
+
         var emValidacao = await _atendimento.Avancar(
-            gl,
+            new Ator(Guid.NewGuid(), Perfil.ResponsavelArea, DemoIds.AreaInfra),
             DemoIds.Demanda131,
             new AvancarComando("Fibra instalada e testada.", null, null),
             CancellationToken.None);
@@ -471,6 +527,10 @@ public sealed class AceitePocTests : IDisposable
         var responsavel = new Ator(DemoIds.Resp02, Perfil.ResponsavelArea, DemoIds.AreaRecepcao);
         var joao = Cessionario(DemoIds.Joao);
 
+        var concluidaRecusada = await Assert.ThrowsAsync<RegraNegocioException>(() =>
+            _atendimento.Mensagem(gl, DemoIds.Demanda118, new MensagemComando("Ainda concluído."), CancellationToken.None));
+        Assert.Contains("não aceita alterações", concluidaRecusada.Message);
+
         var encerrada = await _atendimento.Encerrar(gl, DemoIds.Demanda118, CancellationToken.None);
         Assert.Equal("Encerrada", encerrada.Situacao);
         Assert.Contains(encerrada.Historico, item => item.StatusAnterior == "Concluído" && item.StatusNovo == "Encerrada" && item.Tipo == "ENCERRAMENTO");
@@ -483,6 +543,15 @@ public sealed class AceitePocTests : IDisposable
         var avaliada = await _atendimento.Avaliar(joao, DemoIds.Demanda118, new AvaliacaoComando(9, "Depois do encerramento."), CancellationToken.None);
         Assert.Equal(9, avaliada.NotaAvaliacao);
 
+        var mensagemRecusada = await Assert.ThrowsAsync<RegraNegocioException>(() =>
+            _atendimento.Mensagem(gl, DemoIds.Demanda118, new MensagemComando("Depois do encerramento."), CancellationToken.None));
+        Assert.Contains("não aceita alterações", mensagemRecusada.Message);
+        await using var pngEncerrado = new MemoryStream([0x89, 0x50, 0x4E, 0x47]);
+        await Assert.ThrowsAsync<RegraNegocioException>(() =>
+            _atendimento.Anexar(gl, DemoIds.Demanda118, "depois.png", "image/png", pngEncerrado, pngEncerrado.Length, CancellationToken.None));
+        await Assert.ThrowsAsync<RegraNegocioException>(() =>
+            _atendimento.DefinirPrevisao(gl, DemoIds.Demanda118, new PrevisaoComando(DateTime.UtcNow.AddDays(1)), CancellationToken.None));
+
         await Assert.ThrowsAsync<RegraNegocioException>(() =>
             _atendimento.Cancelar(gl, DemoIds.Demanda119, new CancelamentoComando("  "), CancellationToken.None));
         await Assert.ThrowsAsync<AcessoNegadoException>(() =>
@@ -492,6 +561,8 @@ public sealed class AceitePocTests : IDisposable
         Assert.Contains(cancelada.Historico, item => item.Tipo == "CANCELAMENTO" && item.Comentario == "O cessionário desistiu do pedido.");
         await Assert.ThrowsAsync<TransicaoInvalidaException>(() =>
             _atendimento.Cancelar(gl, DemoIds.Demanda118, new CancelamentoComando("Tarde demais."), CancellationToken.None));
+        await Assert.ThrowsAsync<RegraNegocioException>(() =>
+            _atendimento.Mensagem(gl, DemoIds.Demanda119, new MensagemComando("Depois do cancelamento."), CancellationToken.None));
     }
 
     [Fact]

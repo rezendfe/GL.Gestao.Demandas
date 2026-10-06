@@ -17,10 +17,9 @@ Fundo claro, barra lateral clara, barra superior e cartões. A navegação conti
 **Trace:** PDR RF-09.1
 
 ### RF-09.2 Mensageria
-**Estado:** Parcial  
-A tela tem lista, thread e ficha lateral. Conversa que já tem protocolo abre o detalhe da demanda.  
-**CA (já vale):** Dado uma conversa associada a um protocolo que o Cessionário pode ver, quando ele abre a conversa, então o detalhe da demanda correspondente abre.  
-**CA (ainda não):** Dado a thread, quando o Cessionário envia uma mensagem nova por esse canal, então ela entra no chamado. Hoje a thread é simulada para a demonstração; a mensagem real do chamado é a do detalhe e a da notificação.  
+**Estado:** Feito  
+O menu não tem Mensageria. O ícone ao lado das notificações abre um painel no padrão das ações rápidas: temas à esquerda, do mais recente ao mais antigo, cada um com dia, hora, faixa colorida, protocolo e por quem é o chamado. Ao escolher, a conversa do chamado aparece no padrão da comunicação do detalhe. O envio entra no chamado.  
+**CA:** Dado usuário autenticado, quando o portal abre, então o menu não oferece Mensageria e o topo mostra o ícone de mensagens ao lado das notificações. Dado um tema da fila visível, quando o usuário o escolhe, então a conversa daquele chamado aparece no painel e o envio entra no chamado.  
 **Trace:** PDR RF-09.2
 
 ### RF-09.3 Meu espaço

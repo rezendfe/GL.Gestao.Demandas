@@ -2,7 +2,7 @@ import { useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { sugerir, useCatalogo } from "../../application/hooks";
 import { useSessao } from "../../application/session";
-import { validarArquivo, validarDataOpcional, validarOpcional, validarTexto } from "../../domain/entrada";
+import { ACEITA_ARQUIVO, validarArquivo, validarDataOpcional, validarOpcional, validarTexto } from "../../domain/entrada";
 import { modeloPreenchido, PERIODOS_ABERTURA } from "../../domain/modeloAbertura";
 import { espacosPorEmail } from "../../domain/espacos";
 import type { Sugestao } from "../../domain/types";
@@ -417,14 +417,13 @@ export function AbrirPage() {
                 </div>
               </CampoLinha>
 
-              <CampoLinha id="arquivo" rotulo="Arquivo" ajuda="Foto do local ou PDF, até 5 MB." extra={arquivo ? <p className="campo-ajuda">{arquivo.name}</p> : null}>
+              <CampoLinha id="arquivo" rotulo="Arquivo" ajuda="Imagem, PDF, Word, Excel ou áudio, até 5 MB." extra={arquivo ? <p className="campo-ajuda">{arquivo.name}</p> : null}>
                 <label className="arquivo-botao" htmlFor="arquivo">Escolher arquivo</label>
                 <input
                   id="arquivo"
                   className="sr-only"
                   type="file"
-                  accept="image/*,.pdf"
-                  capture="environment"
+                  accept={ACEITA_ARQUIVO}
                   onChange={(event) => setArquivo(event.target.files?.[0] ?? null)}
                 />
               </CampoLinha>

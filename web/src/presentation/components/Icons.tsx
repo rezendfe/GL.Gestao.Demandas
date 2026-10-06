@@ -1,4 +1,4 @@
-export type NomeIcone = "menu" | "lista" | "mais" | "mensagem" | "grade" | "obra" | "caixa" | "casa" | "quadro" | "alerta" | "configuracao" | "sino" | "agenda";
+export type NomeIcone = "menu" | "lista" | "mais" | "mensagem" | "grade" | "obra" | "caixa" | "casa" | "quadro" | "alerta" | "configuracao" | "sino" | "agenda" | "planilha" | "documento" | "importar" | "limpar" | "auditoria";
 
 type IconeProps = { name: NomeIcone };
 
@@ -87,6 +87,46 @@ export function Icone({ name }: IconeProps) {
     return (
       <svg {...comum}>
         <path d="M7 3v3M17 3v3M4 8h16M5 5h14v15H5z" />
+      </svg>
+    );
+  }
+  if (name === "planilha") {
+    return (
+      <svg {...comum}>
+        <path d="M4 5h16v14H4z" />
+        <path d="M4 9h16M4 13h16M9 5v14M15 5v14" />
+      </svg>
+    );
+  }
+  if (name === "documento") {
+    return (
+      <svg {...comum}>
+        <path d="M7 3h7l4 4v14H7z" />
+        <path d="M14 3v4h4M9 13h6M9 17h4" />
+      </svg>
+    );
+  }
+  if (name === "importar") {
+    return (
+      <svg {...comum}>
+        <path d="M12 4v9M8 9l4 4 4-4" />
+        <path d="M5 18h14" />
+      </svg>
+    );
+  }
+  if (name === "limpar") {
+    return (
+      <svg {...comum}>
+        <path d="M4 7h16M9 7V5h6v2M8 7l1 13h6l1-13" />
+      </svg>
+    );
+  }
+  if (name === "auditoria") {
+    return (
+      <svg {...comum}>
+        <path d="M8 3h8v3H8z" />
+        <path d="M7 4H6a1 1 0 0 0-1 1v15h14V5a1 1 0 0 0-1-1h-1" />
+        <path d="M9 11h6M9 15h4" />
       </svg>
     );
   }

@@ -23,7 +23,7 @@ Pesquisa, filtro e seleção de opção não recebem máscara. O portal bloqueia
 | Datas | Data | Data desejada não no passado. Término de locação não antes do início |
 | Comentário da avaliação | Texto | Opcional, até 500. Nota 0 a 10 |
 | Motivo e comentário de avanço | Texto | Até 2000. Motivo obrigatório em ajuste e reprovação |
-| Anexo | Arquivo | JPG, JPEG, PNG, WEBP ou PDF, até 5 MB |
+| Anexo | Arquivo | JPG, JPEG, PNG, WEBP, GIF, PDF, DOC, DOCX, XLS, XLSX, MP3, WAV, M4A ou OGG, até 5 MB |
 
 ### RF-15.1 Máscara no portal
 **Estado:** Feito  
@@ -32,5 +32,5 @@ Pesquisa, filtro e seleção de opção não recebem máscara. O portal bloqueia
 
 ### RF-15.2 A API repete a regra
 **Estado:** Feito  
-**CA:** Dado anexo que não é JPG, PNG, WEBP ou PDF, ou que passa de 5 MB, quando a API recebe o arquivo, então recusa e não grava. Dado descrição acima de 2000 caracteres, quando a abertura é enviada direto à API, então recusa sem gravar o excedente.  
+**CA:** Dado anexo que não é imagem, PDF, Word, Excel ou áudio, ou que passa de 5 MB, quando a API recebe o arquivo, então recusa e não grava. Dado descrição acima de 2000 caracteres, quando a abertura é enviada direto à API, então recusa sem gravar o excedente. Dado um anexo aceito, quando o usuário abre o arquivo no chamado, então imagem, PDF, Word, Excel e áudio são exibidos ou reproduzidos no portal.  
 **Trace:** RN-18 / RN-38

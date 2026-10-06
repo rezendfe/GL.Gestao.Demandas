@@ -4,7 +4,7 @@ import { useCadeia, useFila } from "../../application/hooks";
 import { useSessao } from "../../application/session";
 import { COLUNAS_CADEIA, cadeiaDoTipo, podeAvancar, proximaEtapa } from "../../domain/cadeia";
 import { emAtraso, marcoAtraso } from "../../domain/operacao";
-import { tempoRelativo, type EtapaCadeia, type FilaItem } from "../../domain/types";
+import { relogioInformado, tempoRelativo, type EtapaCadeia, type FilaItem } from "../../domain/types";
 import { ApiError, api } from "../../infrastructure/api/client";
 import { Badge } from "../components/Badge";
 import { ModalAvanco } from "../components/ModalAvanco";
@@ -33,14 +33,15 @@ export function QuadroPage() {
     setAlvo({ item, destino });
   }
 
-  async function confirmar(valor: { comentario: string; previsao: string; confirmacao: boolean | null }) {
+  async function confirmar(valor: { comentario: string; previsao: string; confirmacao: boolean | null; fotos: File[] }) {
     if (!alvo) return;
     setEnviando(true);
     setFalha(null);
     try {
+      await api.anexarFotosDaObra(alvo.item.id, valor.fotos);
       await api.avancar(alvo.item.id, {
         comentario: valor.comentario || null,
-        previsao: valor.previsao ? new Date(valor.previsao).toISOString() : null,
+        previsao: valor.previsao ? relogioInformado(valor.previsao) : null,
         confirmacao: valor.confirmacao,
       });
       setAlvo(null);
@@ -69,12 +70,12 @@ export function QuadroPage() {
 
   return (
     <>
-      <p className="muted" style={{ marginTop: -8, marginBottom: 16 }}>{frase}</p>
       {erro && <p className="erro">{erro}</p>}
       {falha && !alvo && <p className="erro">{falha}</p>}
       {carregando && <p>Carregando o quadro...</p>}
       {!carregando && (
         <Panel title="Etapas do atendimento" className="livre">
+          <p className="note">{frase}</p>
           <div className="kanban">
             {COLUNAS_CADEIA.map((coluna) => {
               const itens = fila.filter((item) => coluna.situacoes.includes(item.situacao));
@@ -131,6 +132,7 @@ export function QuadroPage() {
                           {item.natureza === "Reclamação" && <Badge valor="Reclamação" />}
                         </span>
                         <em>{emAtraso(item) ? `atrasado ${tempoRelativo(marcoAtraso(item))}` : tempoRelativo(item.abertoEm)}</em>
+                        {!libera && destino?.codigo === "validacao" && <span className="note">Aguarda o atendimento da área</span>}
                         {!libera && item.situacao === "Aguardando validação" && <span className="note">Aguarda o Cessionário</span>}
                         {!libera && item.situacao === "Aguardando ajuste" && <span className="note">Aguarda o ajuste do Cessionário</span>}
                         {!libera && destino?.codigo === "aprovacao" && <span className="note">Aguarda o GL / Administrador</span>}
@@ -146,6 +148,7 @@ export function QuadroPage() {
       {alvo && (
         <ModalAvanco
           protocolo={alvo.item.protocolo}
+          demandaId={alvo.item.id}
           situacao={alvo.item.situacao}
           destino={alvo.destino}
           jaTemPrevisao={Boolean(alvo.item.previsaoAtendimento)}

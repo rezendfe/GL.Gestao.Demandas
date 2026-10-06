@@ -1,16 +1,19 @@
-import { Link, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { useFila, useNotificacoes } from "../../application/hooks";
 import { useSessao } from "../../application/session";
+import { destinoDaNotificacao } from "../../domain/types";
 import { itensDoRecorte, rotuloRecorte } from "../../domain/recorte";
+import { api } from "../../infrastructure/api/client";
+import { useAcoesDaPagina } from "../components/AcoesRapidas";
 import { FilaExploravel } from "../components/FilaExploravel";
 import { RecorteAtivo } from "../components/PainelInterativo";
+import { faixaAviso, LinhaAviso } from "../components/LinhaAviso";
 import { PageHeader } from "../components/PageHeader";
 import { Panel } from "../components/Panel";
-import { BotaoExportarFila } from "../components/ExportarArquivo";
 
 export function MinhasPage() {
   const { sessao } = useSessao();
-  const { dados, erro, carregando, recarregar } = useFila();
+  const { dados, erro, carregando } = useFila();
   const { dados: notas } = useNotificacoes();
   const [params] = useSearchParams();
   const naoLidas = new Set((notas ?? []).filter((nota) => !nota.lida).map((nota) => nota.demandaId));
@@ -19,34 +22,47 @@ export function MinhasPage() {
   const atuacao = params.get("atuacao");
   const cessionario = params.get("cessionario");
   const visiveis = itensDoRecorte(dados ?? [], recorte, servico, naoLidas, atuacao, cessionario);
+  useAcoesDaPagina([
+    {
+      id: "exportar-planilha",
+      rotulo: "Exportar planilha",
+      rotuloOcupado: "Gerando planilha...",
+      icone: "planilha",
+      executar: () => api.exportarFila(),
+    },
+  ]);
 
   return (
     <>
-      <PageHeader
-        title="Minhas solicitações"
-        trail={["Início", "Minhas solicitações"]}
-        extra={<span className="acoes-topo"><BotaoExportarFila /><Link className="btn" to="/abrir">Abrir chamado</Link></span>}
-      />
-      <p className="muted" style={{ marginTop: -8, marginBottom: 16 }}>Aqui ficam somente os chamados abertos por você.</p>
-      {erro && <p className="erro">{erro} <button className="btn secondary" type="button" onClick={() => void recarregar()}>Tentar de novo</button></p>}
-      {carregando && <p>Carregando... <Link className="btn secondary" to="/inicio">Voltar ao início</Link></p>}
+      <PageHeader title="Minhas solicitações" trail={["Início", "Minhas solicitações"]} />
+      {erro && <p className="erro">{erro}</p>}
+      {carregando && <p>Carregando...</p>}
       <RecorteAtivo rotulo={rotuloRecorte(recorte, servico, atuacao, cessionario)} limpar="/minhas" />
       {!carregando && !erro && visiveis.length === 0 && (
-        <p className="fila-vazio">
-          {recorte || servico || atuacao || cessionario ? "Nenhum chamado neste recorte." : "Você ainda não abriu solicitações."}
-          {recorte || servico || atuacao || cessionario
-            ? <Link className="btn secondary" to="/minhas">Limpar filtro</Link>
-            : <Link className="btn" to="/abrir">Abrir chamado</Link>}
-        </p>
+        <Panel title="Solicitações">
+          <p className="note">Aqui ficam somente os chamados abertos por você.</p>
+          <p>{recorte || servico || atuacao || cessionario ? "Nenhum chamado neste recorte." : "Você ainda não abriu solicitações."}</p>
+        </Panel>
       )}
       {!carregando && visiveis.length > 0 && (
-        <FilaExploravel titulo="Solicitações" itens={visiveis} usuarioId={sessao?.usuario.id} destacar={naoLidas} />
+        <FilaExploravel titulo="Solicitações" itens={visiveis} usuarioId={sessao?.usuario.id} destacar={naoLidas} nota="Aqui ficam somente os chamados abertos por você." />
       )}
       {(notas ?? []).some((nota) => !nota.lida) && (
         <Panel title="Notificações">
-          {notas?.filter((nota) => !nota.lida).map((nota) => (
-            <p key={nota.id}><Link to={`/demandas/${nota.demandaId}`}><span className="dot" /> {nota.texto}</Link></p>
-          ))}
+          <ul className="aviso-lista">
+            {notas?.filter((nota) => !nota.lida).map((nota, indice) => (
+              <li key={nota.id}>
+                <LinhaAviso
+                  iso={nota.criadaEm}
+                  texto={nota.texto}
+                  complemento={nota.protocolo || "Chamado"}
+                  cor={faixaAviso(indice)}
+                  destaque
+                  para={destinoDaNotificacao(nota)}
+                />
+              </li>
+            ))}
+          </ul>
         </Panel>
       )}
     </>

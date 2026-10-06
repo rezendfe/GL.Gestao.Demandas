@@ -1,20 +1,22 @@
-import { useEffect, useState } from "react";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import { useState, type ReactNode } from "react";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useCatalogo, useCadeia, useDetalhe } from "../../application/hooks";
-import { useLinhaDoTempo } from "../../application/preferenciaVisual";
 import { useSessao } from "../../application/session";
-import { cadeiaDoTipo, proximaEtapa, proximoPassoDemanda } from "../../domain/cadeia";
-import { validarArquivo, validarTexto } from "../../domain/entrada";
+import { cadeiaDoTipo, proximaEtapa, proximoPassoDemanda, rotuloDoAvanco } from "../../domain/cadeia";
+import { avisoSemAlteracao, encerrada } from "../../domain/recorte";
+import { ACEITA_ARQUIVO, validarArquivo, validarTexto } from "../../domain/entrada";
 import { espacoPorSala } from "../../domain/espacos";
-import { hora, quandoAtende } from "../../domain/types";
+import { hora, quandoAtende, relogioInformado, type Anexo } from "../../domain/types";
 import { ApiError, api } from "../../infrastructure/api/client";
+import { AcoesDoChamado } from "../components/AcoesDoChamado";
 import { Badge } from "../components/Badge";
-import { EstadoAcao } from "../components/EstadoAcao";
-import { BotaoPdfProtocolo } from "../components/ExportarArquivo";
+import { useAcoesDaPagina, type AcaoPagina } from "../components/AcoesRapidas";
+import { ConversaChat } from "../components/ConversaChat";
 import { LinhaDoTempoAtendimento } from "../components/LinhaDoTempoAtendimento";
 import { ModalAvanco } from "../components/ModalAvanco";
 import { Panel } from "../components/Panel";
 import { PerguntaAtendimento } from "../components/PerguntaAtendimento";
+import { VisualizadorArquivo } from "../components/VisualizadorArquivo";
 
 export function DetalhePage() {
   const { id = "" } = useParams();
@@ -22,24 +24,53 @@ export function DetalhePage() {
   const { dados: catalogo } = useCatalogo();
   const { dados: cadeia } = useCadeia();
   const { sessao } = useSessao();
+  const navigate = useNavigate();
   const perfil = sessao?.usuario.perfil;
-  const [linhaDoTempo, definirLinhaDoTempo] = useLinhaDoTempo(sessao?.usuario.id);
   const [mensagem, setMensagem] = useState("");
-  const [complemento, setComplemento] = useState(false);
-  const [quando, setQuando] = useState("");
-  const [parametros] = useSearchParams();
+  const [arquivo, setArquivo] = useState<File | null>(null);
+  const [parametros, setParametros] = useSearchParams();
   const responderId = parametros.get("responder");
-  const [motivo, setMotivo] = useState("");
-  const [subcategoriaId, setSubcategoriaId] = useState("");
-  const [areaId, setAreaId] = useState("");
-  const [responsavelId, setResponsavelId] = useState("");
+  const mensagemId = parametros.get("mensagem");
+  const aba = resolverAba(parametros.get("aba"), Boolean(responderId) || Boolean(mensagemId));
+  const abas = abasDoChamado();
   const [falha, setFalha] = useState<string | null>(null);
   const [avancando, setAvancando] = useState(false);
   const [enviando, setEnviando] = useState(false);
+  const [anexoAberto, setAnexoAberto] = useState<Anexo | null>(null);
 
-  useEffect(() => {
-    if (dados?.previsaoAtendimento) setQuando(paraLocal(dados.previsaoAtendimento));
-  }, [dados?.previsaoAtendimento]);
+  const espaco = dados ? espacoPorSala(dados.cessionario.sala) : undefined;
+  const destino = dados ? proximaEtapa(dados.situacao, cadeiaDoTipo(cadeia, dados.subcategoriaId)) : null;
+  const fechado = dados ? encerrada(dados.situacao) : false;
+  const passo = dados && perfil ? proximoPassoDemanda(perfil, dados.situacao, destino, dados.notaAvaliacao === null) : null;
+  const acoes: AcaoPagina[] = [];
+  if (dados && passo) {
+    if (passo.acao === "avancar" && destino) {
+      const rotulo = rotuloDoAvanco(dados.situacao, destino);
+      acoes.push({ id: "avancar", rotulo, icone: "lista", executar: () => setAvancando(true) });
+    } else if (passo.acao === "aprovar") {
+      acoes.push({ id: "aprovar", rotulo: "Aprovar", icone: "documento", executar: () => executar(() => api.aprovar(dados.id, "Aprovar")) });
+    } else if (passo.acao === "encerrar") {
+      acoes.push({ id: "encerrar", rotulo: "Encerrar chamado", icone: "alerta", executar: () => executar(() => api.encerrar(dados.id)) });
+    } else if (passo.acao === "avaliar") {
+      acoes.push({ id: "avaliar", rotulo: "Avaliar o atendimento", icone: "sino", executar: irParaAvaliacao });
+    }
+    if (espaco) {
+      acoes.push({
+        id: "ver-espaco",
+        rotulo: "Ver espaço do Cessionário",
+        icone: "casa",
+        executar: () => navigate(`/espacos/${espaco.chave}`),
+      });
+    }
+    acoes.push({
+      id: "pdf-protocolo",
+      rotulo: "PDF do protocolo",
+      rotuloOcupado: "Gerando PDF...",
+      icone: "documento",
+      executar: () => api.exportarProtocolo(dados.id, dados.protocolo),
+    });
+  }
+  useAcoesDaPagina(acoes);
 
   async function executar(acao: () => Promise<unknown>) {
     setFalha(null);
@@ -51,78 +82,97 @@ export function DetalhePage() {
     }
   }
 
-  if (carregando) return <p>Carregando chamado... <Link className="btn secondary" to="/inicio">Voltar ao início</Link></p>;
-  if (erro || !dados) return <p className="erro">{erro ?? "Chamado não encontrado."} <Link className="btn secondary" to="/inicio">Voltar ao início</Link></p>;
+  if (carregando) return <p>Carregando chamado...</p>;
+  if (erro || !dados) return <p className="erro">{erro ?? "Chamado não encontrado."}</p>;
 
-  const espaco = espacoPorSala(dados.cessionario.sala);
-  const destino = proximaEtapa(dados.situacao, cadeiaDoTipo(cadeia, dados.subcategoriaId));
-  const passo = proximoPassoDemanda(perfil ?? "Cessionário", dados.situacao, destino, dados.notaAvaliacao === null);
-  const subAtual = subcategoriaId || dados.subcategoriaId;
-  const areaAtual = areaId || dados.areaId;
+  function selecionarAba(proxima: AbaDetalhe) {
+    setParametros((atuais) => {
+      const proximos = new URLSearchParams(atuais);
+      const padrao: AbaDetalhe = responderId || mensagemId ? "comunicacao" : "dados";
+      if (proxima === padrao) proximos.delete("aba");
+      else proximos.set("aba", proxima);
+      return proximos;
+    }, { replace: true });
+  }
+
+  function irParaAvaliacao() {
+    selecionarAba("dados");
+    window.setTimeout(() => document.getElementById("avaliacao")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
+  }
 
   return (
     <>
       <header className="detail-head">
-        <div>
-          <div className="protocol">{dados.protocolo}</div>
-          <h1>{dados.servico}</h1>
-          <p className="muted">{dados.cessionario.empresa} · {dados.cessionario.sala ?? "Sala não informada"} · {dados.cessionario.nome}</p>
-          {espaco?.telefone && <p className="note">Telefone da empresa: {espaco.telefone}</p>}
-          {espaco && (
-            <Link className="btn secondary" to={`/espacos/${espaco.chave}`}>Ver espaço do Cessionário</Link>
-          )}
-        </div>
-        <div className="detail-tools">
-          <BotaoPdfProtocolo id={dados.id} protocolo={dados.protocolo} />
-          <label className="preferencia-vista">
-            <input
-              type="checkbox"
-              checked={linhaDoTempo}
-              onChange={(event) => definirLinhaDoTempo(event.target.checked)}
-            />
-            <span>
-              Linha do tempo
-              <span className="preferencia-nota">Salva para o seu usuário</span>
-            </span>
-          </label>
-          <Badge valor={dados.situacao} />
-          {dados.natureza === "Reclamação" && <Badge valor="Reclamação" />}
-        </div>
+        <h1>{dados.servico}</h1>
       </header>
-      <EstadoAcao
-        situacao={dados.situacao}
-        proximo={passo.texto}
-        acao={passo.acao === "avancar" && destino ? (
-          <button className="btn" type="button" onClick={() => setAvancando(true)}>Avançar para {destino.nome}</button>
-        ) : passo.acao === "aprovar" ? (
-          <button className="btn" type="button" onClick={() => void executar(() => api.aprovar(dados.id, "Aprovar"))}>Aprovar</button>
-        ) : passo.acao === "encerrar" ? (
-          <button className="btn" type="button" onClick={() => void executar(() => api.encerrar(dados.id))}>Encerrar chamado</button>
-        ) : passo.acao === "avaliar" ? (
-          <a className="btn" href="#avaliacao">Avaliar o atendimento</a>
-        ) : undefined}
-      />
-      {falha && <p className="erro">{falha}</p>}
-      {linhaDoTempo && (
-        <LinhaDoTempoAtendimento
-          dados={dados}
-          mensagem={mensagem}
-          onMensagem={setMensagem}
-          onEnviar={() => void executar(async () => { await enviarMensagem(); })}
-        />
-      )}
-      <div className="grid-2">
-        <div>
-          <Panel title="Dados do chamado">
-            <p>{dados.descricao}</p>
-            <p className="note">{dados.categoria} · {dados.subcategoria}{perfil === "Cessionário" ? "" : ` · ${dados.area}`}</p>
-            {perfil !== "Cessionário" && <p className="note">Destino: {dados.destino} · Confiança {dados.confianca} · {dados.classificacao} · Prioridade {dados.prioridade}</p>}
-            <p className="note">Quem atende: {dados.responsavel?.nome ?? "A definir"}</p>
-            <p className="note">Quando: {quandoAtende(dados.previsaoAtendimento)}</p>
-            <p className="note">Ponto: {dados.ponto ?? "Não informado"} · Aberto em {hora(dados.abertoEm)}</p>
-            {dados.notaAvaliacao !== null && (
-              <p className="note">Nota do atendimento: {dados.notaAvaliacao}{dados.comentarioAvaliacao ? ` · ${dados.comentarioAvaliacao}` : ""}</p>
-            )}
+      {falha && !avancando && <p className="erro">{falha}</p>}
+      <div className="visoes-centrais" role="tablist" aria-label="Chamado">
+        {abas.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            role="tab"
+            id={`aba-${item.id}`}
+            className={aba === item.id ? "visao-central ativa" : "visao-central"}
+            aria-selected={aba === item.id}
+            aria-controls={`painel-${item.id}`}
+            onClick={() => selecionarAba(item.id)}
+          >
+            {item.rotulo}
+          </button>
+        ))}
+      </div>
+      <div role="tabpanel" id={`painel-${aba}`} aria-labelledby={`aba-${aba}`}>
+        {aba === "dados" && (
+          <>
+          <Panel title="Dados do chamado" className="ficha-chamado-panel">
+            <article className="ficha-chamado">
+              <header className="ficha-topo">
+                <span className="ficha-avatar" aria-hidden="true">{iniciais(dados.cessionario.nome)}</span>
+                <div className="ficha-topo-texto">
+                  <p className="protocol">{dados.protocolo}</p>
+                  <p className="ficha-pessoa">
+                    <strong>{dados.cessionario.empresa}</strong>
+                    <span>{dados.cessionario.sala ?? "Sala não informada"}</span>
+                    <span>{dados.cessionario.nome}</span>
+                  </p>
+                  {espaco?.telefone && <p className="note">Telefone da empresa: {espaco.telefone}</p>}
+                </div>
+                {dados.natureza === "Reclamação" && <Badge valor="Reclamação" />}
+              </header>
+              {passo && (
+                <div className="ficha-status" aria-label="Situação e próximo passo">
+                  <div>
+                    <span>Situação</span>
+                    <Badge valor={dados.situacao} />
+                  </div>
+                  <div>
+                    <span>Próximo passo</span>
+                    <strong>{passo.texto}</strong>
+                  </div>
+                </div>
+              )}
+              <p className="ficha-descricao">{dados.descricao}</p>
+              <dl className="ficha-fatos">
+                <Fato rotulo="Serviço" valor={`${dados.categoria} · ${dados.subcategoria}`} />
+                {perfil !== "Cessionário" && <Fato rotulo="Área" valor={dados.area} />}
+                {perfil !== "Cessionário" && <Fato rotulo="Destino" valor={dados.destino} />}
+                {perfil !== "Cessionário" && <Fato rotulo="Confiança" valor={dados.confianca} />}
+                {perfil !== "Cessionário" && <Fato rotulo="Classificação" valor={dados.classificacao} />}
+                {perfil !== "Cessionário" && <Fato rotulo="Prioridade" valor={<Badge valor={dados.prioridade} />} />}
+                <Fato rotulo="Quem atende" valor={dados.responsavel?.nome ?? "A definir"} vazio={!dados.responsavel} />
+                <Fato rotulo="Quando" valor={quandoAtende(dados.previsaoAtendimento)} vazio={!dados.previsaoAtendimento} />
+                <Fato rotulo="Ponto" valor={dados.ponto ?? "Não informado"} vazio={!dados.ponto} />
+                <Fato rotulo="Aberto em" valor={hora(dados.abertoEm)} />
+              </dl>
+              {dados.notaAvaliacao !== null && (
+                <p className="ficha-nota">
+                  <span>Nota do atendimento</span>
+                  <strong>{dados.notaAvaliacao}</strong>
+                  {dados.comentarioAvaliacao && <em>{dados.comentarioAvaliacao}</em>}
+                </p>
+              )}
+            </article>
           </Panel>
           {perfil === "Cessionário" && (dados.situacao === "Concluído" || dados.situacao === "Encerrada") && dados.notaAvaliacao === null && (
             <div id="avaliacao">
@@ -131,42 +181,59 @@ export function DetalhePage() {
               </Panel>
             </div>
           )}
-          {!linhaDoTempo && <Panel title="Comunicação">
-            <div className="timeline">
-              {dados.mensagens.map((item) => (
-                <article key={item.id} className={item.finalidade === "complemento" ? "msg complemento" : item.canal === "MENSAGERIA" ? "msg mensageria" : "msg"}>
-                  <strong>{item.autor}</strong>
-                  <p>{item.texto}</p>
-                  <span className="note">{rotuloCanal(item.canal, item.finalidade)} · {hora(item.enviadaEm)}</span>
-                </article>
-              ))}
-            </div>
-            <label>
-              {responderId ? "Resposta da notificação" : "Mensagem"}
-              <textarea maxLength={2000} value={mensagem} onChange={(event) => setMensagem(event.target.value)} />
-            </label>
-            {perfil !== "Cessionário" && (
-              <label className="preferencia-vista">
-                <input type="checkbox" checked={complemento} onChange={(event) => setComplemento(event.target.checked)} />
-                <span>Pedir complemento ao Cessionário</span>
-              </label>
-            )}
-            <button className="btn secondary" type="button" onClick={() => void executar(enviarMensagem)}>
-              {responderId ? "Enviar para o chamado" : "Enviar mensagem"}
-            </button>
-          </Panel>}
-        </div>
-        <div>
+          </>
+        )}
+        {aba === "comunicacao" && (
+          <ConversaChat
+            demandaId={dados.id}
+            mensagens={dados.mensagens}
+            anexos={dados.anexos}
+            mensagemDestacada={mensagemId}
+            meuNome={sessao?.usuario.nome ?? ""}
+            minhaFoto={sessao?.usuario.foto ?? null}
+            nomeCessionario={dados.cessionario.nome}
+            fotoCessionario={espaco?.foto ?? null}
+            texto={mensagem}
+            onTexto={setMensagem}
+            arquivo={arquivo}
+            onArquivo={setArquivo}
+            onErro={setFalha}
+            onAbrirAnexo={(anexoId) => {
+              const anexo = dados.anexos.find((item) => item.id === anexoId);
+              if (anexo) setAnexoAberto(anexo);
+            }}
+            onEnviar={() => void executar(enviarMensagem)}
+            rotuloEnvio={responderId ? "Enviar para o chamado" : "Enviar mensagem"}
+            encerrado={fechado}
+            avisoEncerrado={avisoSemAlteracao(dados.situacao)}
+          />
+        )}
+        {aba === "linha" && (
+          <LinhaDoTempoAtendimento
+            dados={dados}
+            mensagem={mensagem}
+            onMensagem={setMensagem}
+            arquivo={arquivo}
+            onArquivo={setArquivo}
+            onErro={setFalha}
+            onEnviar={() => void executar(async () => { await enviarMensagem(); })}
+            encerrado={fechado}
+          />
+        )}
+        {aba === "documentos" && (
           <Panel title="Documentos e evidências">
             {dados.anexos.length === 0 && <p className="note">Nenhum anexo ainda.</p>}
             {dados.anexos.map((anexo) => (
               <p key={anexo.id}>
-                <button className="btn secondary" type="button" onClick={() => void api.baixarAnexo(dados.id, anexo.id, anexo.nome)}>{anexo.nome}</button>
+                <button className="btn secondary" type="button" onClick={() => setAnexoAberto(anexo)}>
+                  {anexo.finalidade === "obra" ? `Foto da obra · ${anexo.nome}` : anexo.nome}
+                </button>
               </p>
             ))}
+            {fechado ? <p className="note">{avisoSemAlteracao(dados.situacao)}</p> : (
             <label>
-              Adicionar documento ou foto
-              <input type="file" accept="image/*,.pdf" capture="environment" onChange={(event) => {
+              Adicionar documento, planilha, foto ou áudio
+              <input type="file" accept={ACEITA_ARQUIVO} onChange={(event) => {
                 const arquivo = event.target.files?.[0];
                 if (!arquivo) return;
                 const invalido = validarArquivo(arquivo);
@@ -178,8 +245,11 @@ export function DetalhePage() {
                 void executar(() => api.anexar(dados.id, arquivo));
               }} />
             </label>
+            )}
           </Panel>
-          {!linhaDoTempo && <Panel title="Histórico">
+        )}
+        {aba === "historico" && (
+          <Panel title="Histórico">
             <div className="timeline">
               {dados.historico.map((evento) => (
                 <div key={evento.id} className="event">
@@ -191,115 +261,25 @@ export function DetalhePage() {
                 </div>
               ))}
             </div>
-          </Panel>}
-          <Panel title="Ações">
-            {perfil === "GL / Administrador" && (
-              <>
-                <label>
-                  Classificação
-                  <select value={subAtual} onChange={(event) => setSubcategoriaId(event.target.value)}>
-                    {catalogo?.categorias.flatMap((categoria) => categoria.ativa ? categoria.subcategorias.filter((sub) => sub.ativa).map((sub) => (
-                      <option key={sub.id} value={sub.id}>{categoria.nome} · {sub.nome}</option>
-                    )) : [])}
-                  </select>
-                </label>
-                <button className="btn" type="button" onClick={() => void executar(() => api.classificar(dados.id, subAtual))}>Confirmar classificação</button>
-                <label>
-                  Direcionar para
-                  <select value={areaAtual} onChange={(event) => setAreaId(event.target.value)}>
-                    {catalogo?.areas.filter((area) => area.ativa !== false || area.id === areaAtual).map((area) => <option key={area.id} value={area.id}>{area.nome}</option>)}
-                  </select>
-                </label>
-                <label>
-                  Responsável
-                  <select value={responsavelId} onChange={(event) => setResponsavelId(event.target.value)}>
-                    <option value="">A definir</option>
-                    {catalogo?.responsaveis.filter((pessoa) => (pessoa.ativo !== false || pessoa.id === responsavelId) && (!areaAtual || pessoa.areaId === areaAtual)).map((pessoa) => (
-                      <option key={pessoa.id} value={pessoa.id}>{pessoa.nome}</option>
-                    ))}
-                  </select>
-                </label>
-                <button className="btn secondary" type="button" onClick={() => void executar(() => api.redirecionar(dados.id, areaAtual, responsavelId || null))}>
-                  Redirecionar
-                </button>
-              </>
-            )}
-            {perfil !== "Cessionário" && (
-              <>
-                <label>
-                  Quando será atendido
-                  <input type="datetime-local" value={quando} onChange={(event) => setQuando(event.target.value)} />
-                </label>
-                <button
-                  className="btn secondary"
-                  type="button"
-                  onClick={() => {
-                    if (!quando) {
-                      setFalha("Informe quando será atendido.");
-                      return;
-                    }
-                    void executar(() => api.previsao(dados.id, new Date(quando).toISOString()));
-                  }}
-                >
-                  Salvar previsão
-                </button>
-              </>
-            )}
-            {perfil === "Cessionário" && dados.situacao === "Aguardando validação" && destino && (
-              <button className="btn" type="button" onClick={() => setAvancando(true)}>
-                Validar atendimento
-              </button>
-            )}
-            {perfil === "GL / Administrador" && dados.situacao === "Concluído" && (
-              <button className="btn" type="button" onClick={() => void executar(() => api.encerrar(dados.id))}>
-                Encerrar chamado
-              </button>
-            )}
-            {perfil === "GL / Administrador" && dados.situacao !== "Aguardando aprovação" && !["Concluído", "Reprovado", "Encerrada", "Cancelada"].includes(dados.situacao) && (
-              <>
-                <label>
-                  Motivo do cancelamento
-                  <textarea maxLength={2000} value={motivo} onChange={(event) => setMotivo(event.target.value)} />
-                </label>
-                <button className="btn danger" type="button" onClick={() => {
-                  const invalido = validarTexto(motivo, 1, 2000, motivo.trim() ? "O motivo tem no máximo 2000 caracteres." : "Informe o motivo.");
-                  if (invalido) { setFalha(invalido); return; }
-                  void executar(() => api.cancelar(dados.id, motivo));
-                }}>Cancelar chamado</button>
-              </>
-            )}
-            {perfil === "GL / Administrador" && dados.situacao === "Aguardando aprovação" && (
-              <>
-                <label>
-                  Motivo, se houver ajuste, reprovação ou cancelamento
-                  <textarea maxLength={2000} value={motivo} onChange={(event) => setMotivo(event.target.value)} />
-                </label>
-                <div className="row">
-                  <button className="btn" type="button" onClick={() => void executar(() => api.aprovar(dados.id, "Aprovar"))}>Aprovar</button>
-                  <button className="btn secondary" type="button" onClick={() => {
-                    const invalido = validarTexto(motivo, 1, 2000, motivo.trim() ? "O motivo tem no máximo 2000 caracteres." : "Informe o motivo.");
-                    if (invalido) { setFalha(invalido); return; }
-                    void executar(() => api.aprovar(dados.id, "Solicitar ajuste", motivo));
-                  }}>Solicitar ajuste</button>
-                  <button className="btn danger" type="button" onClick={() => {
-                    const invalido = validarTexto(motivo, 1, 2000, motivo.trim() ? "O motivo tem no máximo 2000 caracteres." : "Informe o motivo.");
-                    if (invalido) { setFalha(invalido); return; }
-                    void executar(() => api.aprovar(dados.id, "Reprovar", motivo));
-                  }}>Reprovar</button>
-                  <button className="btn danger" type="button" onClick={() => {
-                    const invalido = validarTexto(motivo, 1, 2000, motivo.trim() ? "O motivo tem no máximo 2000 caracteres." : "Informe o motivo.");
-                    if (invalido) { setFalha(invalido); return; }
-                    void executar(() => api.cancelar(dados.id, motivo));
-                  }}>Cancelar chamado</button>
-                </div>
-              </>
-            )}
           </Panel>
-        </div>
+        )}
+        {aba === "acoes" && (
+          <AcoesDoChamado
+            perfil={perfil}
+            dados={dados}
+            etapas={cadeiaDoTipo(cadeia, dados.subcategoriaId)}
+            catalogo={catalogo ?? null}
+            onExecutar={executar}
+            onAvancar={() => setAvancando(true)}
+            onAvaliar={irParaAvaliacao}
+            onComunicacao={() => selecionarAba("comunicacao")}
+          />
+        )}
       </div>
       {avancando && destino && (
         <ModalAvanco
           protocolo={dados.protocolo}
+          demandaId={dados.id}
           situacao={dados.situacao}
           destino={destino}
           jaTemPrevisao={Boolean(dados.previsaoAtendimento)}
@@ -310,16 +290,24 @@ export function DetalhePage() {
           onConfirmar={(valor) => void confirmarAvanco(valor)}
         />
       )}
+      <VisualizadorArquivo
+        demandaId={dados.id}
+        anexos={dados.anexos}
+        alvo={anexoAberto}
+        onAlvo={setAnexoAberto}
+        onFechar={() => setAnexoAberto(null)}
+      />
     </>
   );
 
-  async function confirmarAvanco(valor: { comentario: string; previsao: string; confirmacao: boolean | null }) {
+  async function confirmarAvanco(valor: { comentario: string; previsao: string; confirmacao: boolean | null; fotos: File[] }) {
     setEnviando(true);
     setFalha(null);
     try {
+      await api.anexarFotosDaObra(dados!.id, valor.fotos);
       await api.avancar(dados!.id, {
         comentario: valor.comentario || null,
-        previsao: valor.previsao ? new Date(valor.previsao).toISOString() : null,
+        previsao: valor.previsao ? relogioInformado(valor.previsao) : null,
         confirmacao: valor.confirmacao,
       });
       setAvancando(false);
@@ -332,27 +320,61 @@ export function DetalhePage() {
   }
 
   async function enviarMensagem() {
-    const invalida = validarTexto(mensagem, 1, 2000, mensagem.trim() ? "A mensagem tem no máximo 2000 caracteres." : "Escreva a mensagem.");
-    if (invalida) throw new ApiError(invalida, 400);
-    if (responderId && perfil === "Cessionário") {
-      await api.responderNotificacao(responderId, mensagem);
+    if (encerrada(dados!.situacao)) throw new ApiError(avisoSemAlteracao(dados!.situacao), 400);
+    if (arquivo) {
+      const arquivoInvalido = validarArquivo(arquivo);
+      if (arquivoInvalido) throw new ApiError(arquivoInvalido, 400);
+      if (mensagem.trim()) {
+        const invalida = validarTexto(mensagem, 1, 2000, "A mensagem tem no máximo 2000 caracteres.");
+        if (invalida) throw new ApiError(invalida, 400);
+      }
+      await api.mensagemComAnexo(dados!.id, mensagem.trim(), arquivo);
     } else {
-      await api.mensagem(dados!.id, mensagem, complemento);
+      const invalida = validarTexto(mensagem, 1, 2000, mensagem.trim() ? "A mensagem tem no máximo 2000 caracteres." : "Escreva a mensagem.");
+      if (invalida) throw new ApiError(invalida, 400);
+      if (responderId && perfil === "Cessionário") {
+        await api.responderNotificacao(responderId, mensagem);
+      } else {
+        await api.mensagem(dados!.id, mensagem);
+      }
     }
     setMensagem("");
-    setComplemento(false);
+    setArquivo(null);
   }
 }
 
-function rotuloCanal(canal: string, finalidade: string) {
-  if (finalidade === "complemento") return "Complemento";
-  if (canal === "CELULAR") return "Celular";
-  if (canal === "MENSAGERIA") return "Mensageria";
-  return "Portal";
+type AbaDetalhe = "dados" | "comunicacao" | "documentos" | "historico" | "acoes" | "linha";
+
+function abasDoChamado(): { id: AbaDetalhe; rotulo: string }[] {
+  return [
+    { id: "dados", rotulo: "Dados do chamado" },
+    { id: "linha", rotulo: "Linha do tempo" },
+    { id: "comunicacao", rotulo: "Comunicação" },
+    { id: "documentos", rotulo: "Documentos e evidências" },
+    { id: "historico", rotulo: "Histórico" },
+    { id: "acoes", rotulo: "Ações" },
+  ];
 }
 
-function paraLocal(iso: string) {
-  const data = new Date(iso);
-  const local = new Date(data.getTime() - data.getTimezoneOffset() * 60000);
-  return local.toISOString().slice(0, 16);
+function Fato({ rotulo, valor, vazio }: { rotulo: string; valor: ReactNode; vazio?: boolean }) {
+  return (
+    <div>
+      <dt>{rotulo}</dt>
+      <dd className={vazio ? "vazio" : undefined}>{valor}</dd>
+    </div>
+  );
+}
+
+function iniciais(nome: string) {
+  return nome
+    .split(/\s+/)
+    .filter((parte) => parte.length > 1)
+    .slice(0, 2)
+    .map((parte) => parte[0]?.toUpperCase() ?? "")
+    .join("");
+}
+
+function resolverAba(valor: string | null, responder: boolean): AbaDetalhe {
+  if (valor === "dados" || valor === "linha" || valor === "comunicacao" || valor === "documentos" || valor === "historico" || valor === "acoes") return valor;
+  return responder ? "comunicacao" : "dados";
 }

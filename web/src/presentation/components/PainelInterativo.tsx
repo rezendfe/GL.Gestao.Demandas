@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import type { FilaItem, Obra } from "../../domain/types";
+import { useAcoesDaPagina } from "./AcoesRapidas";
 
 export function Balao({ titulo, itens, para, vazio, aberta = false }: { titulo: string; itens: FilaItem[]; para: string; vazio: string; aberta?: boolean }) {
   return (
@@ -185,11 +186,17 @@ export function BarraObra({ nome, quantidade, largura, obras }: { nome: string; 
 }
 
 export function RecorteAtivo({ rotulo, limpar }: { rotulo: string; limpar: string }) {
+  const navigate = useNavigate();
+  useAcoesDaPagina(rotulo ? [{
+    id: "limpar-recorte",
+    rotulo: "Limpar filtro",
+    icone: "limpar",
+    executar: () => navigate(limpar),
+  }] : []);
   if (!rotulo) return null;
   return (
-    <p className="recorte-ativo">
-      Mostrando {rotulo}
-      <Link to={limpar}>Limpar</Link>
-    </p>
+    <section className="panel">
+      <div className="panel-body"><p className="note">Mostrando {rotulo}</p></div>
+    </section>
   );
 }

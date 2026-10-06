@@ -5,6 +5,13 @@ export function encerrada(situacao: string) {
   return situacao === "Concluído" || situacao === "Reprovado" || situacao === "Encerrada" || situacao === "Cancelada";
 }
 
+export function avisoSemAlteracao(situacao: string) {
+  if (situacao === "Cancelada") return "Este chamado foi cancelado. Não é possível enviar mensagem, documento ou alterar o atendimento.";
+  if (situacao === "Reprovado") return "Este chamado foi reprovado. Não é possível enviar mensagem, documento ou alterar o atendimento.";
+  if (situacao === "Concluído") return "O serviço foi concluído. Não é possível enviar mensagem, documento ou alterar o atendimento.";
+  return "Este chamado está encerrado. Não é possível enviar mensagem, documento ou alterar o atendimento.";
+}
+
 export function itensDoRecorte(
   fila: FilaItem[],
   recorte: string | null,

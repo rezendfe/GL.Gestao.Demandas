@@ -13,6 +13,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Content Include="Demo\vitrine-loja.jpg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Gl.Demandas.Application\Gl.Demandas.Application.csproj" />
     <ProjectReference Include="..\Gl.Demandas.Infrastructure\Gl.Demandas.Infrastructure.csproj" />
   </ItemGroup>

@@ -207,6 +207,9 @@ internal sealed class AnexoRegistro
     public string Tipo { get; set; } = "";
     public long Tamanho { get; set; }
     public DateTime EnviadoEm { get; set; }
+    public string Finalidade { get; set; } = "documento";
+    public long? MensagemIdInterno { get; set; }
+    public MensagemRegistro? Mensagem { get; set; }
 }
 
 internal sealed class HistoricoRegistro
@@ -314,6 +317,8 @@ internal sealed class NotificacaoRegistro
     public string Texto { get; set; } = "";
     public string Leitura { get; set; } = "NAO_LIDA";
     public DateTime CriadaEm { get; set; }
+    public long? MensagemIdInterno { get; set; }
+    public MensagemRegistro? Mensagem { get; set; }
 }
 
 internal sealed class InscricaoPushRegistro

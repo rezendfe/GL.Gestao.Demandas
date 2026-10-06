@@ -2,7 +2,7 @@ namespace Gl.Demandas.Domain;
 
 public sealed class Notificacao
 {
-    public Notificacao(Guid id, Guid demandaId, Guid usuarioId, string texto, bool lida, DateTime criadaEm)
+    public Notificacao(Guid id, Guid demandaId, Guid usuarioId, string texto, bool lida, DateTime criadaEm, Guid? mensagemId = null)
     {
         Id = id;
         DemandaId = demandaId;
@@ -10,6 +10,7 @@ public sealed class Notificacao
         Texto = texto;
         Lida = lida;
         CriadaEm = criadaEm;
+        MensagemId = mensagemId;
     }
 
     public Guid Id { get; }
@@ -18,9 +19,10 @@ public sealed class Notificacao
     public string Texto { get; }
     public bool Lida { get; private set; }
     public DateTime CriadaEm { get; }
+    public Guid? MensagemId { get; }
 
-    public static Notificacao Criar(Guid demandaId, Guid usuarioId, string texto, DateTime agora) =>
-        new(Guid.NewGuid(), demandaId, usuarioId, texto, false, agora);
+    public static Notificacao Criar(Guid demandaId, Guid usuarioId, string texto, DateTime agora, Guid? mensagemId = null) =>
+        new(Guid.NewGuid(), demandaId, usuarioId, texto, false, agora, mensagemId);
 
     public void MarcarLida(Guid usuarioId)
     {

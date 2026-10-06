@@ -1,4 +1,6 @@
-const EXTENSOES = [".jpg", ".jpeg", ".png", ".webp", ".pdf"];
+const EXTENSOES = [".jpg", ".jpeg", ".png", ".webp", ".gif", ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".mp3", ".wav", ".m4a", ".ogg", ".webm"];
+
+export const ACEITA_ARQUIVO = "image/*,.pdf,.doc,.docx,.xls,.xlsx,audio/*,.mp3,.wav,.m4a,.ogg,.webm";
 
 export function apenasDigitos(valor: string, maximo: number) {
   return valor.replace(/\D/g, "").slice(0, maximo);
@@ -96,8 +98,17 @@ export function validarCodigo(valor: string) {
 
 export function validarArquivo(arquivo: File) {
   const nome = arquivo.name.toLowerCase();
-  if (!EXTENSOES.some((extensao) => nome.endsWith(extensao))) return "Envie uma foto JPG, PNG, WEBP ou um PDF.";
+  if (!EXTENSOES.some((extensao) => nome.endsWith(extensao))) return "Envie uma imagem, PDF, Word, Excel ou áudio.";
   if (arquivo.size <= 0 || arquivo.size > 5 * 1024 * 1024) return "O arquivo deve ter até 5 MB.";
+  return null;
+}
+
+const IMAGENS_CONVERSA = [".jpg", ".jpeg", ".png", ".webp", ".gif"];
+
+export function validarImagem(arquivo: File) {
+  const nome = arquivo.name.toLowerCase();
+  if (!IMAGENS_CONVERSA.some((extensao) => nome.endsWith(extensao))) return "Envie uma imagem JPG, PNG, WEBP ou GIF.";
+  if (arquivo.size <= 0 || arquivo.size > 5 * 1024 * 1024) return "A imagem deve ter até 5 MB.";
   return null;
 }
 

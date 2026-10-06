@@ -58,6 +58,27 @@ public interface ICatalogo
     Task<Subcategoria> SalvarSubcategoria(Guid? id, Guid categoriaId, Guid areaId, string nome, FluxoDemanda fluxo, bool ativa, CancellationToken ct);
 }
 
+public sealed record FiltroAuditoria(Guid? AutorId, DateTime? De, DateTime? Ate, string? Texto);
+
+public sealed record LinhaAuditoria(
+    Guid Id,
+    string Origem,
+    Guid? AlvoId,
+    string Referencia,
+    Guid AutorId,
+    string Autor,
+    string Perfil,
+    string Tipo,
+    string Comentario,
+    string? StatusAnterior,
+    string StatusNovo,
+    DateTime EventoEm);
+
+public interface IAuditoria
+{
+    Task<IReadOnlyList<LinhaAuditoria>> Listar(FiltroAuditoria filtro, CancellationToken ct);
+}
+
 public interface IDemandas
 {
     Task<Demanda?> Obter(Guid id, CancellationToken ct);

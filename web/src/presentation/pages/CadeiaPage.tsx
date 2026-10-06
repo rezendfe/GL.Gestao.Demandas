@@ -224,13 +224,11 @@ export function CadeiaPage() {
   return (
     <>
       <PageHeader title="Cadeia de andamento" trail={["Início", "Quadro", "Cadeia"]} />
-      <p className="muted" style={{ marginTop: -8, marginBottom: 16 }}>
-        Cada tipo de atendimento tem a própria cadeia. Infraestrutura, refrigeração e os demais não precisam do mesmo caminho. A sequência permanece Solicitação, Aprovação, Atendimento, Validação do cliente e Conclusão.
-      </p>
       {erro && <p className="erro">{erro}</p>}
       {falha && <p className="erro">{falha}</p>}
       {ok && <p className="note">Cadeia salva. Os próximos avanços desse tipo usam esta configuração.</p>}
       <Panel title="Workflow do tipo de atendimento" className="livre">
+        <p className="note">Cada tipo de atendimento tem a própria cadeia. Infraestrutura, refrigeração e os demais não precisam do mesmo caminho. A sequência permanece Solicitação, Aprovação, Atendimento, Validação do cliente e Conclusão.</p>
         <label className="fluxo-tipo">
           Tipo de atendimento
           <select

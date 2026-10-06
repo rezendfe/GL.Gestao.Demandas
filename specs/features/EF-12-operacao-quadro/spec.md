@@ -17,8 +17,8 @@ Ponto de atenção inclui complemento sem resposta, prioridade alta em aberto, c
 
 ### RF-12.2 Central operacional e quadro
 **Estado:** Feito  
-Uma Central operacional com visões Quadro, Operação e Central operacional. O quadro tem as colunas Solicitação, Aprovação, Atendimento, Validação do cliente e Conclusão. Cartão em atraso ou reclamação fica identificado. Avançar abre o modal da próxima etapa manual do tipo. Etapa automática não retém o chamado.  
-**CA:** Dado GL / Administrador, quando abre o quadro, então vê as cinco colunas da operação inteira. Dado Responsável da Área, quando abre o quadro, então as colunas só têm a área dele. Dado cartão, quando é solto na próxima coluna com as tarefas obrigatórias, então a situação muda. Dado endereço antigo do quadro, quando é acessado, então a Central abre na visão correspondente.  
+Uma Central operacional com visões Quadro, Operação, Central operacional e Agenda. O quadro tem as colunas Solicitação, Aprovação, Atendimento, Validação do cliente e Conclusão. Cartão em atraso ou reclamação fica identificado. Avançar abre o modal da próxima etapa manual do tipo. Etapa automática não retém o chamado. A visão Agenda é o calendário da EF-17.  
+**CA:** Dado GL / Administrador, quando abre o quadro, então vê as cinco colunas da operação inteira. Dado Responsável da Área, quando abre o quadro, então as colunas só têm a área dele. Dado cartão, quando é solto na próxima coluna com as tarefas obrigatórias, então a situação muda. Dado endereço antigo do quadro, da operação ou da agenda, quando é acessado, então a Central abre na visão correspondente.  
 **Trace:** RN-27 / PDR RF-12.2 / RF-12.9
 
 ### RF-12.3 Visão Operação
@@ -40,7 +40,7 @@ Com o serviço Concluído, o Cessionário daquele chamado informa a nota uma vez
 
 ### RF-12.6 Celular
 **Estado:** Feito  
-**CA:** Dado 360px, quando se abre o seletor, o quadro, a operação ou a pergunta de nota, então a página não rola na horizontal. O quadro pode rolar uma coluna por vez.  
+**CA:** Dado 360px, quando se abre o seletor, o quadro, a operação, a agenda ou a pergunta de nota, então a página não rola na horizontal. O quadro pode rolar uma coluna por vez.  
 **Trace:** PDR RF-12.6
 
 ### RF-12.7 Aprovação automática no quadro
@@ -50,12 +50,12 @@ Com o serviço Concluído, o Cessionário daquele chamado informa a nota uma vez
 
 ### RF-12.8 Tarefas no avanço
 **Estado:** Feito  
-O avanço só confirma depois das tarefas obrigatórias. Anexo aceito fica na demanda. Conclusão, decisão, valores e evidências entram no histórico com autor e data.  
-**CA:** Dado tarefa obrigatória de comentário, quando se confirma o avanço sem texto, então a API recusa e a situação permanece.  
-**Trace:** RN-15 / RN-18 / RN-28
+O avanço só confirma depois das tarefas obrigatórias. Anexo aceito fica na demanda. Conclusão, decisão, valores e evidências entram no histórico com autor e data. Para ir à Validação do cliente manual, o modal pede as fotos da obra executada; sem ao menos uma imagem, a API recusa. O Cessionário vê essas fotos ao confirmar o serviço.  
+**CA:** Dado tarefa obrigatória de comentário, quando se confirma o avanço sem texto, então a API recusa e a situação permanece. Dado o avanço para Validação do cliente sem foto da obra, quando se confirma, então a API recusa. Com a foto, o chamado fica Aguardando validação.  
+**Trace:** RN-15 / RN-18 / RN-28 / RN-44
 
 ### RF-12.9 Fila da Central
 **Estado:** Feito  
-A visão Central operacional mostra indicadores e a fila com filtros. Trocar de visão não amplia a fila do perfil.  
-**CA:** Dado Responsável da Área, quando alterna Quadro, Operação e Central operacional, então nenhum chamado de outra área aparece.  
+A visão Central operacional mostra indicadores e a fila com filtros. Trocar entre Quadro, Operação, Central operacional e Agenda não amplia a fila do perfil.  
+**CA:** Dado Responsável da Área, quando alterna Quadro, Operação, Central operacional e Agenda, então nenhum chamado de outra área aparece.  
 **Trace:** RN-05 / PDR RF-12.9

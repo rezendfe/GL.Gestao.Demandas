@@ -46,10 +46,10 @@ public static class DemoSeed
         db.SaveChanges();
 
         var joao = Usuario(DemoIds.Joao, "João Silva", "joao.silva@empresaexemplo.com.br", "CESSIONARIO", "Empresa Exemplo", "Sala 205", null, "/marcas/empresa-exemplo.svg", Foto("photo-1472099645785-5658abf4ff4e"));
-        var gl = Usuario(DemoIds.Gl, "Patrícia Lima", "patricia.lima@gleventos.com.br", "GL_ADMINISTRADOR", "GL events", null, null);
-        var resp01 = Usuario(DemoIds.Resp01, "Responsável 01", "responsavel.01@gleventos.com.br", "RESPONSAVEL_AREA", "GL events", null, manutencao);
-        var resp02 = Usuario(DemoIds.Resp02, "Responsável 02", "responsavel.02@gleventos.com.br", "RESPONSAVEL_AREA", "GL events", null, recepcao);
-        var resp03 = Usuario(DemoIds.Resp03, "Responsável 03", "responsavel.03@gleventos.com.br", "RESPONSAVEL_AREA", "GL events", null, estacionamento);
+        var gl = Usuario(DemoIds.Gl, "Patrícia Lima", "patricia.lima@gleventos.com.br", "GL_ADMINISTRADOR", "GL events", null, null, foto: Foto("photo-1573496359142-b8d87734a5a2"));
+        var resp01 = Usuario(DemoIds.Resp01, "Responsável 01", "responsavel.01@gleventos.com.br", "RESPONSAVEL_AREA", "GL events", null, manutencao, foto: Foto("photo-1560250097-0b93528c311a"));
+        var resp02 = Usuario(DemoIds.Resp02, "Responsável 02", "responsavel.02@gleventos.com.br", "RESPONSAVEL_AREA", "GL events", null, recepcao, foto: Foto("photo-1573497019940-1c28c88b4f3e"));
+        var resp03 = Usuario(DemoIds.Resp03, "Responsável 03", "responsavel.03@gleventos.com.br", "RESPONSAVEL_AREA", "GL events", null, estacionamento, foto: Foto("photo-1519085360753-af0119f7cbe7"));
         var empresaB = Usuario(DemoIds.EmpresaB, "Ana Costa", "ana.costa@empresab.com.br", "CESSIONARIO", "Empresa B", "Sala 102", null, "/marcas/empresa-b.svg", Foto("photo-1438761681033-6461ffad8d80"));
         var empresaC = Usuario(DemoIds.EmpresaC, "Carla Dias", "carla.dias@empresac.com.br", "CESSIONARIO", "Empresa C", "Sala 014", null, "/marcas/empresa-c.svg", Foto("photo-1544005313-94ddf0286df2"));
         var empresaD = Usuario(DemoIds.EmpresaD, "Diego Alves", "diego.alves@empresad.com.br", "CESSIONARIO", "Empresa D", "Acesso norte", null, "/marcas/empresa-d.svg", Foto("photo-1507003211169-0a1dd7228f2d"));
@@ -68,12 +68,12 @@ public static class DemoSeed
         SemeiarFuncaoRepresentante(db, DemoIds.EmpresaD, DemoIds.EmpresaDId);
         SemeiarFuncaoRepresentante(db, DemoIds.Marina, DemoIds.EmpresaConecta);
         db.Espacos.AddRange(
-            Espaco(DemoIds.EspacoSala205, "SALA-205", "Sala 205", "Riocentro, Pavilhão 2, 2º piso", "Sala comercial de 86 m²."),
-            Espaco(DemoIds.EspacoSala118, "SALA-118", "Sala 118", "Riocentro, Pavilhão 1, 1º piso", "Sala comercial de 42 m²."),
-            Espaco(DemoIds.EspacoSala102, "SALA-102", "Sala 102", "Riocentro, Pavilhão 1, térreo", "Sala comercial de 54 m²."),
-            Espaco(DemoIds.EspacoSala014, "SALA-014", "Sala 014", "Riocentro, acesso de serviço", "Sala de apoio de 32 m²."),
-            Espaco(DemoIds.EspacoAcessoNorte, "ACESSO-NORTE", "Acesso norte", "Riocentro, portaria norte", "Ponto de credenciamento."),
-            Espaco(DemoIds.EspacoSala310, "SALA-310", "Sala 310", "Riocentro, Pavilhão 3, 3º piso", "Sala de operação de rede de 70 m²."));
+            Espaco(DemoIds.EspacoSala205, "SALA-205", "Loja 205", "Shopping, 2º piso, loja 205", "Loja de moda de 86 m² para locação, com vitrine para o corredor."),
+            Espaco(DemoIds.EspacoSala118, "SALA-118", "Loja 118", "Shopping, 1º piso, loja 118", "Loja de vestuário de 42 m² para locação."),
+            Espaco(DemoIds.EspacoSala102, "SALA-102", "Loja 102", "Shopping, térreo, loja 102", "Loja de café de 54 m² para locação, ao lado da praça de alimentação."),
+            Espaco(DemoIds.EspacoSala014, "SALA-014", "Loja 014", "Shopping, piso de serviço, loja 014", "Loja de mercado de 32 m² para locação, com acesso de carga."),
+            Espaco(DemoIds.EspacoAcessoNorte, "ACESSO-NORTE", "Loja Norte", "Shopping, praça de alimentação, loja norte", "Loja de restaurante para locação, com salão e cozinha."),
+            Espaco(DemoIds.EspacoSala310, "SALA-310", "Loja 310", "Shopping, 3º piso, loja 310", "Loja de 70 m² para locação, com vitrine para o átrio."));
         db.SaveChanges();
         db.Locacoes.AddRange(
             Locacao(db, DemoIds.EspacoSala205, DemoIds.EmpresaExemplo, new DateOnly(2024, 3, 12)),
@@ -352,6 +352,10 @@ public static class DemoSeed
             Tamanho = 1024,
             EnviadoEm = agora.AddHours(-5)
         });
+        fibraDemanda.Anexos.Add(AnexoDemo(DemoIds.AnexoVitrine, "Vitrine_Loja.jpg", "seed/Vitrine_Loja.jpg", "image/jpeg", agora));
+        fibraDemanda.Anexos.Add(AnexoDemo(DemoIds.AnexoWord, "Memorial_Loja.docx", "seed/Memorial_Loja.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", agora));
+        fibraDemanda.Anexos.Add(AnexoDemo(DemoIds.AnexoExcel, "Planilha_Areas.xlsx", "seed/Planilha_Areas.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", agora));
+        fibraDemanda.Anexos.Add(AnexoDemo(DemoIds.AnexoAudio, "Recado_Loja.wav", "seed/Recado_Loja.wav", "audio/wav", agora));
         db.Demandas.Add(fibraDemanda);
 
         var obra = new ObraRegistro
@@ -411,6 +415,9 @@ public static class DemoSeed
             Leitura = "NAO_LIDA",
             CriadaEm = agora.AddHours(-1)
         });
+        db.SaveChanges();
+        var notaComplemento = db.Notificacoes.Single(n => n.Id == DemoIds.NotaComplemento);
+        notaComplemento.MensagemIdInterno = db.Mensagens.Single(m => m.Id == DemoIds.MsgComplemento).IdInterno;
         db.SaveChanges();
         GarantirCadeia(db);
     }
@@ -523,6 +530,17 @@ public static class DemoSeed
 
     private static string Foto(string id) =>
         $"https://images.unsplash.com/{id}?auto=format&fit=crop&w=640&q=80";
+
+    private static AnexoRegistro AnexoDemo(Guid id, string nome, string caminho, string tipo, DateTime agora) =>
+        new()
+        {
+            Id = id,
+            Nome = nome,
+            Caminho = caminho,
+            Tipo = tipo,
+            Tamanho = 1024,
+            EnviadoEm = agora.AddHours(-5)
+        };
 
     private static RegraRegistro Regra(
         int ordem,

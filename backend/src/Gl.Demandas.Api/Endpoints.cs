@@ -252,6 +252,16 @@ public static class Endpoints
             .WithName("EnviarMensagem")
             .WithSummary("Acrescenta uma mensagem na timeline do chamado. Complemento avisa o celular do Cessionário.");
 
+        demandas.MapPost("/{id:guid}/mensagens/anexo", async (Guid id, IFormFile arquivo, string? texto, ClaimsPrincipal user, IUsuarios usuarios, IConfiguration config, AtendimentoAplicacao appCaso, CancellationToken ct) =>
+        {
+            await using var stream = arquivo.OpenReadStream();
+            var detalhe = await appCaso.MensagemComAnexo(await AtorAtual(user, usuarios, config, ct), id, texto, arquivo.FileName, arquivo.ContentType, stream, arquivo.Length, ct);
+            return Results.Ok(detalhe);
+        })
+            .WithName("EnviarAnexoNaConversa")
+            .WithSummary("Envia foto, arquivo ou áudio na conversa do chamado, com ou sem texto.")
+            .DisableAntiforgery();
+
         demandas.MapPost("/{id:guid}/previsao", async (Guid id, PrevisaoPedido pedido, ClaimsPrincipal user, IUsuarios usuarios, IConfiguration config, AtendimentoAplicacao appCaso, CancellationToken ct) =>
             Results.Ok(await appCaso.DefinirPrevisao(await AtorAtual(user, usuarios, config, ct), id, new PrevisaoComando(pedido.Quando), ct)))
             .WithName("DefinirPrevisao")
@@ -262,23 +272,28 @@ public static class Endpoints
             .WithName("AvaliarAtendimento")
             .WithSummary("Cessionário avalia o serviço concluído, de 0 a 10.");
 
-        demandas.MapPost("/{id:guid}/anexos", async (Guid id, IFormFile arquivo, ClaimsPrincipal user, IUsuarios usuarios, IConfiguration config, AtendimentoAplicacao appCaso, CancellationToken ct) =>
+        demandas.MapPost("/{id:guid}/anexos", async (Guid id, HttpRequest requisicao, ClaimsPrincipal user, IUsuarios usuarios, IConfiguration config, AtendimentoAplicacao appCaso, CancellationToken ct) =>
         {
+            var form = await requisicao.ReadFormAsync(ct);
+            var arquivo = form.Files.GetFile("arquivo");
+            if (arquivo is null)
+                return Results.BadRequest();
+            var finalidade = form["finalidade"].ToString();
             await using var stream = arquivo.OpenReadStream();
-            var detalhe = await appCaso.Anexar(await AtorAtual(user, usuarios, config, ct), id, arquivo.FileName, arquivo.ContentType, stream, arquivo.Length, ct);
+            var detalhe = await appCaso.Anexar(await AtorAtual(user, usuarios, config, ct), id, arquivo.FileName, arquivo.ContentType, stream, arquivo.Length, ct, string.IsNullOrWhiteSpace(finalidade) ? "documento" : finalidade);
             return Results.Ok(detalhe);
         })
             .WithName("AnexarArquivo")
-            .WithSummary("Anexa foto ou PDF ao chamado.")
+            .WithSummary("Anexa imagem, PDF, Word, Excel ou áudio ao chamado. A finalidade obra registra a foto da obra executada.")
             .DisableAntiforgery();
 
         demandas.MapGet("/{id:guid}/anexos/{anexoId:guid}", async (Guid id, Guid anexoId, ClaimsPrincipal user, IUsuarios usuarios, IConfiguration config, AtendimentoAplicacao appCaso, CancellationToken ct) =>
         {
             var arquivo = await appCaso.Baixar(await AtorAtual(user, usuarios, config, ct), id, anexoId, ct);
-            return Results.File(arquivo.Conteudo, arquivo.Tipo, arquivo.Nome);
+            return Results.File(arquivo.Conteudo, string.IsNullOrWhiteSpace(arquivo.Tipo) ? "application/octet-stream" : arquivo.Tipo);
         })
             .WithName("BaixarAnexo")
-            .WithSummary("Baixa um anexo do chamado.");
+            .WithSummary("Abre um anexo do chamado para visualização.");
 
         demandas.MapPost("/{id:guid}/aprovacao", async (Guid id, AprovacaoPedido pedido, ClaimsPrincipal user, IUsuarios usuarios, IConfiguration config, AtendimentoAplicacao appCaso, CancellationToken ct) =>
             Results.Ok(await appCaso.Aprovar(await AtorAtual(user, usuarios, config, ct), id, new AprovacaoComando(pedido.Decisao, pedido.Motivo), ct)))
@@ -338,6 +353,27 @@ public static class Endpoints
         })
             .WithName("CancelarPush")
             .WithSummary("Retira a autorização de notificações deste celular.");
+
+        var auditoria = app.MapGroup("/api/auditoria").WithTags("Auditoria").RequireAuthorization();
+        auditoria.MapGet("/dia", async (ClaimsPrincipal user, IUsuarios usuarios, IConfiguration config, AuditoriaAplicacao appCaso, CancellationToken ct) =>
+            Results.Ok(await appCaso.DoDia(await AtorAtual(user, usuarios, config, ct), ct)))
+            .WithName("AuditoriaDoDia")
+            .WithSummary("Lista as ações que o usuário autenticado executou hoje.");
+        auditoria.MapGet("/pessoas", async (ClaimsPrincipal user, IUsuarios usuarios, IConfiguration config, AuditoriaAplicacao appCaso, CancellationToken ct) =>
+            Results.Ok(await appCaso.Pessoas(await AtorAtual(user, usuarios, config, ct), ct)))
+            .WithName("PessoasAuditoria")
+            .WithSummary("Lista as pessoas que o GL / Administrador pode pesquisar na auditoria.");
+        auditoria.MapGet("/exportacao", async (ClaimsPrincipal user, IUsuarios usuarios, IConfiguration config, AuditoriaAplicacao appCaso, CancellationToken ct) =>
+        {
+            var arquivo = await appCaso.ExportarBase(await AtorAtual(user, usuarios, config, ct), ct);
+            return Results.File(arquivo.Conteudo, arquivo.Tipo, arquivo.Nome);
+        })
+            .WithName("ExportarAuditoria")
+            .WithSummary("Excel da base inteira da auditoria. Somente GL / Administrador.");
+        auditoria.MapGet("/", async (DateOnly de, DateOnly ate, Guid? autorId, string? texto, ClaimsPrincipal user, IUsuarios usuarios, IConfiguration config, AuditoriaAplicacao appCaso, CancellationToken ct) =>
+            Results.Ok(await appCaso.Pesquisar(await AtorAtual(user, usuarios, config, ct), de, ate, autorId, texto, ct)))
+            .WithName("PesquisarAuditoria")
+            .WithSummary("Pesquisa as ações do intervalo, com no máximo 3 meses. Somente GL / Administrador.");
     }
 
     private static async Task<Ator> AtorAtual(ClaimsPrincipal user, IUsuarios usuarios, IConfiguration config, CancellationToken ct)

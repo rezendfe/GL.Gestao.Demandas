@@ -10,16 +10,18 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "mammoth": "^1.13.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
-    "react-router-dom": "7.9.4"
+    "react-router-dom": "7.9.4",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@playwright/test": "1.56.1",
     "@types/react": "19.2.2",
     "@types/react-dom": "19.2.2",
     "@vitejs/plugin-react": "5.0.4",
     "typescript": "5.9.2",
-    "vite": "7.1.7",
-    "@playwright/test": "1.56.1"
+    "vite": "7.1.7"
   }
 }

@@ -2,14 +2,32 @@ import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSessao } from "../../application/session";
 import { mascaraEmail, validarEmail } from "../../domain/entrada";
+import { fotoPorPessoa } from "../../domain/fotos";
 import { ApiError } from "../../infrastructure/api/client";
 import type { Perfil } from "../../domain/types";
 
-const contas: { perfil: Perfil; email: string; nome: string }[] = [
-  { perfil: "Cessionário", email: "joao.silva@empresaexemplo.com.br", nome: "João Silva · Empresa Exemplo" },
-  { perfil: "GL / Administrador", email: "patricia.lima@gleventos.com.br", nome: "Patrícia Lima" },
-  { perfil: "Responsável da Área", email: "responsavel.01@gleventos.com.br", nome: "Responsável 01 · Manutenção" },
+const contas: { perfil: Perfil; email: string; nome: string; detalhe: string }[] = [
+  { perfil: "Cessionário", email: "joao.silva@empresaexemplo.com.br", nome: "João Silva", detalhe: "Empresa Exemplo" },
+  { perfil: "Cessionário", email: "ana.costa@empresab.com.br", nome: "Ana Costa", detalhe: "Empresa B" },
+  { perfil: "Cessionário", email: "carla.dias@empresac.com.br", nome: "Carla Dias", detalhe: "Empresa C" },
+  { perfil: "Cessionário", email: "diego.alves@empresad.com.br", nome: "Diego Alves", detalhe: "Empresa D" },
+  { perfil: "Cessionário", email: "marina.costa@empresaconecta.com.br", nome: "Marina Costa", detalhe: "Empresa Conecta" },
+  { perfil: "GL / Administrador", email: "patricia.lima@gleventos.com.br", nome: "Patrícia Lima", detalhe: "GL events" },
+  { perfil: "Responsável da Área", email: "responsavel.01@gleventos.com.br", nome: "Responsável 01", detalhe: "Manutenção" },
+  { perfil: "Responsável da Área", email: "responsavel.02@gleventos.com.br", nome: "Responsável 02", detalhe: "Recepção" },
+  { perfil: "Responsável da Área", email: "responsavel.03@gleventos.com.br", nome: "Responsável 03", detalhe: "Estacionamento" },
 ];
+
+const perfis: Perfil[] = ["Cessionário", "GL / Administrador", "Responsável da Área"];
+
+function iniciais(nome: string) {
+  return nome
+    .split(/\s+/)
+    .filter((parte) => parte.length > 1)
+    .slice(0, 2)
+    .map((parte) => parte[0]?.toUpperCase() ?? "")
+    .join("");
+}
 
 export function LoginPage() {
   const { entrar } = useSessao();
@@ -38,6 +56,9 @@ export function LoginPage() {
     }
   }
 
+  const escolhida = contas.find((conta) => conta.email === email);
+  const foto = escolhida ? fotoPorPessoa(escolhida.nome, escolhida.email) : null;
+
   return (
     <div className="login">
       <div className="login-box">
@@ -51,20 +72,32 @@ export function LoginPage() {
           <div className="login-title">
             <strong>Entrar</strong> na demonstração
           </div>
-          <p className="muted">Escolha um perfil. A senha de todos é Demo@2026.</p>
-          <div className="profiles">
-            {contas.map((conta) => (
-              <button
-                key={conta.email}
-                type="button"
-                className={email === conta.email ? "profile active" : "profile"}
-                onClick={() => setEmail(conta.email)}
+          <p className="muted">Escolha quem entra. A senha de todos é Demo@2026.</p>
+          <label htmlFor="login-pessoa">
+            Pessoa
+            <span className="login-pessoa">
+              {foto ? (
+                <img className="avatar sm foto" src={foto} alt="" />
+              ) : (
+                <span className="avatar sm" aria-hidden="true">{iniciais(escolhida?.nome ?? "GL")}</span>
+              )}
+              <select
+                id="login-pessoa"
+                value={escolhida?.email ?? ""}
+                onChange={(event) => setEmail(event.target.value)}
               >
-                <strong>{conta.perfil}</strong>
-                <span className="muted">{conta.nome}</span>
-              </button>
-            ))}
-          </div>
+                {perfis.map((perfil) => (
+                  <optgroup key={perfil} label={perfil}>
+                    {contas.filter((conta) => conta.perfil === perfil).map((conta) => (
+                      <option key={conta.email} value={conta.email}>
+                        {conta.nome} · {conta.perfil} · {conta.detalhe}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+            </span>
+          </label>
           <label>
             E-mail
             <input type="email" inputMode="email" value={email} onChange={(event) => setEmail(mascaraEmail(event.target.value))} autoComplete="username" maxLength={320} required />
@@ -77,7 +110,6 @@ export function LoginPage() {
           <button className="btn btn-block" type="submit" disabled={enviando}>
             {enviando ? "Entrando..." : "Entrar"}
           </button>
-          <p className="note">Recepção: responsavel.02@gleventos.com.br · Estacionamento: responsavel.03@gleventos.com.br</p>
         </form>
         <div className="login-footer">
           <span>GL Events</span>

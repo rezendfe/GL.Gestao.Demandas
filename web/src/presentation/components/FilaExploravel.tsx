@@ -6,6 +6,7 @@ import { emAtraso } from "../../domain/operacao";
 import { encerrada } from "../../domain/recorte";
 import { tempoRelativo, type FilaItem } from "../../domain/types";
 import { Badge } from "./Badge";
+import { useAcoesDaPagina } from "./AcoesRapidas";
 import { Panel } from "./Panel";
 
 const OPCOES: { id: VistaFila; rotulo: string; nota: string }[] = [
@@ -71,11 +72,13 @@ export function FilaExploravel({
   itens,
   usuarioId,
   destacar,
+  nota,
 }: {
   titulo: string;
   itens: FilaItem[];
   usuarioId?: string;
   destacar?: Set<string>;
+  nota?: string;
 }) {
   const navigate = useNavigate();
   const [vista, definirVista] = useVistaFila(usuarioId);
@@ -88,6 +91,13 @@ export function FilaExploravel({
   const ativo = filtroAtivo(filtro);
   const opcao = OPCOES.find((item) => item.id === vista) ?? OPCOES[0];
 
+  useAcoesDaPagina(ativo ? [{
+    id: "limpar-filtros",
+    rotulo: "Limpar filtros",
+    icone: "limpar",
+    executar: () => setFiltro(FILTRO_INICIAL),
+  }] : []);
+
   function patch(parcial: Partial<Filtro>) {
     setFiltro((atual) => ({ ...atual, ...parcial }));
   }
@@ -99,6 +109,7 @@ export function FilaExploravel({
 
   return (
     <Panel title={titulo} className="livre">
+      {nota && <p className="note">{nota}</p>}
       <div className="fila-comandos">
         <div className="fila-filtros">
           <label>
@@ -130,14 +141,14 @@ export function FilaExploravel({
               {servicos.map((valor) => <option key={valor} value={valor}>{valor}</option>)}
             </select>
           </label>
-          <label>
-            Responsável
-            <select value={filtro.responsavel} onChange={(event) => patch({ responsavel: event.target.value })}>
-              <option value="">Todos</option>
-              {responsaveis.map((valor) => <option key={valor} value={valor}>{valor}</option>)}
-            </select>
-          </label>
-        </div>
+            <label>
+              Responsável
+              <select value={filtro.responsavel} onChange={(event) => patch({ responsavel: event.target.value })}>
+                <option value="">Todos</option>
+                {responsaveis.map((valor) => <option key={valor} value={valor}>{valor}</option>)}
+              </select>
+            </label>
+          </div>
         <div className="fila-periodo">
           <div className="periodo-atalhos" role="group" aria-label="Período">
             {(["hoje", "7", "30", "tudo"] as const).map((atalho) => (
@@ -175,11 +186,6 @@ export function FilaExploravel({
             <input type="checkbox" checked={filtro.atraso} onChange={(event) => patch({ atraso: event.target.checked })} />
             <span>Em atraso</span>
           </label>
-          {ativo && (
-            <button type="button" className="periodo-atalho" onClick={() => setFiltro(FILTRO_INICIAL)}>
-              Limpar
-            </button>
-          )}
         </div>
         <div className="fila-vistas">
           <fieldset className="vistas">
@@ -207,7 +213,6 @@ export function FilaExploravel({
       {visiveis.length === 0 ? (
         <p className="fila-vazio">
           Nenhum chamado com esses filtros.
-          <button className="btn secondary" type="button" onClick={() => setFiltro(FILTRO_INICIAL)}>Limpar filtro</button>
         </p>
       ) : (
         <div className={`fila-vista vista-${vista}`}>

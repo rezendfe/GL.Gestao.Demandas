@@ -39,16 +39,21 @@ public sealed class NotificacaoAplicacao(
     public async Task<IReadOnlyList<NotificacaoDto>> Listar(Ator ator, CancellationToken ct)
     {
         var itens = await notificacoes.ListarDoUsuario(ator.Id, ct);
-        var protocolos = (await demandas.Listar(ct)).ToDictionary(d => d.Id, d => d.Protocolo);
+        var porDemanda = (await demandas.Listar(ct)).ToDictionary(d => d.Id);
         return itens
             .OrderByDescending(n => n.CriadaEm)
-            .Select(n => new NotificacaoDto(
-                n.Id,
-                n.DemandaId,
-                protocolos.GetValueOrDefault(n.DemandaId, ""),
-                n.Texto,
-                n.Lida,
-                n.CriadaEm))
+            .Select(n =>
+            {
+                porDemanda.TryGetValue(n.DemandaId, out var demanda);
+                return new NotificacaoDto(
+                    n.Id,
+                    n.DemandaId,
+                    demanda?.Protocolo ?? "",
+                    n.Texto,
+                    n.Lida,
+                    n.CriadaEm,
+                    n.MensagemId ?? MensagemDoAviso.Resolver(n, demanda));
+            })
             .ToArray();
     }
 

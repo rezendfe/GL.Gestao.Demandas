@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Gl.Demandas.Infrastructure.Persistence;
 
-public sealed class GlRepositorio(AppDbContext db) : IUsuarios, ICatalogo, IDemandas, IObras, INotificacoes, IInscricoesPush, ICadeia, IInventarioEspacos, IGestaoCessionarios, IComunicados
+public sealed class GlRepositorio(AppDbContext db) : IUsuarios, ICatalogo, IDemandas, IObras, INotificacoes, IInscricoesPush, ICadeia, IInventarioEspacos, IGestaoCessionarios, IComunicados, IAuditoria
 {
     public async Task<IReadOnlyList<EmpresaCadastro>> ListarEmpresasAdministracao(CancellationToken ct)
     {
@@ -437,7 +437,7 @@ public sealed class GlRepositorio(AppDbContext db) : IUsuarios, ICatalogo, IDema
         foreach (var mensagem in demanda.Mensagens)
             row.Mensagens.Add(NovaMensagem(mensagem, usuarios));
         foreach (var anexo in demanda.Anexos)
-            row.Anexos.Add(NovoAnexo(anexo));
+            row.Anexos.Add(NovoAnexo(anexo, row.Mensagens));
         foreach (var evento in demanda.Historico)
             row.Historico.Add(NovoHistorico(evento, usuarios));
         foreach (var decisao in demanda.Decisoes)
@@ -455,7 +455,7 @@ public sealed class GlRepositorio(AppDbContext db) : IUsuarios, ICatalogo, IDema
         foreach (var mensagem in demanda.Mensagens.Where(m => row.Mensagens.All(x => x.Id != m.Id)))
             row.Mensagens.Add(NovaMensagem(mensagem, usuarios));
         foreach (var anexo in demanda.Anexos.Where(a => row.Anexos.All(x => x.Id != a.Id)))
-            row.Anexos.Add(NovoAnexo(anexo));
+            row.Anexos.Add(NovoAnexo(anexo, row.Mensagens));
         foreach (var evento in demanda.Historico.Where(h => row.Historico.All(x => x.Id != h.Id)))
             row.Historico.Add(NovoHistorico(evento, usuarios));
         foreach (var decisao in demanda.Decisoes.Where(d => row.Decisoes.All(x => x.Id != d.Id)))
@@ -477,6 +477,9 @@ public sealed class GlRepositorio(AppDbContext db) : IUsuarios, ICatalogo, IDema
     {
         var demanda = await db.Demandas.FirstAsync(d => d.Id == notificacao.DemandaId, ct);
         var usuario = await db.Usuarios.FirstAsync(u => u.Id == notificacao.UsuarioId, ct);
+        MensagemRegistro? mensagem = null;
+        if (notificacao.MensagemId is Guid mensagemId)
+            mensagem = await db.Mensagens.FirstAsync(m => m.Id == mensagemId, ct);
         db.Notificacoes.Add(new NotificacaoRegistro
         {
             Id = notificacao.Id,
@@ -484,13 +487,15 @@ public sealed class GlRepositorio(AppDbContext db) : IUsuarios, ICatalogo, IDema
             UsuarioIdInterno = usuario.IdInterno,
             Texto = notificacao.Texto,
             Leitura = notificacao.Lida ? "LIDA" : "NAO_LIDA",
-            CriadaEm = notificacao.CriadaEm
+            CriadaEm = notificacao.CriadaEm,
+            MensagemIdInterno = mensagem?.IdInterno
         });
+        await db.SaveChangesAsync(ct);
     }
 
     public async Task<IReadOnlyList<Notificacao>> ListarDoUsuario(Guid usuarioId, CancellationToken ct)
     {
-        var rows = await db.Notificacoes.Include(n => n.Usuario).Include(n => n.Demanda)
+        var rows = await db.Notificacoes.Include(n => n.Usuario).Include(n => n.Demanda).Include(n => n.Mensagem)
             .Where(n => n.Usuario!.Id == usuarioId)
             .ToListAsync(ct);
         return rows.Select(Mapear).ToArray();
@@ -498,7 +503,7 @@ public sealed class GlRepositorio(AppDbContext db) : IUsuarios, ICatalogo, IDema
 
     async Task<Notificacao?> INotificacoes.Obter(Guid id, CancellationToken ct)
     {
-        var row = await db.Notificacoes.Include(n => n.Usuario).Include(n => n.Demanda)
+        var row = await db.Notificacoes.Include(n => n.Usuario).Include(n => n.Demanda).Include(n => n.Mensagem)
             .FirstOrDefaultAsync(n => n.Id == id, ct);
         return row is null ? null : Mapear(row);
     }
@@ -580,7 +585,7 @@ public sealed class GlRepositorio(AppDbContext db) : IUsuarios, ICatalogo, IDema
             .Include(d => d.Subcategoria)
             .Include(d => d.Area)
             .Include(d => d.Mensagens).ThenInclude(m => m.Autor)
-            .Include(d => d.Anexos)
+            .Include(d => d.Anexos).ThenInclude(a => a.Mensagem)
             .Include(d => d.Historico).ThenInclude(h => h.Usuario)
             .Include(d => d.Decisoes).ThenInclude(x => x.Usuario);
 
@@ -639,16 +644,22 @@ public sealed class GlRepositorio(AppDbContext db) : IUsuarios, ICatalogo, IDema
             EnviadaEm = mensagem.EnviadaEm
         };
 
-    private static AnexoRegistro NovoAnexo(Anexo anexo) =>
-        new()
+    private static AnexoRegistro NovoAnexo(Anexo anexo, IEnumerable<MensagemRegistro> mensagens)
+    {
+        var registro = new AnexoRegistro
         {
             Id = anexo.Id,
             Nome = anexo.Nome,
             Caminho = anexo.Caminho,
             Tipo = anexo.Tipo,
             Tamanho = anexo.Tamanho,
-            EnviadoEm = anexo.EnviadoEm
+            EnviadoEm = anexo.EnviadoEm,
+            Finalidade = anexo.Finalidade
         };
+        if (anexo.MensagemId is Guid mensagemId)
+            registro.Mensagem = mensagens.First(m => m.Id == mensagemId);
+        return registro;
+    }
 
     private static HistoricoRegistro NovoHistorico(HistoricoDemanda evento, Dictionary<Guid, UsuarioRegistro> usuarios) =>
         new()
@@ -754,7 +765,7 @@ public sealed class GlRepositorio(AppDbContext db) : IUsuarios, ICatalogo, IDema
             row.AbertoEm,
             row.AtualizadoEm,
             row.Mensagens.Select(m => new Mensagem(m.Id, m.Autor!.Id, m.Texto, m.Canal, m.EnviadaEm, m.Finalidade)),
-            row.Anexos.Select(a => new Anexo(a.Id, a.Nome, a.Caminho, a.Tipo, a.Tamanho, a.EnviadoEm)),
+            row.Anexos.Select(a => new Anexo(a.Id, a.Nome, a.Caminho, a.Tipo, a.Tamanho, a.EnviadoEm, a.Mensagem?.Id, string.IsNullOrWhiteSpace(a.Finalidade) ? "documento" : a.Finalidade)),
             row.Historico.Select(h => new HistoricoDemanda(h.Id, h.Usuario!.Id, h.StatusAnterior, h.StatusNovo, h.Comentario, h.TipoEvento, h.EventoEm)),
             row.Decisoes.Select(d => new DecisaoAprovacao(d.Id, d.Usuario!.Id, d.Decisao, d.Motivo, d.DecididaEm)),
             row.PrevisaoAtendimento,
@@ -779,7 +790,7 @@ public sealed class GlRepositorio(AppDbContext db) : IUsuarios, ICatalogo, IDema
             row.Documentos.Select(d => new DocumentoObra(d.Id, d.Nome, d.Situacao, d.Ordem)).ToArray());
 
     private static Notificacao Mapear(NotificacaoRegistro row) =>
-        new(row.Id, row.Demanda!.Id, row.Usuario!.Id, row.Texto, row.Leitura == "LIDA", row.CriadaEm);
+        new(row.Id, row.Demanda!.Id, row.Usuario!.Id, row.Texto, row.Leitura == "LIDA", row.CriadaEm, row.Mensagem?.Id);
 
     public async Task<IReadOnlyList<CadeiaDoTipo>> Listar(CancellationToken ct)
     {
@@ -908,6 +919,95 @@ public sealed class GlRepositorio(AppDbContext db) : IUsuarios, ICatalogo, IDema
             row.EncerradoEm,
             row.Eventos.Select(evento => new EventoComunicado(evento.Id, evento.Usuario!.Id, evento.Tipo, evento.Comentario, evento.EventoEm)),
             row.Leituras.Select(leitura => leitura.Usuario!.Id));
+
+    async Task<IReadOnlyList<LinhaAuditoria>> IAuditoria.Listar(FiltroAuditoria filtro, CancellationToken ct)
+    {
+        var texto = string.IsNullOrWhiteSpace(filtro.Texto) ? null : filtro.Texto.Trim();
+        var chamados = db.Historicos.AsNoTracking().AsQueryable();
+        var avisos = db.ComunicadoEventos.AsNoTracking().AsQueryable();
+        if (filtro.De is DateTime de)
+        {
+            chamados = chamados.Where(h => h.EventoEm >= de);
+            avisos = avisos.Where(h => h.EventoEm >= de);
+        }
+
+        if (filtro.Ate is DateTime ate)
+        {
+            chamados = chamados.Where(h => h.EventoEm < ate);
+            avisos = avisos.Where(h => h.EventoEm < ate);
+        }
+
+        if (filtro.AutorId is Guid autor)
+        {
+            chamados = chamados.Where(h => h.Usuario!.Id == autor);
+            avisos = avisos.Where(h => h.Usuario!.Id == autor);
+        }
+
+        if (texto is not null)
+        {
+            chamados = chamados.Where(h =>
+                h.Comentario.Contains(texto)
+                || h.Demanda!.Protocolo.Contains(texto)
+                || h.Usuario!.Nome.Contains(texto)
+                || h.TipoEvento.Contains(texto));
+            avisos = avisos.Where(h =>
+                h.Comentario.Contains(texto)
+                || h.Comunicado!.Titulo.Contains(texto)
+                || h.Usuario!.Nome.Contains(texto)
+                || h.Tipo.Contains(texto));
+        }
+
+        var doChamado = await chamados
+            .OrderByDescending(h => h.EventoEm)
+            .Select(h => new LinhaAuditoria(
+                h.Id,
+                "demanda",
+                h.Demanda!.Id,
+                h.Demanda.Protocolo,
+                h.Usuario!.Id,
+                h.Usuario.Nome,
+                h.Usuario.Perfil,
+                h.TipoEvento,
+                h.Comentario,
+                h.StatusAnterior,
+                h.StatusNovo,
+                h.EventoEm))
+            .ToListAsync(ct);
+        var doComunicado = await avisos
+            .OrderByDescending(h => h.EventoEm)
+            .Select(h => new LinhaAuditoria(
+                h.Id,
+                "comunicado",
+                h.Comunicado!.Id,
+                h.Comunicado.Titulo,
+                h.Usuario!.Id,
+                h.Usuario.Nome,
+                h.Usuario.Perfil,
+                h.Tipo,
+                h.Comentario,
+                null,
+                "",
+                h.EventoEm))
+            .ToListAsync(ct);
+
+        return doChamado
+            .Concat(doComunicado)
+            .OrderByDescending(linha => linha.EventoEm)
+            .Select(linha => linha with { Perfil = ExibirPerfil(linha.Perfil) })
+            .ToArray();
+    }
+
+    private static string ExibirPerfil(string codigo)
+    {
+        try
+        {
+            return PerfilTexto.ParaExibicao(PerfilTexto.ParaPerfil(codigo));
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            return codigo;
+        }
+    }
 
     private static EtapaCadeia MapearEtapa(EtapaCadeiaRegistro row)
     {

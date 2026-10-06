@@ -22,7 +22,7 @@ public sealed class Mensagem
 
 public sealed class Anexo
 {
-    public Anexo(Guid id, string nome, string caminho, string tipo, long tamanho, DateTime enviadoEm)
+    public Anexo(Guid id, string nome, string caminho, string tipo, long tamanho, DateTime enviadoEm, Guid? mensagemId = null, string finalidade = "documento")
     {
         Id = id;
         Nome = nome;
@@ -30,6 +30,8 @@ public sealed class Anexo
         Tipo = tipo;
         Tamanho = tamanho;
         EnviadoEm = enviadoEm;
+        MensagemId = mensagemId;
+        Finalidade = string.IsNullOrWhiteSpace(finalidade) ? "documento" : finalidade.Trim().ToLowerInvariant();
     }
 
     public Guid Id { get; }
@@ -38,6 +40,18 @@ public sealed class Anexo
     public string Tipo { get; }
     public long Tamanho { get; }
     public DateTime EnviadoEm { get; }
+    public Guid? MensagemId { get; }
+    public string Finalidade { get; }
+
+    public bool EhFotoDaObra()
+    {
+        if (!string.Equals(Finalidade, "obra", StringComparison.Ordinal))
+            return false;
+        if (Tipo.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+            return true;
+        var nome = Nome.ToLowerInvariant();
+        return nome.EndsWith(".jpg") || nome.EndsWith(".jpeg") || nome.EndsWith(".png") || nome.EndsWith(".webp") || nome.EndsWith(".gif");
+    }
 }
 
 public sealed class HistoricoDemanda
@@ -326,6 +340,7 @@ public sealed class Demanda
     {
         if (perfil != Perfil.GlAdministrador)
             throw new AcessoNegadoException();
+        ExigirEmAberto();
 
         var alterou = subcategoria.Id != SubcategoriaId;
         var anterior = Situacao.ParaTexto();
@@ -356,6 +371,7 @@ public sealed class Demanda
     {
         if (perfil != Perfil.GlAdministrador)
             throw new AcessoNegadoException();
+        ExigirEmAberto();
 
         var anterior = Situacao;
         AreaId = areaId;
@@ -386,6 +402,7 @@ public sealed class Demanda
             throw new AcessoNegadoException();
         }
 
+        ExigirEmAberto();
         if (string.IsNullOrWhiteSpace(comentario))
             throw new RegraNegocioException("Registre o que foi feito.");
         comentario = FormatoCampo.Limitar(comentario, 2000, "O comentário tem no máximo 2000 caracteres.");
@@ -411,6 +428,7 @@ public sealed class Demanda
         DateTime agora,
         Guid? empresaCessionariaId = null)
     {
+        ExigirEmAberto();
         var destino = CadeiaAtendimento.Proxima(Situacao, cadeia)
             ?? throw new TransicaoInvalidaException("Este chamado não tem próxima ação.");
 
@@ -434,6 +452,8 @@ public sealed class Demanda
             return new ResultadoAvanco(false, false);
         }
 
+        if (destino.Codigo == CadeiaAtendimento.Validacao && !_anexos.Any(anexo => anexo.EhFotoDaObra()))
+            throw new RegraNegocioException("Anexe as fotos da obra executada.");
         CadeiaAtendimento.ExigirCampos(destino, comentario, previsao, PrevisaoAtendimento, _anexos.Count > 0);
         foreach (var automatica in CadeiaAtendimento.AutomaticasEntre(Situacao, destino, cadeia))
         {
@@ -466,9 +486,19 @@ public sealed class Demanda
             return new ResultadoAvanco(false, false);
         }
 
-        var entrou = RegistrarAndamento(perfil, autorId, areaDoAutor, nova, texto, agora);
+        if (nova == SituacaoDemanda.AguardandoValidacao)
+        {
+            GarantirTransicao(nova);
+            var antes = Situacao;
+            Situacao = nova;
+            AtualizadoEm = agora;
+            RegistrarHistorico(autorId, antes.ParaTexto(), nova.ParaTexto(), texto, "ANDAMENTO", agora);
+            return new ResultadoAvanco(false, true);
+        }
+
         if (previsao is DateTime prevista)
             DefinirPrevisao(perfil, autorId, areaDoAutor, prevista, agora);
+        var entrou = RegistrarAndamento(perfil, autorId, areaDoAutor, nova, texto, agora);
         return new ResultadoAvanco(entrou, nova == SituacaoDemanda.AguardandoValidacao);
     }
 
@@ -480,6 +510,7 @@ public sealed class Demanda
             throw new AcessoNegadoException("A previsão de atendimento é do Responsável da Área ou do GL / Administrador.");
         }
 
+        ExigirEmAberto();
         PrevisaoAtendimento = previsao;
         AtualizadoEm = agora;
         RegistrarHistorico(autorId, Situacao.ParaTexto(), Situacao.ParaTexto(), "Previsão de atendimento definida.", "PREVISAO", agora);
@@ -510,21 +541,39 @@ public sealed class Demanda
         RegistrarHistorico(autorId, Situacao.ParaTexto(), Situacao.ParaTexto(), registro, "AVALIACAO", agora);
     }
 
-    public void AdicionarMensagem(Perfil perfil, Guid autorId, Guid? areaDoAutor, string texto, string canal, DateTime agora, string finalidade = "mensagem", Guid? empresaCessionariaId = null)
+    public Mensagem AdicionarMensagem(Perfil perfil, Guid autorId, Guid? areaDoAutor, string texto, string canal, DateTime agora, string finalidade = "mensagem", Guid? empresaCessionariaId = null, bool comAnexo = false)
     {
         GarantirLeitura(perfil, autorId, areaDoAutor, empresaCessionariaId);
+        ExigirEmAberto();
         if (string.IsNullOrWhiteSpace(texto))
-            throw new RegraNegocioException("Escreva a mensagem.");
-        texto = FormatoCampo.Limitar(texto, 2000, "A mensagem tem no máximo 2000 caracteres.");
+        {
+            if (!comAnexo)
+                throw new RegraNegocioException("Escreva a mensagem.");
+            texto = "";
+        }
+        else
+            texto = FormatoCampo.Limitar(texto, 2000, "A mensagem tem no máximo 2000 caracteres.");
         if (finalidade is not ("mensagem" or "complemento"))
             throw new RegraNegocioException("Finalidade de mensagem inválida.");
         if (finalidade == "complemento" && perfil == Perfil.Cessionario)
             throw new AcessoNegadoException("O complemento é pedido pelo Responsável da Área ou pelo GL / Administrador.");
 
-        IncluirMensagem(autorId, texto.Trim(), canal, agora, finalidade);
-        var comentario = finalidade == "complemento" ? "Complemento solicitado." : "Mensagem registrada.";
+        var mensagem = IncluirMensagem(autorId, texto.Trim(), canal, agora, finalidade);
+        var comentario = finalidade == "complemento"
+            ? "Complemento solicitado."
+            : comAnexo && texto.Length == 0 ? "Arquivo enviado na conversa." : "Mensagem registrada.";
         RegistrarHistorico(autorId, Situacao.ParaTexto(), Situacao.ParaTexto(), comentario, "MENSAGEM", agora);
         AtualizadoEm = agora;
+        return mensagem;
+    }
+
+    public void IncluirAnexoDaMensagem(Perfil perfil, Guid autorId, Guid? areaDoAutor, Anexo anexo, Guid? empresaCessionariaId = null)
+    {
+        GarantirLeitura(perfil, autorId, areaDoAutor, empresaCessionariaId);
+        ExigirEmAberto();
+        if (anexo.MensagemId is not Guid mensagemId || _mensagens.All(m => m.Id != mensagemId))
+            throw new RegraNegocioException("O arquivo precisa de uma mensagem da conversa.");
+        _anexos.Add(anexo);
     }
 
     public int PendenciasAbertas()
@@ -558,8 +607,12 @@ public sealed class Demanda
         Guid? empresaCessionariaId = null)
     {
         GarantirLeitura(perfil, autorId, areaDoAutor, empresaCessionariaId);
+        ExigirEmAberto();
         _anexos.Add(anexo);
-        RegistrarHistorico(autorId, Situacao.ParaTexto(), Situacao.ParaTexto(), $"Documento anexado: {anexo.Nome}.", "ANEXO", agora);
+        var registro = anexo.EhFotoDaObra()
+            ? $"Foto da obra executada: {anexo.Nome}."
+            : $"Documento anexado: {anexo.Nome}.";
+        RegistrarHistorico(autorId, Situacao.ParaTexto(), Situacao.ParaTexto(), registro, "ANEXO", agora);
         AtualizadoEm = agora;
     }
 
@@ -615,8 +668,12 @@ public sealed class Demanda
         RegistrarHistorico(autorId, anterior.ParaTexto(), nova.ParaTexto(), comentario, "APROVACAO", agora);
     }
 
-    public void IncluirMensagem(Guid autorId, string texto, string canal, DateTime agora, string finalidade = "mensagem") =>
-        _mensagens.Add(new Mensagem(Guid.NewGuid(), autorId, texto, canal, agora, finalidade));
+    public Mensagem IncluirMensagem(Guid autorId, string texto, string canal, DateTime agora, string finalidade = "mensagem")
+    {
+        var mensagem = new Mensagem(Guid.NewGuid(), autorId, texto, canal, agora, finalidade);
+        _mensagens.Add(mensagem);
+        return mensagem;
+    }
 
     public void RegistrarEvento(Guid autorId, string comentario, string tipo, DateTime agora) =>
         RegistrarHistorico(autorId, Situacao.ParaTexto(), Situacao.ParaTexto(), comentario, tipo, agora);
@@ -628,6 +685,12 @@ public sealed class Demanda
         if (motivo.Trim().Length > 2000)
             throw new RegraNegocioException("O motivo tem no máximo 2000 caracteres.");
         return (situacao, rotulo);
+    }
+
+    private void ExigirEmAberto()
+    {
+        if (!EmAberto)
+            throw new RegraNegocioException("Este chamado já foi encerrado e não aceita alterações.");
     }
 
     private void GarantirTransicao(SituacaoDemanda nova)

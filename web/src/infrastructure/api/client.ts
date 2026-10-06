@@ -8,6 +8,8 @@ import type {
   EtapaCadeia,
   ComunicadoDetalhe,
   ComunicadoResumo,
+  EventoAuditoria,
+  PessoaAuditoria,
   FilaItem,
   ItemAgenda,
   Notificacao,
@@ -17,7 +19,15 @@ import type {
   Sugestao,
 } from "../../domain/types";
 
-const base = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:5090";
+const base = import.meta.env.VITE_API_BASE_URL ?? enderecoApi();
+
+function enderecoApi() {
+  if (typeof window === "undefined") return "http://127.0.0.1:5090";
+  const host = window.location.hostname;
+  if (host === "localhost" || host === "127.0.0.1") return "http://127.0.0.1:5090";
+  const protocolo = window.location.protocol === "https:" ? "https:" : "http:";
+  return `${protocolo}//${host}:5090`;
+}
 const TOKEN = "gl-poc-token";
 const USUARIO = "gl-poc-usuario";
 
@@ -69,13 +79,13 @@ async function request<T>(path: string, options: RequestInit = {}, timeoutMs = 1
   return body as T;
 }
 
-async function baixar(path: string, nome: string) {
+async function baixar(path: string, nome: string, timeoutMs = 15000) {
   const headers = new Headers();
   const token = sessionStorage.getItem(TOKEN);
   if (token) headers.set("Authorization", `Bearer ${token}`);
   let response: Response;
   try {
-    response = await fetch(`${base}${path}`, { headers, signal: AbortSignal.timeout(15000) });
+    response = await fetch(`${base}${path}`, { headers, signal: AbortSignal.timeout(timeoutMs) });
   } catch {
     throw new ApiError("A API não respondeu. Verifique se o serviço está no ar.", 0);
   }
@@ -133,16 +143,26 @@ export const api = {
     request<DetalheDemanda>(`/api/demandas/${id}/andamento`, { method: "POST", body: JSON.stringify({ comentario, situacao }) }),
   mensagem: (id: string, texto: string, complemento = false) =>
     request<DetalheDemanda>(`/api/demandas/${id}/mensagens`, { method: "POST", body: JSON.stringify({ texto, complemento }) }),
+  mensagemComAnexo: (id: string, texto: string, arquivo: File) => {
+    const form = new FormData();
+    form.append("texto", texto);
+    form.append("arquivo", arquivo);
+    return request<DetalheDemanda>(`/api/demandas/${id}/mensagens/anexo`, { method: "POST", body: form });
+  },
   previsao: (id: string, quando: string) =>
     request<DetalheDemanda>(`/api/demandas/${id}/previsao`, { method: "POST", body: JSON.stringify({ quando }) }),
   avaliar: (id: string, nota: number, comentario: string) =>
     request<DetalheDemanda>(`/api/demandas/${id}/avaliacao`, { method: "POST", body: JSON.stringify({ nota, comentario }) }),
   responderNotificacao: (id: string, texto: string) =>
     request<DetalheDemanda>(`/api/notificacoes/${id}/resposta`, { method: "POST", body: JSON.stringify({ texto }) }),
-  anexar: (id: string, arquivo: File) => {
+  anexar: (id: string, arquivo: File, finalidade?: "obra" | "documento") => {
     const form = new FormData();
     form.append("arquivo", arquivo);
+    if (finalidade) form.append("finalidade", finalidade);
     return request<DetalheDemanda>(`/api/demandas/${id}/anexos`, { method: "POST", body: form });
+  },
+  async anexarFotosDaObra(id: string, fotos: File[]) {
+    for (const foto of fotos) await this.anexar(id, foto, "obra");
   },
   aprovar: (id: string, decisao: string, motivo?: string) =>
     request<DetalheDemanda>(`/api/demandas/${id}/aprovacao`, { method: "POST", body: JSON.stringify({ decisao, motivo }) }),
@@ -198,6 +218,15 @@ export const api = {
     request<EtapaCadeia[]>("/api/cadeia", { method: "PUT", body: JSON.stringify({ subcategoriaId, etapas }) }),
   avancar: (id: string, payload: { comentario?: string | null; previsao?: string | null; confirmacao?: boolean | null }) =>
     request<DetalheDemanda>(`/api/demandas/${id}/avancar`, { method: "POST", body: JSON.stringify(payload) }),
+  auditoriaDoDia: () => request<EventoAuditoria[]>("/api/auditoria/dia"),
+  pessoasAuditoria: () => request<PessoaAuditoria[]>("/api/auditoria/pessoas"),
+  exportarAuditoria: () => baixar("/api/auditoria/exportacao", "auditoria.xlsx", 60000),
+  pesquisarAuditoria: (filtro: { de: string; ate: string; autorId?: string; texto?: string }) => {
+    const params = new URLSearchParams({ de: filtro.de, ate: filtro.ate });
+    if (filtro.autorId) params.set("autorId", filtro.autorId);
+    if (filtro.texto) params.set("texto", filtro.texto);
+    return request<EventoAuditoria[]>(`/api/auditoria?${params.toString()}`);
+  },
   notificacoes: () => request<Notificacao[]>("/api/notificacoes"),
   marcarLida: (id: string) => request<void>(`/api/notificacoes/${id}/leitura`, { method: "POST" }),
   chavePush: () => request<{ chavePublica: string }>("/api/notificacoes/push/chave"),
@@ -207,6 +236,15 @@ export const api = {
     request<void>("/api/notificacoes/push/cancelamento", { method: "POST", body: JSON.stringify({ endpoint }) }),
   exportarFila: () => baixar("/api/demandas/exportacao", "fila-demandas.csv"),
   exportarProtocolo: (id: string, protocolo: string) => baixar(`/api/demandas/${id}/protocolo`, `protocolo-${protocolo}.pdf`),
+  abrirAnexo: async (demandaId: string, anexoId: string) => {
+    const token = sessionStorage.getItem(TOKEN);
+    const response = await fetch(`${base}/api/demandas/${demandaId}/anexos/${anexoId}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!response.ok) throw new ApiError("O arquivo não está disponível.", response.status);
+    return { buffer: await response.arrayBuffer(), tipo: response.headers.get("content-type") ?? "" };
+  },
   baixarAnexo: async (demandaId: string, anexoId: string, nome: string) => {
     const token = sessionStorage.getItem(TOKEN);
     const response = await fetch(`${base}/api/demandas/${demandaId}/anexos/${anexoId}`, {

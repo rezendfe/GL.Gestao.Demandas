@@ -4,6 +4,6 @@ Subir a API (`dotnet run --project backend/src/Gl.Demandas.Api --launch-profile 
 
 Senha de demonstração: `Demo@2026`. Cessionário `joao.silva@empresaexemplo.com.br`. GL / Administrador `patricia.lima@gleventos.com.br`. Responsável da Área `responsavel.01@gleventos.com.br`.
 
-1. Como Cessionário, abrir Meu espaço e a mensageria.
-2. Na conversa que já tem protocolo, abrir o detalhe da demanda.
+1. Como Cessionário, abrir Meu espaço. No topo, ao lado do sininho, abrir Mensagens.
+2. Escolher um protocolo e ler a conversa daquele chamado.
 3. Como outro Cessionário, a ficha da primeira empresa não aparece.

@@ -26,6 +26,8 @@ public static class DependenciasInfra
         services.AddScoped<ICatalogo>(sp => sp.GetRequiredService<GlRepositorio>());
         services.AddScoped<IDemandas>(sp => sp.GetRequiredService<GlRepositorio>());
         services.AddScoped<IObras>(sp => sp.GetRequiredService<GlRepositorio>());
+        services.AddScoped<IComunicados>(sp => sp.GetRequiredService<GlRepositorio>());
+        services.AddScoped<IAuditoria>(sp => sp.GetRequiredService<GlRepositorio>());
         services.AddScoped<INotificacoes>(sp => sp.GetRequiredService<GlRepositorio>());
         services.AddScoped<IInscricoesPush>(sp => sp.GetRequiredService<GlRepositorio>());
         services.AddSingleton<IConfiguracaoPush, ConfiguracaoPush>();

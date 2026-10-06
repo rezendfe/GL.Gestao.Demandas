@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 const rotas: Record<string, string[]> = {
-  "Cessionário": ["/inicio", "/meu-espaco", "/minhas", "/abrir", "/mensageria"],
+  "Cessionário": ["/inicio", "/meu-espaco", "/minhas", "/abrir"],
   "GL / Administrador": ["/inicio", "/quadro", "/cadeia", "/operacao", "/central", "/espacos", "/empresas-cessionarias", "/obras"],
   "Responsável da Área": ["/inicio", "/quadro", "/operacao", "/central"],
 };

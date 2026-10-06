@@ -1,22 +1,36 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { tempoRelativo, type Notificacao } from "../../domain/types";
+import { useSessao } from "../../application/session";
+import { destinoDaNotificacao, type ComunicadoResumo, type Notificacao } from "../../domain/types";
 import { api } from "../../infrastructure/api/client";
-import { aparelhoInscrito, ativarAvisosCelular, mostrarAvisoCelular, pararAvisosCelular, registrarWorker } from "../notificacaoCelular";
+import { aparelhoInscrito, ativarAvisosCelular, mostrarAvisoCelular, pararAvisosCelular, registrarWorker, textoResultadoAviso } from "../notificacaoCelular";
 import { Icone } from "./Icons";
+import { faixaAviso, LinhaAviso } from "./LinhaAviso";
+
+interface ItemSino {
+  id: string;
+  titulo: string;
+  texto: string;
+  criadaEm: string;
+  lida: boolean;
+  url: string;
+  tipo: "chamado" | "comunicado";
+}
 
 export function SinoNotificacoes() {
   const navigate = useNavigate();
+  const { sessao } = useSessao();
+  const cessionario = sessao?.usuario.perfil === "Cessionário";
   const caixa = useRef<HTMLDivElement>(null);
   const [aberto, setAberto] = useState(false);
-  const [notas, setNotas] = useState<Notificacao[]>([]);
+  const [itens, setItens] = useState<ItemSino[]>([]);
   const [celular, setCelular] = useState(() => window.matchMedia("(max-width: 900px)").matches);
   const [permissao, setPermissao] = useState<NotificationPermission | "unsupported">(() =>
     "Notification" in window ? Notification.permission : "unsupported");
   const [inscrito, setInscrito] = useState(false);
   const [ocupado, setOcupado] = useState(false);
   const [mensagem, setMensagem] = useState<string | null>(null);
-  const naoLidas = notas.filter((nota) => !nota.lida).length;
+  const naoLidas = itens.filter((item) => !item.lida).length;
 
   useEffect(() => {
     const consulta = window.matchMedia("(max-width: 900px)");
@@ -31,12 +45,18 @@ export function SinoNotificacoes() {
 
     async function olhar() {
       try {
-        const lista = await api.notificacoes();
+        const [lista, comunicados] = await Promise.all([
+          api.notificacoes(),
+          cessionario ? api.comunicados().catch(() => [] as ComunicadoResumo[]) : Promise.resolve([] as ComunicadoResumo[]),
+        ]);
         if (!ativo) return;
-        setNotas(lista);
+        const chamados = lista.map(itemDeChamado);
+        const avisos = comunicados.filter((item) => !item.lido).map(itemDeComunicado);
+        const juntos = [...avisos, ...chamados].sort((a, b) => new Date(b.criadaEm).getTime() - new Date(a.criadaEm).getTime());
+        setItens(juntos);
         if (typeof Notification !== "undefined" && Notification.permission === "granted") {
-          for (const nota of lista.filter((item) => !item.lida)) {
-            await mostrarAvisoCelular(nota.id, nota.protocolo, nota.texto, nota.demandaId);
+          for (const item of juntos.filter((atual) => !atual.lida)) {
+            await mostrarAvisoCelular(item.id, item.titulo, item.texto, item.url);
           }
         }
       } catch {
@@ -46,18 +66,21 @@ export function SinoNotificacoes() {
 
     void olhar();
     const timer = window.setInterval(() => void olhar(), 12000);
+    const aoAtivar = () => { void olhar(); };
     const aoMensagem = (event: MessageEvent) => {
       if (event.data?.tipo === "abrir-chamado" && typeof event.data.url === "string") {
         navigate(event.data.url);
       }
     };
+    window.addEventListener("gl-avisos-ativados", aoAtivar);
     navigator.serviceWorker?.addEventListener("message", aoMensagem);
     return () => {
       ativo = false;
       window.clearInterval(timer);
+      window.removeEventListener("gl-avisos-ativados", aoAtivar);
       navigator.serviceWorker?.removeEventListener("message", aoMensagem);
     };
-  }, [navigate]);
+  }, [navigate, cessionario]);
 
   useEffect(() => {
     if (!aberto) return;
@@ -68,10 +91,10 @@ export function SinoNotificacoes() {
     const tecla = (event: KeyboardEvent) => {
       if (event.key === "Escape") setAberto(false);
     };
-    document.addEventListener("mousedown", fechar);
+    document.addEventListener("click", fechar);
     document.addEventListener("keydown", tecla);
     return () => {
-      document.removeEventListener("mousedown", fechar);
+      document.removeEventListener("click", fechar);
       document.removeEventListener("keydown", tecla);
     };
   }, [aberto]);
@@ -83,12 +106,9 @@ export function SinoNotificacoes() {
       const resultado = await ativarAvisosCelular();
       setPermissao("Notification" in window ? Notification.permission : "unsupported");
       setInscrito(await aparelhoInscrito());
-      if (resultado === "granted") setMensagem("Este celular passa a receber as notificações do portal.");
-      else if (resultado === "denied") setMensagem("As notificações estão bloqueadas neste navegador. Libere o site nas configurações do celular.");
-      else if (resultado === "unsupported") setMensagem("Este navegador não recebe notificações do site.");
-      else if (resultado === "indisponivel") setMensagem("As notificações neste aparelho ainda não estão disponíveis.");
+      setMensagem(textoResultadoAviso(resultado, celular));
     } catch {
-      setMensagem("Não foi possível autorizar este celular.");
+      setMensagem("Não foi possível autorizar este aparelho.");
     } finally {
       setOcupado(false);
     }
@@ -100,24 +120,35 @@ export function SinoNotificacoes() {
     try {
       await pararAvisosCelular();
       setInscrito(false);
-      setMensagem("Este celular deixou de receber as notificações do portal.");
+      setMensagem(celular
+        ? "Este celular deixou de receber os alertas do portal."
+        : "Este computador deixou de receber os alertas do portal.");
     } catch {
-      setMensagem("Não foi possível retirar a autorização deste celular.");
+      setMensagem("Não foi possível retirar a autorização deste aparelho.");
     }
     setOcupado(false);
   }
 
-  async function abrirNota(nota: Notificacao) {
+  async function abrirItem(item: ItemSino) {
     setAberto(false);
-    if (!nota.lida) {
+    if (!item.lida && item.tipo === "chamado") {
       try {
-        await api.marcarLida(nota.id);
+        await api.marcarLida(item.id);
       } catch {
         /* o chamado continua acessível */
       }
     }
-    navigate(`/demandas/${nota.demandaId}${nota.lida ? "" : `?responder=${nota.id}`}`);
+    if (!item.lida && item.tipo === "comunicado") {
+      try {
+        await api.marcarLeituraComunicado(item.id);
+      } catch {
+        /* o comunicado continua acessível */
+      }
+    }
+    navigate(item.url);
   }
+
+  const aparelho = celular ? "celular" : "computador";
 
   return (
     <div className="x-sino-wrap" ref={caixa}>
@@ -134,45 +165,75 @@ export function SinoNotificacoes() {
       </button>
       {aberto && (
         <div className="x-sino-painel" role="dialog" aria-label="Notificações">
-          <strong>Notificações</strong>
-          {celular && (
-            <div className="x-sino-push">
-              {permissao === "unsupported" ? (
-                <p>Este navegador não recebe notificações do site.</p>
-              ) : inscrito ? (
-                <>
-                  <p>Este celular recebe as notificações do portal, mesmo com o site fechado.</p>
-                  <button className="x-sino-acao" type="button" disabled={ocupado} onClick={() => void parar()}>
-                    Parar de receber neste celular
-                  </button>
-                </>
-              ) : (
-                <button className="x-sino-acao" type="button" disabled={ocupado} onClick={() => void autorizar()}>
-                  Receber notificações neste celular
-                </button>
-              )}
-              {mensagem && <p>{mensagem}</p>}
-            </div>
-          )}
-          {notas.length === 0 ? (
+          <header className="qa-topo marca">
+            <h2>Notificações</h2>
+            <button className="qa-fechar" type="button" aria-label="Fechar" onClick={() => setAberto(false)}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
+                <path d="M6 6l12 12M18 6 6 18" />
+              </svg>
+            </button>
+          </header>
+          {itens.length === 0 ? (
             <p className="x-sino-vazio">Nenhuma notificação.</p>
           ) : (
-            <ul>
-              {notas.slice(0, 8).map((nota) => (
-                <li key={nota.id}>
-                  <button className={nota.lida ? "x-sino-item" : "x-sino-item pede-leitura"} type="button" onClick={() => void abrirNota(nota)}>
-                    <span>
-                      <strong>{nota.protocolo || "Chamado"}</strong>
-                      <time dateTime={nota.criadaEm}>{tempoRelativo(nota.criadaEm)}</time>
-                    </span>
-                    <em>{nota.texto}</em>
-                  </button>
+            <ul className="aviso-lista">
+              {itens.map((item, indice) => (
+                <li key={`${item.tipo}-${item.id}`}>
+                  <LinhaAviso
+                    iso={item.criadaEm}
+                    texto={item.texto}
+                    complemento={item.tipo === "comunicado" ? "Comunicado" : item.titulo}
+                    cor={faixaAviso(indice)}
+                    destaque={!item.lida}
+                    onClick={() => void abrirItem(item)}
+                  />
                 </li>
               ))}
             </ul>
           )}
+          <div className="x-sino-push">
+            {permissao === "unsupported" ? (
+              <p>Este navegador não recebe alertas do site.</p>
+            ) : inscrito ? (
+              <>
+                <p>Este {aparelho} recebe os alertas do portal, mesmo com o site fechado.</p>
+                <button className="x-sino-acao" type="button" disabled={ocupado} onClick={() => void parar()}>
+                  Parar de receber neste {aparelho}
+                </button>
+              </>
+            ) : (
+              <button className="x-sino-acao" type="button" disabled={ocupado} onClick={() => void autorizar()}>
+                {ocupado ? "Ativando..." : `Receber alertas neste ${aparelho}`}
+              </button>
+            )}
+            {mensagem && <p>{mensagem}</p>}
+          </div>
         </div>
       )}
     </div>
   );
+}
+
+function itemDeChamado(nota: Notificacao): ItemSino {
+  return {
+    id: nota.id,
+    titulo: nota.protocolo || "Chamado",
+    texto: nota.texto,
+    criadaEm: nota.criadaEm,
+    lida: nota.lida,
+    url: destinoDaNotificacao(nota),
+    tipo: "chamado",
+  };
+}
+
+function itemDeComunicado(item: ComunicadoResumo): ItemSino {
+  return {
+    id: item.id,
+    titulo: item.titulo,
+    texto: item.titulo,
+    criadaEm: item.publicadoEm,
+    lida: false,
+    url: `/comunicados/${item.id}`,
+    tipo: "comunicado",
+  };
 }

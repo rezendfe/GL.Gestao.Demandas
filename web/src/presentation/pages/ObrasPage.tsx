@@ -1,7 +1,7 @@
-import { Link } from "react-router-dom";
 import { useObras } from "../../application/hooks";
 import { Badge } from "../components/Badge";
 import { EstadoAcao } from "../components/EstadoAcao";
+import { useAcoesDaPagina } from "../components/AcoesRapidas";
 import { PageHeader } from "../components/PageHeader";
 import { Panel } from "../components/Panel";
 
@@ -10,21 +10,35 @@ export function ObrasPage() {
   const obra = dados?.[0];
   const pendente = obra?.documentos.find((documento) => documento.situacao !== "Recebido" && documento.situacao !== "Aprovado");
 
+  useAcoesDaPagina([
+    ...(obra ? [{
+      id: "documentacao",
+      rotulo: "Ver documentação",
+      icone: "documento" as const,
+      executar: () => document.getElementById("documentacao-obra")?.scrollIntoView({ behavior: "smooth", block: "start" }),
+    }] : []),
+    ...(erro ? [{
+      id: "tentar-obras",
+      rotulo: "Tentar de novo",
+      icone: "alerta" as const,
+      executar: () => recarregar(),
+    }] : []),
+  ]);
+
   return (
     <>
       <PageHeader title="Obras" trail={["Início", "Obras"]} />
-      <p className="muted" style={{ marginTop: -8, marginBottom: 16 }}>Fluxo próprio, separado do atendimento pontual. O projeto inicia a análise; os demais documentos entram por etapa.</p>
-      {erro && <p className="erro">{erro} <button className="btn secondary" type="button" onClick={() => void recarregar()}>Tentar de novo</button></p>}
-      {carregando && <p>Carregando obra... <Link className="btn secondary" to="/inicio">Voltar ao início</Link></p>}
+      {erro && <p className="erro">{erro}</p>}
+      {carregando && <p>Carregando obra...</p>}
       {!carregando && !erro && !obra && (
-        <p className="fila-vazio">Nenhuma obra cadastrada. <Link className="btn secondary" to="/inicio">Voltar ao início</Link></p>
+        <Panel title="Obra"><p>Nenhuma obra cadastrada.</p></Panel>
       )}
       {obra && (
         <Panel title={obra.nome}>
+          <p className="note">Fluxo próprio, separado do atendimento pontual. O projeto inicia a análise; os demais documentos entram por etapa.</p>
           <EstadoAcao
             situacao={obra.etapaAtual}
             proximo={pendente ? `Enviar ${pendente.nome}` : "Acompanhar a etapa"}
-            acao={<a className="btn" href="#documentacao-obra">Ver documentação</a>}
           />
           <div className="protocol">OBRA</div>
           <p>{obra.descricao}</p>

@@ -1,15 +1,18 @@
-import { Link, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { useFila } from "../../application/hooks";
 import { useSessao } from "../../application/session";
 import { destinoRecorte, itensDoRecorte, rotuloRecorte } from "../../domain/recorte";
+import { api } from "../../infrastructure/api/client";
+import { useAcoesDaPagina } from "../components/AcoesRapidas";
 import { FilaExploravel } from "../components/FilaExploravel";
 import { CartaoIndicador, RecorteAtivo } from "../components/PainelInterativo";
 import { PageHeader } from "../components/PageHeader";
-import { BotaoExportarFila } from "../components/ExportarArquivo";
+import { Panel } from "../components/Panel";
+import { AgendaPage } from "./AgendaPage";
 import { OperacaoPage } from "./OperacaoPage";
 import { QuadroPage } from "./QuadroPage";
 
-type VisaoOperacional = "quadro" | "operacao" | "central";
+type VisaoOperacional = "quadro" | "operacao" | "central" | "agenda";
 
 export function CentralPage() {
   const { sessao } = useSessao();
@@ -18,7 +21,17 @@ export function CentralPage() {
   const visaoParam = params.get("visao");
   const visao: VisaoOperacional = perfil === "Cessionário"
     ? "central"
-    : visaoParam === "quadro" || visaoParam === "operacao" ? visaoParam : "central";
+    : visaoParam === "quadro" || visaoParam === "operacao" || visaoParam === "agenda" ? visaoParam : "central";
+
+  useAcoesDaPagina([
+    {
+      id: "exportar-planilha",
+      rotulo: "Exportar planilha",
+      rotuloOcupado: "Gerando planilha...",
+      icone: "planilha",
+      executar: () => api.exportarFila(),
+    },
+  ]);
 
   function selecionarVisao(novaVisao: VisaoOperacional) {
     setParams((atuais) => {
@@ -29,18 +42,15 @@ export function CentralPage() {
 
   return (
     <>
-      <PageHeader
-        title="Central operacional"
-        trail={["Início", "Central operacional"]}
-        extra={<BotaoExportarFila />}
-      />
+      <PageHeader title="Central operacional" trail={["Início", "Central operacional"]} />
       {perfil !== "Cessionário" && (
         <div className="visoes-centrais" role="group" aria-label="Visão operacional">
-          {(["quadro", "operacao", "central"] as const).map((opcao) => {
+          {(["quadro", "operacao", "central", "agenda"] as const).map((opcao) => {
             const rotulos: Record<VisaoOperacional, string> = {
               quadro: "Quadro",
               operacao: "Operação",
               central: "Central operacional",
+              agenda: "Agenda",
             };
             return (
               <button
@@ -56,14 +66,14 @@ export function CentralPage() {
           })}
         </div>
       )}
-      {visao === "quadro" ? <QuadroPage /> : visao === "operacao" ? <OperacaoPage /> : <FilaCentral />}
+      {visao === "quadro" ? <QuadroPage /> : visao === "operacao" ? <OperacaoPage /> : visao === "agenda" ? <AgendaPage /> : <FilaCentral />}
     </>
   );
 }
 
 function FilaCentral() {
   const { sessao } = useSessao();
-  const { dados, erro, carregando, recarregar } = useFila();
+  const { dados, erro, carregando } = useFila();
   const [params] = useSearchParams();
   const fila = dados ?? [];
   const recorte = params.get("recorte");
@@ -79,9 +89,8 @@ function FilaCentral() {
 
   return (
     <>
-      <p className="muted" style={{ marginTop: -8, marginBottom: 16 }}>A fila é o centro da operação. A prioridade ilustra uma regra configurável. Grade, cartões ou pulso: a escolha fica salva para o seu usuário.</p>
-      {erro && <p className="erro">{erro} <button className="btn secondary" type="button" onClick={() => void recarregar()}>Tentar de novo</button></p>}
-      {carregando && <p>Carregando a fila... <Link className="btn secondary" to="/inicio">Voltar ao início</Link></p>}
+      {erro && <p className="erro">{erro}</p>}
+      {carregando && <p>Carregando a fila...</p>}
       <section className="kpis">
         <CartaoIndicador tom="tone-info" sigla="N" valor={entrada.length} rotulo="Novas" itens={entrada} para={destinoRecorte(perfil, entrada, "entrada")} />
         <CartaoIndicador tom="tone-amber" sigla="A" valor={atendimento.length} rotulo="Em andamento" itens={atendimento} para={destinoRecorte(perfil, atendimento, "atendimento")} />
@@ -90,15 +99,18 @@ function FilaCentral() {
       </section>
       <RecorteAtivo rotulo={rotuloRecorte(recorte, servico, atuacao, cessionario)} limpar="/central" />
       {!carregando && !erro && visiveis.length === 0 && (
-        <p className="fila-vazio">
-          Nenhum chamado neste recorte.
-          {recorte || servico || atuacao || cessionario
-            ? <Link className="btn secondary" to="/central">Limpar filtro</Link>
-            : <Link className="btn secondary" to="/inicio">Voltar ao início</Link>}
-        </p>
+        <Panel title="Fila de demandas">
+          <p className="note">A fila é o centro da operação. A prioridade ilustra uma regra configurável. Grade, cartões ou pulso: a escolha fica salva para o seu usuário.</p>
+          <p>Nenhum chamado neste recorte.</p>
+        </Panel>
       )}
       {!carregando && visiveis.length > 0 && (
-        <FilaExploravel titulo="Fila de demandas" itens={visiveis} usuarioId={sessao?.usuario.id} />
+        <FilaExploravel
+          titulo="Fila de demandas"
+          itens={visiveis}
+          usuarioId={sessao?.usuario.id}
+          nota="A fila é o centro da operação. A prioridade ilustra uma regra configurável. Grade, cartões ou pulso: a escolha fica salva para o seu usuário."
+        />
       )}
     </>
   );

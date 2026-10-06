@@ -22,7 +22,14 @@ builder.Services.AddHealthChecks();
 builder.Services.AddCors(o => o.AddDefaultPolicy(p =>
 {
     var origens = builder.Configuration.GetSection("Cors:Origins").Get<string[]>() ?? ["http://localhost:5173"];
-    p.WithOrigins(origens).AllowAnyHeader().AllowAnyMethod();
+    p.SetIsOriginAllowed(origem =>
+    {
+        if (origens.Contains(origem, StringComparer.OrdinalIgnoreCase)) return true;
+        if (!desenvolvimento || !Uri.TryCreate(origem, UriKind.Absolute, out var uri)) return false;
+        if (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps) return false;
+        if (uri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase) || uri.Host == "127.0.0.1") return true;
+        return EhRedePrivada(uri.Host);
+    }).AllowAnyHeader().AllowAnyMethod();
 }));
 
 JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
@@ -160,6 +167,16 @@ await PrepararDadosAsync(app);
 
 app.Run();
 
+static bool EhRedePrivada(string host)
+{
+    if (!System.Net.IPAddress.TryParse(host, out var ip)) return false;
+    var bytes = ip.GetAddressBytes();
+    if (bytes.Length != 4) return false;
+    if (bytes[0] == 10) return true;
+    if (bytes[0] == 192 && bytes[1] == 168) return true;
+    return bytes[0] == 172 && bytes[1] is >= 16 and <= 31;
+}
+
 static async Task Erro(HttpContext ctx, int status, string codigo, string mensagem)
 {
     ctx.Response.StatusCode = status;
@@ -170,12 +187,7 @@ static async Task PrepararDadosAsync(WebApplication app)
 {
     var pasta = Path.GetFullPath(app.Configuration["Anexo:Pasta"] ?? "anexos-dev");
     var seed = Path.Combine(pasta, "seed");
-    Directory.CreateDirectory(seed);
-    var pdf = Path.Combine(seed, "Projeto_Fibra.pdf");
-    if (!File.Exists(pdf))
-    {
-        await File.WriteAllTextAsync(pdf, "%PDF-1.1\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n");
-    }
+    await ArquivosDemonstracao.Garantir(seed);
 }
 
 file sealed class SegurancaAnonimaFilter : IOperationFilter

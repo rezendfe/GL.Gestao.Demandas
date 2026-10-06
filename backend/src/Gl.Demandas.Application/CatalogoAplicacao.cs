@@ -30,7 +30,7 @@ public sealed class CatalogoAplicacao(ICatalogo catalogo, IUsuarios usuarios)
             pessoas
                 .Where(p => p.Perfil == Perfil.ResponsavelArea)
                 .OrderBy(p => p.Nome)
-                .Select(p => new ResponsavelDto(p.Id, p.Nome, p.Email, p.AreaId, p.Ativo))
+                .Select(p => new ResponsavelDto(p.Id, p.Nome, p.Email, p.AreaId, p.Ativo, p.Foto))
                 .ToArray());
     }
 }

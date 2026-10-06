@@ -205,8 +205,8 @@ Os cinco nós são estáveis; a expansão ocorre acrescentando tarefas configura
 |----|-----------|----------------|---------------------------------|
 | Solicitação | Cessionário; Sistema | O Cessionário informa a necessidade, local e tipo, preenche o formulário específico e envia. Anexa evidências/documentos exigidos pelo tipo (em Obras: Projeto, ART, Seguro e Cronograma, conforme RN-09). O Sistema gera protocolo, registra histórico, encaminha à área e disponibiliza a demanda para GL / Administrador. | Campos e documentos definidos como obrigatórios para o tipo precisam estar válidos antes do envio. Depois do envio, informação adicional é pedida como tarefa de complemento/ajuste, sem apagar a solicitação original. |
 | Aprovação | GL / Administrador; Sistema quando automática | O GL / Administrador revisa solicitação e documentos e escolhe Aprovar, Solicitar ajuste ou Reprovar. Solicitar ajuste/Reprovar exige motivo; os documentos apontados voltam ao Cessionário para correção e nova análise. Aprovação automática registra a decisão e segue sem modal humano. | Decisão manual e motivo quando aplicável; pré-requisitos documentais obrigatórios daquele tipo. Reprovação encerra o caminho positivo conforme o status Reprovada. A aprovação exclusiva de Obras é RN-10; gates para outros tipos dependem da parametrização validada (Q-11). |
-| Atendimento | Responsável da Área ou GL / Administrador; Sistema quando automática | A área executa e registra andamento, comentário e previsão quando aplicável. Pode preencher campos operacionais configurados e anexar documentos/fotos como evidência do serviço. Exemplo: uma manutenção pode exigir foto do reparo concluído, mas somente se o GL / Administrador ativar essa tarefa obrigatória para aquele tipo/condição. O nó pode receber vários registros de andamento antes de seguir. | Tarefas obrigatórias do tipo/condição, como comentário técnico, campo estruturado ou evidência, devem estar completas. Uma evidência não é universalmente obrigatória; upload segue RN-18. |
-| Validação do cliente | Cessionário do chamado; Sistema quando automática | O Cessionário verifica o resultado e confirma que o serviço foi realizado ou devolve ao Atendimento informando o que falta. A confirmação fica no histórico; quando devolve, a demanda retorna ao Atendimento para correção e nova validação. | A decisão do Cessionário é obrigatória quando o nó é manual. Devolução exige comentário com o que falta. Validação automática só pode ocorrer quando não exigir decisão ou dado do Cessionário. |
+| Atendimento | Responsável da Área ou GL / Administrador; Sistema quando automática | A área executa e registra andamento, comentário e previsão quando aplicável. Pode preencher campos operacionais configurados e anexar documentos/fotos como evidência do serviço. A saída para a Validação do cliente manual é do Responsável da Área da demanda ou do GL / Administrador: registra o que foi feito e anexa ao menos uma foto da obra executada (RN-44). O nó pode receber vários registros de andamento antes de seguir. | Tarefas obrigatórias do tipo/condição devem estar completas. Outras evidências continuam configuráveis por tipo. Sem a foto da obra executada, o chamado não entra na Validação do cliente manual. Upload segue RN-18. |
+| Validação do cliente | Cessionário do chamado; Sistema quando automática | O Cessionário vê as fotos da obra executada, confirma que o serviço foi realizado ou devolve ao Atendimento informando o que falta. A confirmação fica no histórico; quando devolve, a demanda retorna ao Atendimento para correção e nova validação. | A decisão do Cessionário é obrigatória quando o nó é manual. Devolução exige comentário com o que falta. Validação automática só pode ocorrer quando não exigir decisão ou dado do Cessionário. |
 | Conclusão | Sistema; GL / Administrador conforme regra de encerramento | Após confirmação, o Sistema registra a conclusão e preserva decisões, campos, mensagens e anexos na trilha. A avaliação de 0 a 10 do Cessionário ocorre após o serviço concluído e é a ação separada de RN-25. | A conclusão depende das tarefas obrigatórias anteriores e, na validação manual, da confirmação do Cessionário. O encerramento formal (status Encerrada) não é presumido como sinônimo de Concluída; seu responsável permanece sujeito a Q-09. |
 
 As tarefas configuráveis usam componentes nativos e tipados, não texto livre interpretado como ação: (a) campo de texto/número/data/hora/opção/confirmação; (b) comentário ou solicitação de informação/ajuste; (c) decisão de aprovação; (d) definição de previsão e registro de andamento; (e) upload de documento, foto ou outra evidência suportada. Para cada tarefa, a configuração define obrigatoriedade, perfil responsável, instrução, validação e, para anexo, tipos aceitos e limite. O sistema associa cada resposta/arquivo à demanda, ao nó e à tarefa no histórico. Novos componentes podem ser adicionados ao catálogo do produto conforme novos processos forem aprovados; a configuração administrativa não executa scripts nem integrações arbitrárias.
@@ -244,7 +244,7 @@ As tarefas configuráveis usam componentes nativos e tipados, não texto livre i
 | RN-15 | Toda alteração relevante gera registro de histórico (quem, quando, o quê, status anterior/novo, comentários, docs, notificações). |
 | RN-16 | Categorias, subcategorias, responsáveis, WhatsApp, documentos obrigatórios, prazos, status e fluxos de aprovação devem ser parametrizáveis pelo GL. |
 | RN-17 | Autenticação de usuários do portal é via Azure AD (Entra ID). |
-| RN-18 | Anexos devem ser validados (tipo, tamanho) e armazenados de forma segura. |
+| RN-18 | Anexos devem ser validados (tipo, tamanho) e armazenados de forma segura. Imagem, PDF, Word, Excel e áudio abrem no portal, sem download obrigatório. |
 | RN-19 | O Cessionário é sempre uma empresa e pode ter vários representantes. A identificação visual usa o logo da empresa e, quando cadastrada, a imagem do contato principal. |
 | RN-20 | A visão do Cessionário resume os chamados ainda em aberto da empresa que o representante autenticado pode consultar conforme suas funções: situação, quem vai atender, previsão de atendimento, pendências e mensagens de complemento. Recorrência, prioridade agregada, ranking de cessionários e distribuição por serviço ficam com o GL / Administrador e o Responsável da Área. |
 | RN-21 | Mensagem do Responsável da Área ou do GL / Administrador em chamado ainda em aberto gera notificação no celular do Cessionário. A resposta dessa notificação, e a mensagem de quem atende ou da gestão, ficam no mesmo chamado. |
@@ -270,6 +270,7 @@ As tarefas configuráveis usam componentes nativos e tipados, não texto livre i
 | RN-41 | Documento da operação é documento do empreendimento, com validade e alerta, distinto do dossiê de Obras (RN-09 a RN-13). Só o GL / Administrador grava. Não há senha extra nem cofre. Quem mais consulta está em aberto no §11. |
 | RN-42 | Empresa executora é cadastro administrativo (nome e contato) referenciado na obra no lugar de texto livre. Não autentica, não é perfil e não tem ranking financeiro. |
 | RN-43 | Comunicado é aviso que o GL / Administrador publica. O Cessionário lê no portal. O aviso no celular, quando houver, usa a notificação já especificada (EF-11) e não abre conversa. Não é mensagem de chamado (RN-21) nem WhatsApp bidirecional. |
+| RN-44 | Quando a Validação do cliente é manual, o avanço até ela exige ao menos uma foto da obra executada. A foto é imagem (RN-18), fica no chamado com essa finalidade e é mostrada ao Cessionário na confirmação. Anexo de outra finalidade não substitui essa foto. Validação automática não pede essa foto. |
 
 ---
 
@@ -289,12 +290,13 @@ EF-23 aplica-se a toda jornada já especificada: achar o objeto, ver o estado e 
 
 - RF-02.1 Direcionamento automático à área.
 - RF-02.2 Atualização de status e andamento pelo Responsável da Área / GL.
-- RF-02.3 O GL / Administrador encerra demanda já Concluída. A situação passa a Encerrada, distinta de Concluído. Responsável da Área e Cessionário não encerram. Demanda que não está Concluída não encerra por este comando. A avaliação 0–10 continua possível se ainda não foi dada.
+- RF-02.3 O GL / Administrador encerra demanda já Concluída. A situação passa a Encerrada, distinta de Concluído. Responsável da Área e Cessionário não encerram. Demanda que não está Concluída não encerra por este comando. A avaliação 0–10 continua possível se ainda não foi dada. Concluído, Reprovado, Encerrada e Cancelada são desfechos: a API recusa mensagem, documento, classificação, direcionamento, previsão e qualquer outra alteração do atendimento. O GL / Administrador ainda encerra um Concluído. A conversa e os anexos permanecem para consulta.
 - RF-02.4 O GL / Administrador cancela demanda em aberto com motivo obrigatório. A situação passa a Cancelada. Não cancela Concluído, Encerrada, Reprovado nem Cancelada. O Cessionário só cancela quando existir o parâmetro da §4.4 (Q-09); até lá a API recusa.
 
 ### EF-03 Visibilidade GL
 
 - RF-03.1 Lista e detalhe com: protocolo, cessionário, local, data/hora, categoria, subcategoria, descrição, anexos, responsável, status, prazo, histórico, comunicação.
+- RF-03.2 Na comunicação do chamado ainda em aberto, Cessionário, GL / Administrador e Responsável da Área enviam foto, arquivo ou áudio de até 5 MB, com texto ou somente o arquivo. A foto pode ser tirada na câmera do navegador ou do aparelho. O arquivo é procurado no computador ou no celular, nos tipos já aceitos: imagem, PDF, Word, Excel e áudio. O áudio pode ser gravado no microfone. O envio aparece na conversa e permanece entre os anexos. Enviado por quem atende ou pela gestão, em chamado aberto, gera o aviso de celular já previsto (RN-21); sem texto, o aviso informa que uma imagem, um áudio ou um arquivo foi enviado. Chamado Concluído, Reprovado, Encerrada ou Cancelada não aceita novo envio; o portal esconde o campo de mensagem e o de novo documento.
 
 ### EF-04 Notificações WhatsApp
 
@@ -312,6 +314,9 @@ EF-23 aplica-se a toda jornada já especificada: achar o objeto, ver o estado e 
 
 - RF-06.1 Trilha completa imutável (append-only) por demanda.
 - RF-06.2 No detalhe da demanda, Cessionário, GL / Administrador e Responsável da Área acompanham o atendimento em um de dois modelos: o painel atual (comunicação e histórico separados) ou uma linha do tempo vertical, do registro mais recente para o mais antigo, com data à esquerda, marco na linha e cartão à direita (autor, ação, detalhe e, quando houver, mudança de status, mensagem ou documento). A troca é um checkbox «Linha do tempo». A opção fica guardada para o usuário autenticado e volta na próxima visita. O histórico em si não muda (RN-15).
+- RF-06.3 Ao lado do ícone de notificações, o usuário autenticado abre um quadro à direita com as ações que ele mesmo executou no dia corrente, no fuso de São Paulo: horário, tipo, referência do chamado ou do comunicado e comentário. Cessionário, Responsável da Área e GL / Administrador veem nesse quadro somente as próprias ações. Ninguém apaga linha (RN-15).
+- RF-06.4 A partir desse quadro, o GL / Administrador abre uma tela de pesquisa das ações executadas no sistema, filtrando por pessoa, período e texto. O período sempre informa início e fim, com no máximo 3 meses entre as datas, e devolve o histórico desse intervalo. Cessionário e Responsável da Área não pesquisam ações de outros usuários.
+- RF-06.5 O GL / Administrador exporta a base inteira da auditoria para Excel, sem o limite de 3 meses. Cessionário e Responsável da Área não exportam.
 
 ### EF-07 Parametrização
 
@@ -333,7 +338,7 @@ O visual de referência é o painel claro do demonstrativo [CRMi — Project Man
 Na linguagem do negócio, «cliente» desta ficha é o **Cessionário**. O local é a sala ou unidade já usada na abertura.
 
 - RF-09.1 O shell do portal usa fundo claro, barra lateral clara, barra superior e cartões com cantos suaves. A navegação continua restrita aos três perfis do documento.
-- RF-09.2 A mensageria do Cessionário segue o padrão da comunicação do painel: lista de conversas, thread e ficha lateral. Cada conversa que já gerou protocolo abre o detalhe da demanda. A ficha lateral mostra foto, local, entrega e vistoria, e cada cartão abre o detalhe correspondente.
+- RF-09.2 A mensageria não aparece no menu. No topo, ao lado do ícone de notificações, um ícone abre um painel no padrão visual das ações rápidas. À esquerda ficam os temas da fila visível ao perfil, do mais recente para o mais antigo. Cada tema mostra o dia, a hora, uma faixa colorida, o protocolo e por quem é o chamado. Ao escolher um tema, a conversa daquele chamado aparece ao lado, no mesmo padrão da comunicação do detalhe, e a mensagem enviada entra no chamado.
 - RF-09.3 O Cessionário autenticado tem a área **Meu espaço**, com foto de quem está logado, o local que possui, como o espaço foi entregue e as fotos da última vistoria. Cada cartão abre uma tela de detalhamento. GL / Administrador consulta a lista de espaços e a mesma ficha. Responsável da Área abre a ficha a partir do detalhe de uma demanda que já pode ver.
 - RF-09.4 Cartões de solicitação, conversa e espaço são acionáveis e levam à tela de detalhe do respectivo assunto. O Cessionário não abre a ficha de outro Cessionário.
 
@@ -362,7 +367,7 @@ O canal de maior uso do Cessionário é o celular. A notificação usa a API de 
 - RF-11.2 A resposta escrita a partir dessa notificação entra no mesmo chamado, junto com a mensagem de quem atende e com a mensagem da gestão da GL (RN-21).
 - RF-11.3 Mensagem marcada como complemento aparece no resumo do Cessionário como pendência até ele responder.
 - RF-11.4 Em 360px, o resumo, a notificação na tela e a resposta usam a largura do celular, com alvos de toque adequados e sem rolagem horizontal.
-- RF-11.5 O usuário autenticado vê o ícone de notificações no topo à direita, ao lado do nome, com a quantidade ainda não lida. Ao acionar, a lista abre nesse mesmo topo e cada item abre o chamado.
+- RF-11.5 O usuário autenticado vê o ícone de notificações no topo à direita, ao lado do nome, com a quantidade ainda não lida. Ao acionar, a lista abre nesse mesmo topo, no mesmo modelo das ações rápidas: dia, hora, faixa colorida, texto e protocolo. Cada item abre a aba Comunicação do chamado no evento correspondente: áudio, imagem, arquivo ou mensagem enviados aparecem nessa conversa.
 - RF-11.6 No celular, o painel do ícone oferece a autorização para receber as notificações do portal neste aparelho. A inscrição fica do usuário autenticado. Sem autorização, o portal não envia o aviso com a tela fechada. O usuário pode retirar a autorização daquele aparelho.
 
 ### EF-12 Operação, quadro e avaliação do atendimento
@@ -372,14 +377,14 @@ A condução do dia do GL / Administrador e do Responsável da Área mostra o qu
 Ponto de atenção é mais largo que a ação agora: inclui complemento ainda sem resposta do Cessionário, prioridade alta em aberto, chamado sem previsão há mais de um dia e, para o Responsável da Área, item que aguarda decisão do GL / Administrador.
 
 - RF-12.1 No início do GL / Administrador e do Responsável da Área, a fila visível destaca o que está em atraso e lista, com o motivo, cada chamado de ação agora. Cada item abre o detalhe.
-- RF-12.2 GL / Administrador e Responsável da Área acessam uma única **Central operacional**, com seletor de visão **Quadro**, **Operação** ou **Central operacional**. Quadro mostra colunas Solicitação, Aprovação, Atendimento, Validação do cliente e Conclusão, com os chamados da fila visível (RN-27). Cartão em atraso ou reclamação fica identificado. O protocolo abre o detalhe. Avançar, pelo botão ou ao soltar o cartão na próxima coluna, usa a cadeia do tipo de atendimento daquele chamado e abre um modal com o que a etapa de destino exige preencher. A etapa automática daquele tipo não retém o chamado. A validação do Cessionário acontece no chamado dele.
+- RF-12.2 GL / Administrador e Responsável da Área acessam uma única **Central operacional**, com seletor de visão **Quadro**, **Operação**, **Central operacional** ou **Agenda**. Quadro mostra colunas Solicitação, Aprovação, Atendimento, Validação do cliente e Conclusão, com os chamados da fila visível (RN-27). Cartão em atraso ou reclamação fica identificado. O protocolo abre o detalhe. Avançar, pelo botão ou ao soltar o cartão na próxima coluna, usa a cadeia do tipo de atendimento daquele chamado e abre um modal com o que a etapa de destino exige preencher. A etapa automática daquele tipo não retém o chamado. A validação do Cessionário acontece no chamado dele. A visão **Agenda** mostra o calendário da EF-17 na mesma tela.
 - RF-12.7 O GL / Administrador abre a configuração da cadeia a partir do quadro e escolhe o tipo de atendimento (RF-07.2). Com a aprovação automática naquele tipo, a solicitação segue para a próxima etapa manual e o histórico registra a aprovação automática. Os demais tipos permanecem com a cadeia que já tinham.
-- RF-12.8 Cada nó apresenta, ao responsável da ação, suas tarefas configuradas para aquele tipo: dados a preencher, decisão a tomar ou ação do sistema a executar. O avanço só é confirmado depois das tarefas obrigatórias válidas. Uploads aceitos são anexados à demanda e vinculados à tarefa/nó; conclusão, decisão, valores e evidências entram no histórico com autor e data. Tarefa automática executa sem modal nem decisão humana; falha ou dependência manual impede o salto e informa o motivo.
+- RF-12.8 Cada nó apresenta, ao responsável da ação, suas tarefas configuradas para aquele tipo: dados a preencher, decisão a tomar ou ação do sistema a executar. O avanço só é confirmado depois das tarefas obrigatórias válidas. Para a Validação do cliente manual, o modal também exige ao menos uma foto da obra executada (RN-44). Uploads aceitos são anexados à demanda e vinculados à tarefa/nó; conclusão, decisão, valores e evidências entram no histórico com autor e data. Tarefa automática executa sem modal nem decisão humana; falha ou dependência manual impede o salto e informa o motivo.
 - RF-12.3 A visão **Operação** da Central operacional reúne ação agora, em atraso, reclamações, pontos de atenção e a nota dos serviços concluídos, sempre na fila visível (RN-04, RN-05, RN-22, RN-23).
 - RF-12.4 Na abertura, o Cessionário pode marcar o chamado como reclamação (RN-24). A operação lista reclamações em aberto antes das já encerradas.
 - RF-12.5 Quando o serviço fica concluído, o Cessionário daquele chamado informa como foi o atendimento, de 0 a 10, com comentário opcional. A nota entra no histórico (RN-15, RN-25). Chamado ainda em aberto não aceita nota. Outro perfil não avalia. A mesma nota não é reenviada.
-- RF-12.6 Em 360px, seletor de visão, quadro, operação, lista de ação agora e a pergunta ao Cessionário permanecem utilizáveis, sem rolagem horizontal da página. O quadro pode rolar na vertical, uma coluna por vez.
-- RF-12.9 A visão **Central operacional** da Central operacional exibe indicadores e a fila explorável com filtros e modos de apresentação. A troca entre as três visões não altera a fila autorizada ao perfil, nem os fluxos de avanço, avaliação ou configuração da cadeia.
+- RF-12.6 Em 360px, seletor de visão, quadro, operação, agenda, lista de ação agora e a pergunta ao Cessionário permanecem utilizáveis, sem rolagem horizontal da página. O quadro pode rolar na vertical, uma coluna por vez.
+- RF-12.9 A visão **Central operacional** da Central operacional exibe indicadores e a fila explorável com filtros e modos de apresentação. A troca entre Quadro, Operação, Central operacional e Agenda não altera a fila autorizada ao perfil, nem os fluxos de avanço, avaliação ou configuração da cadeia.
 
 ### EF-13 Inventário de espaços e locações
 
@@ -416,7 +421,7 @@ Cada campo editável declara o que aceita (RN-38). O portal bloqueia, na digita�
 | Data desejada, início e término de locação, previsão | Data ou data/hora | Controle nativo. Data desejada não fica no passado. Término da locação não fica antes do início. |
 | Comentário da avaliação | Texto | Opcional, até 500 caracteres. A nota continua de 0 a 10 (RN-25). |
 | Motivo e comentário de avanço | Texto | Até 2000 caracteres. Motivo continua obrigatório em ajuste e reprovação (RN-11). |
-| Anexo | Arquivo | JPG, JPEG, PNG, WEBP ou PDF, até 5 MB (RN-18). |
+| Anexo | Arquivo | JPG, JPEG, PNG, WEBP, GIF, PDF, DOC, DOCX, XLS, XLSX, MP3, WAV, M4A ou OGG, até 5 MB (RN-18). |
 
 - RF-15.1 O GL / Administrador, o Responsável da Área e o Cessionário preenchem os campos da tabela acima com o tipo correspondente. Letra na meta de prazo não entra no campo. Telefone e WhatsApp ganham a máscara enquanto se digita. E-mail sem domínio e código de espaço com caractere fora do permitido não são gravados.
 - RF-15.2 A API aplica os mesmos limites e formatos em categoria, responsável, empresa, representante, contato, espaço, locação, abertura, mensagem, avaliação, motivo e anexo. O portal não é a única barreira.
@@ -430,10 +435,11 @@ Fase B. Contexto dono: Demandas. A fila exportada é a que o perfil já pode ver
 
 ### EF-17 Agenda operacional
 
-Fase B. Contexto dono: Demandas. Lê o cronograma já gravado em Obras. Não cria agenda paralela nem data nova.
+Fase B. Contexto dono: Demandas. Lê o cronograma já gravado em Obras. Não cria agenda paralela nem data nova. A agenda é a visão **Agenda** da Central operacional (RF-12.2), não uma tela própria do menu.
 
-- RF-17.1 GL / Administrador e Responsável da Área veem, em calendário, a fila que já podem ver, nas datas que o produto já tem: data desejada, previsão de atendimento e marco do cronograma de obra. A data desejada é a já gravada na descrição ou na mensagem, no texto "Data desejada: dd/mm/aaaa". O marco da obra usa o início e o término previstos. A obra não tem área, então esses marcos entram na agenda do GL / Administrador, que já consulta Obras. O Responsável da Área vê data desejada e previsão das demandas da própria área.
+- RF-17.1 GL / Administrador e Responsável da Área veem, no calendário da visão **Agenda** da Central operacional, a fila que já podem ver, nas datas que o produto já tem: data desejada, previsão de atendimento e marco do cronograma de obra. A data desejada é a já gravada na descrição ou na mensagem, no texto "Data desejada: dd/mm/aaaa". O marco da obra usa o início e o término previstos. A obra não tem área, então esses marcos entram na agenda do GL / Administrador, que já consulta Obras. O Responsável da Área vê data desejada e previsão das demandas da própria área. O endereço antigo da agenda abre a Central operacional já nessa visão.
 - RF-17.2 Cada item do calendário mostra a situação e abre o detalhe da demanda ou a obra. O Cessionário não usa esta agenda; ele continua vendo a previsão no próprio resumo (RF-10.5).
+- RF-17.3 Na visão Agenda, as ações rápidas oferecem **Mês**, **Semana** e **Dia**. A escolha fica gravada no navegador do usuário autenticado e é a visão usada na próxima abertura da agenda neste navegador. Sem escolha gravada, a agenda abre no mês. A semana mostra os sete dias a partir da segunda-feira da data em foco. O dia mostra só essa data. O mês mostra o calendário do mês dessa data. A troca não altera a fila autorizada.
 
 ### EF-18 Manutenção preventiva
 
@@ -587,7 +593,7 @@ Padrão recomendado: **Transactional Outbox** no serviço de origem antes de pub
 - Dado qualquer perfil autenticado, quando acessa login, início, listas, detalhe, abertura, quadro, cadeia, operação, Obras, espaços ou mensageria em viewport de 360px, então a página não rola na horizontal e nenhum bloco (filtros, quadro, cadeia, conversa) fica cortado nem exige rolagem interna para caber.
 - Dado viewport de 360px e menu fechado, quando o foco percorre a página, então os links da barra lateral não recebem foco. Quando o menu abre, os links aparecem na tela, cada um com altura de toque de pelo menos 44px, e Esc ou o fundo escuro fecha o menu.
 - Dado viewport de 360px, quando a fila está em Grade, então os chamados aparecem em cartões. Em Cartões ou Pulso, a lista também cabe na largura.
-- Dado viewport de 1280px ou mais, quando o mesmo perfil abre o portal, então a barra lateral fica visível, o quadro permanece em colunas lado a lado, a cadeia em etapas lado a lado e a mensageria em lista, conversa e ficha.
+- Dado viewport de 1280px ou mais, quando o mesmo perfil abre o portal, então a barra lateral fica visível, o quadro permanece em colunas lado a lado e a cadeia em etapas lado a lado. Quando abre a mensageria, os temas ficam à esquerda e a conversa à direita.
 - Dado Cessionário em celular, quando consulta as próprias solicitações ou abre um chamado, então conclui a jornada sem depender de layout de desktop.
 
 ### CA — Início operacional
@@ -606,11 +612,13 @@ Padrão recomendado: **Transactional Outbox** no serviço de origem antes de pub
 ### CA — Notificação no celular
 
 - Dado chamado ainda em aberto, quando o Responsável da Área ou o GL / Administrador envia uma mensagem, então ela fica no chamado e o Cessionário recebe notificação no celular com esse texto.
+- Dado a comunicação do chamado, quando um perfil tira uma foto, procura um arquivo no aparelho ou grava um áudio, então o envio aparece na conversa e fica nos documentos, com ou sem texto. Arquivo fora dos tipos aceitos, ou acima de 5 MB, é recusado.
 - Dado complemento sem resposta, quando o Cessionário abre o resumo, então a mensagem aparece como pendência.
 - Dado notificação no celular, quando o Cessionário responde, então a resposta fica no mesmo chamado, junto com a mensagem de quem atende ou da gestão.
 - Dado chamado já concluído ou reprovado, quando se tenta avisar o celular, então não nasce notificação nova.
 - Dado viewport de 360px, quando o Cessionário lê e responde a notificação, então a tela usa a largura do celular e não há rolagem horizontal.
 - Dado usuário autenticado, quando o portal abre, então o topo à direita mostra o ícone de notificações ao lado do nome, com a quantidade ainda não lida.
+- Dado o item «Áudio enviado», quando o usuário aciona a notificação, então a aba Comunicação abre na mensagem que contém esse áudio. Imagem, arquivo ou texto abrem a mensagem correspondente.
 - Dado celular sem autorização, quando o usuário autoriza no ícone, então este aparelho fica apto a receber as notificações do portal. Quando retira a autorização, o aparelho deixa de recebê-las.
 - Dado aparelho autorizado e notificação nova para esse usuário, quando o portal está em segundo plano ou fechado, então o aviso chega no celular com o texto e o protocolo.
 - Dado viewport de 360px, quando o usuário abre o ícone, então o painel cabe na largura do celular.
@@ -633,16 +641,17 @@ Padrão recomendado: **Transactional Outbox** no serviço de origem antes de pub
 - Dado um nó automático, quando a cadeia o atravessa, então nenhuma tarefa exige input manual e o histórico registra as ações automáticas realizadas; configuração inválida é recusada.
 - Dado que uma tarefa de Atendimento exige foto de comprovação para um tipo de serviço, quando o Responsável da Área registra a conclusão do reparo sem foto, então o sistema não libera a etapa seguinte; essa exigência não se aplica a tipos cuja configuração não a inclua.
 - Dado uma decisão de Aprovação, quando GL / Administrador solicita ajuste ou reprova, então o motivo é obrigatório; quando aprova, a decisão e o autor ficam no histórico.
+- Dado o avanço para a Validação do cliente manual, quando não há foto da obra executada, então o sistema recusa e o chamado permanece na etapa anterior. Com ao menos uma imagem dessa finalidade, o chamado fica Aguardando validação e a foto permanece nos anexos. Na confirmação, o Cessionário vê essas fotos.
 - Dado a Validação do cliente, quando o Cessionário confirma, então o chamado segue para Conclusão; quando informa que não ficou pronto, um comentário descrevendo o que falta é obrigatório e o chamado retorna a Atendimento.
 - Dado chamado em validação, quando o Cessionário daquele chamado confirma o serviço, então ele vai para Conclusão; se devolve, volta ao Atendimento. Outro perfil não conclui essa validação.
 - Dado Responsável da Área ou Cessionário, quando tenta gravar a cadeia, então o sistema recusa.
 - Dado a Operação, quando o perfil a abre, então vê ação agora, atrasos, reclamações, pontos de atenção e o índice dos serviços avaliados, só com a fila que já pode ver.
-- Dado GL / Administrador ou Responsável da Área, quando abre a Central operacional, então encontra em uma única tela o seletor Quadro, Operação e Central operacional; ao trocar a visão, os dados continuam limitados à fila autorizada ao perfil e as ações próprias daquela visão continuam disponíveis.
-- Dado um endereço antigo do Quadro ou da Operação, quando o usuário o acessa, então a Central operacional abre com a visão correspondente selecionada.
+- Dado GL / Administrador ou Responsável da Área, quando abre a Central operacional, então encontra em uma única tela o seletor Quadro, Operação, Central operacional e Agenda; ao trocar a visão, os dados continuam limitados à fila autorizada ao perfil e as ações próprias daquela visão continuam disponíveis.
+- Dado um endereço antigo do Quadro, da Operação ou da Agenda, quando o usuário o acessa, então a Central operacional abre com a visão correspondente selecionada.
 - Dado Cessionário, quando marca reclamação na abertura, então o chamado nasce como reclamação e entra na lista da operação.
 - Dado serviço concluído, quando o Cessionário daquele chamado envia a nota de 0 a 10, então ela fica no chamado e no histórico, e o índice da operação a considera.
 - Dado chamado em aberto, outro perfil, ou nota já registrada, quando se tenta avaliar, então o sistema recusa.
-- Dado viewport de 360px, quando se abre o quadro, a operação ou a pergunta de atendimento, então a página permanece utilizável e sem rolagem horizontal.
+- Dado viewport de 360px, quando se abre o quadro, a operação, a agenda ou a pergunta de atendimento, então a página permanece utilizável e sem rolagem horizontal.
 
 ### CA — Ficha do espaço e cartões
 
@@ -650,12 +659,15 @@ Padrão recomendado: **Transactional Outbox** no serviço de origem antes de pub
 - Dado um cartão de local, entrega, vistoria ou solicitação, quando o usuário o aciona, então o portal abre a tela de detalhamento daquele assunto.
 - Dado Cessionário autenticado, quando tenta abrir a ficha de outro Cessionário, então não vê esses dados.
 - Dado GL / Administrador, quando abre a lista de espaços e escolhe um cartão, então vê a ficha daquele Cessionário.
-- Dado Cessionário na mensageria, quando escolhe uma conversa que já tem protocolo, então abre o detalhe da demanda; os cartões da ficha lateral abrem o detalhe do espaço.
+- Dado usuário autenticado, quando o portal abre, então o menu não oferece Mensageria e o topo mostra o ícone de mensagens ao lado do ícone de notificações.
+- Dado mensagens na fila visível, quando o usuário abre o ícone, então os temas aparecem com protocolo e data da última mensagem, do mais recente para o mais antigo.
+- Dado um tema, quando o usuário o escolhe, então a conversa daquele chamado aparece no mesmo painel, no padrão da comunicação do detalhe, e o envio entra no chamado. Em 360px, a lista e a conversa se alternam na largura da tela.
 
 ### CA — Roteamento
 
 - Dado categoria/subcategoria com responsável cadastrado, quando a demanda é criada, então ela aparece na fila da área e na visão GL.
 - Dado demanda Concluída, quando o GL / Administrador encerra, então a situação fica Encerrada e o histórico registra a transição. Dado outro perfil, ou demanda que não está Concluída, quando tenta encerrar, então a API recusa.
+- Dado chamado Concluído, Reprovado, Encerrada ou Cancelada, quando se envia mensagem ou documento, ou se altera classificação, direcionamento ou previsão, então a API recusa e nada é gravado. A avaliação ainda não dada continua aceita em Concluído e Encerrada. O portal não mostra o campo de envio nem o de novo documento.
 - Dado demanda em aberto, quando o GL / Administrador cancela com motivo, então a situação fica Cancelada e o motivo fica no histórico. Dado sem motivo, outro perfil, ou demanda já concluída, encerrada, reprovada ou cancelada, quando se tenta cancelar, então a API recusa.
 
 ### CA — GL
@@ -677,6 +689,9 @@ Padrão recomendado: **Transactional Outbox** no serviço de origem antes de pub
 - Dado Cessionário, GL / Administrador ou Responsável da Área no detalhe de uma demanda, quando marca o checkbox Linha do tempo, então o atendimento aparece em linha do tempo vertical, do mais recente para o mais antigo, com data, autor, ação e detalhe.
 - Dado o checkbox desmarcado, quando consulta o detalhe, então comunicação e histórico permanecem em painéis separados.
 - Dado que o usuário marcou ou desmarcou o checkbox, quando volta ao detalhe com o mesmo usuário, então a opção escolhida permanece. A escolha de um usuário não altera a de outro.
+- Dado o usuário autenticado, quando abre o quadro ao lado das notificações, então vê as ações que ele mesmo executou no dia corrente, com horário, tipo e referência. Ações de outra pessoa não aparecem nesse quadro.
+- Dado o GL / Administrador, quando abre a pesquisa de auditoria e informa pessoa, início e fim com até 3 meses de diferença, então vê as ações executadas por esse usuário nesse intervalo. Dado um intervalo maior que 3 meses, quando pesquisa, então a API recusa. Dado Cessionário ou Responsável da Área, quando tenta essa pesquisa, então a API recusa.
+- Dado o GL / Administrador, quando exporta a base, então recebe um Excel com o histórico completo da auditoria. Dado Cessionário ou Responsável da Área, quando tenta exportar, então a API recusa.
 
 ### CA — Parametrização
 
@@ -719,7 +734,7 @@ Padrão recomendado: **Transactional Outbox** no serviço de origem antes de pub
 - Dado contato de telefone ou WhatsApp, quando o número é digitado, então a máscara com DDD aparece na hora; número incompleto é recusado no portal e na API.
 - Dado e-mail de responsável, de representante ou de contato sem @ e domínio, quando se tenta gravar, então o cadastro é recusado.
 - Dado código de espaço, quando se digita, então só permanecem letras, números e hífen, em maiúsculas.
-- Dado arquivo que não é JPG, PNG, WEBP ou PDF, ou que passa de 5 MB, quando se anexa, então o envio é recusado.
+- Dado arquivo que não é imagem, PDF, Word, Excel ou áudio, ou que passa de 5 MB, quando se anexa, então o envio é recusado. Dado um anexo aceito, quando ele é aberto no chamado, então é exibido ou reproduzido no portal.
 - Dado descrição, mensagem, ponto, assunto, motivo ou comentário de avaliação acima do limite, quando se envia, então o sistema recusa sem gravar o excedente.
 
 ### CA — Segurança
@@ -741,7 +756,9 @@ Padrão recomendado: **Transactional Outbox** no serviço de origem antes de pub
 
 ### CA — Agenda
 
-- Dado GL / Administrador ou Responsável da Área em 360px e em largura de computador, quando abre a agenda, então vê a fila autorizada nas datas já gravadas, a situação de cada item e o próximo passo que abre o detalhe, sem rolagem horizontal da página.
+- Dado GL / Administrador ou Responsável da Área em 360px e em largura de computador, quando abre a visão Agenda da Central operacional, então vê a fila autorizada nas datas já gravadas, a situação de cada item e o próximo passo que abre o detalhe, sem rolagem horizontal da página. O endereço antigo da agenda abre essa mesma visão.
+- Dado GL / Administrador ou Responsável da Área na visão Agenda, quando escolhe Semana ou Dia nas ações rápidas, então a agenda mostra esse recorte, a escolha fica gravada neste navegador e reaparece ao abrir a agenda de novo. Sem escolha gravada, a agenda abre no mês.
+- Dado outro usuário no mesmo navegador, quando abre a agenda, então a visão é a escolha dele, ou o mês se ele ainda não escolheu.
 - Dado Cessionário, quando tenta abrir a agenda operacional, então não a vê. A previsão continua no resumo dele.
 
 ### CA — Preventiva

@@ -21,7 +21,7 @@ export const CAMPOS_DA_ETAPA: Record<string, { id: string; rotulo: string }[]> =
   ],
   validacao: [
     { id: "comentario", rotulo: "O que foi feito" },
-    { id: "anexo", rotulo: "Anexo" },
+    { id: "anexo", rotulo: "Fotos da obra executada" },
   ],
   conclusao: [
     { id: "comentario", rotulo: "Registro da conclusão" },
@@ -74,6 +74,12 @@ export function proximaEtapa(situacao: string, etapas: EtapaCadeia[]) {
     .sort((a, b) => a.ordem - b.ordem)[0] ?? null;
 }
 
+export function rotuloDoAvanco(situacao: string, destino: { codigo: string; nome: string }) {
+  if (situacao === "Aguardando validação") return "Validar atendimento";
+  if (destino.codigo === "validacao") return "Registrar atendimento";
+  return `Avançar para ${destino.nome}`;
+}
+
 export function podeAvancar(perfil: Perfil, situacao: string, destino: string) {
   if (situacao === "Aguardando validação" && destino === "conclusao") return perfil === "Cessionário";
   if (destino === "aprovacao" || situacao === "Aguardando aprovação") return perfil === "GL / Administrador";
@@ -86,8 +92,11 @@ export function proximoPassoDemanda(
   destino: { codigo: string; nome: string } | null,
   semAvaliacao: boolean,
 ): { texto: string; acao: "avancar" | "aprovar" | "encerrar" | "avaliar" | null } {
+  if (situacao === "Encerrada" && perfil === "Cessionário" && semAvaliacao) {
+    return { texto: "Avaliar o atendimento", acao: "avaliar" };
+  }
   if (situacao === "Reprovado" || situacao === "Encerrada" || situacao === "Cancelada") {
-    return { texto: "Acompanhar o histórico", acao: null };
+    return { texto: "Status final", acao: null };
   }
   if (situacao === "Concluído") {
     if (perfil === "GL / Administrador") return { texto: "Encerrar o chamado", acao: "encerrar" };
@@ -107,6 +116,46 @@ export function proximoPassoDemanda(
   }
   if (destino) return { texto: `Aguardar ${destino.nome.toLowerCase()}`, acao: null };
   return { texto: "Acompanhar o histórico", acao: null };
+}
+
+export type MarcoTrilha = "feita" | "atual" | "proxima" | "futura";
+
+export interface PassoTrilha {
+  etapa: EtapaCadeia;
+  marco: MarcoTrilha;
+  estado: string;
+}
+
+export function trilhaDoChamado(situacao: string, etapas: EtapaCadeia[]): PassoTrilha[] {
+  const ordenadas = [...etapas].sort((a, b) => a.ordem - b.ordem);
+  const codigo = colunaDe(situacao);
+  const atual = ordenadas.find((etapa) => etapa.codigo === codigo) ?? null;
+  const seguinte = atual ? proximaEtapa(situacao, ordenadas) : null;
+
+  return ordenadas.map((etapa) => {
+    if (!atual) {
+      return { etapa, marco: "futura", estado: etapa.automatica ? "Passa sozinha" : "Depois" };
+    }
+    if (etapa.codigo === atual.codigo) {
+      return { etapa, marco: "atual", estado: estadoDaEtapaAtual(situacao) };
+    }
+    if (etapa.ordem < atual.ordem) {
+      return { etapa, marco: "feita", estado: etapa.automatica ? "Passou sozinha" : "Concluída" };
+    }
+    if (seguinte?.codigo === etapa.codigo) {
+      return { etapa, marco: "proxima", estado: "Próxima" };
+    }
+    return { etapa, marco: "futura", estado: etapa.automatica ? "Passa sozinha" : "Depois" };
+  });
+}
+
+function estadoDaEtapaAtual(situacao: string) {
+  if (situacao === "Cancelada") return "Cancelada";
+  if (situacao === "Reprovado") return "Reprovada";
+  if (situacao === "Encerrada") return "Encerrada";
+  if (situacao === "Concluído") return "Concluída";
+  if (situacao === "Aguardando ajuste") return "Aguardando ajuste";
+  return "Agora";
 }
 
 export function rotuloCampo(destino: string, campo: string) {

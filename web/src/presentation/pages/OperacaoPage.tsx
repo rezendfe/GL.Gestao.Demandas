@@ -2,10 +2,9 @@ import { Link } from "react-router-dom";
 import { useFila } from "../../application/hooks";
 import { useSessao } from "../../application/session";
 import { emAtraso, motivosAcao, motivosAtencao, ordenarPorMotivo, reclamacoesDe, resumirNps } from "../../domain/operacao";
-import { encerrada } from "../../domain/recorte";
 import { Badge } from "../components/Badge";
 import { ListaOperacao } from "../components/ListaOperacao";
-import { NotaServicos, textoIndice } from "../components/NotaServicos";
+import { NotaServicos } from "../components/NotaServicos";
 import { Panel } from "../components/Panel";
 
 export function OperacaoPage() {
@@ -21,23 +20,15 @@ export function OperacaoPage() {
 
   return (
     <>
-      <p className="muted" style={{ marginTop: -8, marginBottom: 16 }}>
-        O que fazer agora, o que está em atraso, as reclamações, os pontos de atenção e a nota dos serviços já executados.
-      </p>
       {erro && <p className="erro">{erro}</p>}
       {carregando && <p>Carregando a operação...</p>}
       {!carregando && (
         <>
-          <nav className="ancoras-operacao" aria-label="Seções da operação">
-            <a href="#acao">Ação agora ({acao.length})</a>
-            <a href="#atraso">Em atraso ({atrasados.length})</a>
-            <a href="#reclamacoes">Reclamações ({reclamacoes.filter((item) => !encerrada(item.situacao)).length})</a>
-            <a href="#atencao">Pontos de atenção ({atencao.length})</a>
-            <a href="#nps">Nota dos serviços {nps.indice === null ? "" : `(${textoIndice(nps.indice)})`}</a>
-          </nav>
-
           <section id="acao">
             <Panel title="Ação agora">
+              <p className="dash-nota">
+                O que fazer agora, o que está em atraso, as reclamações, os pontos de atenção e a nota dos serviços já executados.
+              </p>
               <p className="dash-nota">
                 {perfil === "GL / Administrador"
                   ? "Atraso, entrada ainda não iniciada, prioridade alta sem previsão, reclamação em aberto e decisão do GL / Administrador."

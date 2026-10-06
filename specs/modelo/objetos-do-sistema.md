@@ -12,8 +12,8 @@ A 1ª entrega é o monólito hexagonal (`Gl.Demandas.Domain` → Application →
 |---|---|---|---|---|---|
 | Demanda | Parcial | Protocolo, empresa, representante, categoria, subcategoria, área, local, ponto, descrição, situação, fluxo, natureza (Serviço/Reclamação), previsão, nota 0–10 | `app.Demanda` | `Demanda` | Demandas |
 | Protocolo | Válido | `GL-AAAA-NNNNN`, único no envio | `Demanda.CD_Protocolo` | `Protocolo` | Demandas |
-| Mensagem | Válido | Texto, canal, finalidade (mensagem ou complemento), autor, data | `app.Mensagem` | `Mensagem` | Demandas |
-| Anexo | Parcial | Nome, tipo, tamanho, caminho. Tipos JPG, PNG, WEBP, PDF até 5 MB. Ainda não vincula tarefa da cadeia | `app.Anexo` | `Anexo` | Demandas |
+| Mensagem | Válido | Texto, canal, finalidade (mensagem ou complemento), autor, data. Pode levar uma imagem da conversa | `app.Mensagem` | `Mensagem` | Demandas |
+| Anexo | Parcial | Nome, tipo, tamanho, caminho. Tipos imagem, PDF, Word, Excel e áudio até 5 MB, abertos no portal. Imagem enviada na conversa aponta para a mensagem. Ainda não vincula tarefa da cadeia | `app.Anexo` | `Anexo` | Demandas |
 | Histórico | Válido | Autor, data, situação anterior, situação nova, comentário, tipo. Append-only | `app.Historico_Demanda` | `HistoricoDemanda` | Demandas |
 | Decisão de aprovação | Válido | Aprovar, Solicitar ajuste, Reprovar; motivo obrigatório em ajuste e reprovação | `app.Decisao_Aprovacao` | `DecisaoAprovacao` | Demandas |
 | Avaliação | Válido | Nota 0–10 uma vez, comentário opcional, data. Só o Cessionário do chamado, só em Concluído | colunas em `Demanda` | `Demanda.Avaliar` | Demandas |

@@ -36,6 +36,7 @@ export interface FilaItem {
   subcategoriaId: string;
   prazoCategoriaHoras: number | null;
   local: string;
+  ultimaMensagemEm: string | null;
 }
 
 export interface Pessoa {
@@ -52,6 +53,7 @@ export interface Mensagem {
   canal: string;
   enviadaEm: string;
   finalidade: string;
+  anexoId: string | null;
 }
 
 export interface Anexo {
@@ -59,6 +61,7 @@ export interface Anexo {
   nome: string;
   tipo: string;
   tamanho: number;
+  finalidade: string;
 }
 
 export interface Historico {
@@ -141,7 +144,7 @@ export interface ModeloAbertura {
 export interface Catalogo {
   categorias: { id: string; nome: string; ativa: boolean; prazoHoras: number | null; modelo: ModeloAbertura | null; subcategorias: { id: string; nome: string; areaId: string; fluxo: string; ativa: boolean }[] }[];
   areas: { id: string; nome: string; ativa: boolean }[];
-  responsaveis: { id: string; nome: string; email: string; areaId: string | null; ativo: boolean }[];
+  responsaveis: { id: string; nome: string; email: string; areaId: string | null; ativo: boolean; foto?: string | null }[];
 }
 
 export interface ComunicadoResumo {
@@ -247,6 +250,27 @@ export interface EmpresaCessionariaCadastro {
   funcoes: FuncaoRepresentante[];
 }
 
+export interface EventoAuditoria {
+  id: string;
+  origem: "demanda" | "comunicado";
+  alvoId: string | null;
+  referencia: string;
+  autorId: string;
+  autor: string;
+  perfil: string;
+  tipo: string;
+  comentario: string;
+  statusAnterior: string | null;
+  statusNovo: string;
+  eventoEm: string;
+}
+
+export interface PessoaAuditoria {
+  id: string;
+  nome: string;
+  perfil: string;
+}
+
 export interface Notificacao {
   id: string;
   demandaId: string;
@@ -254,6 +278,13 @@ export interface Notificacao {
   texto: string;
   lida: boolean;
   criadaEm: string;
+  mensagemId: string | null;
+}
+
+export function destinoDaNotificacao(nota: Notificacao): string {
+  const params = new URLSearchParams({ aba: "comunicacao" });
+  if (nota.mensagemId) params.set("mensagem", nota.mensagemId);
+  return `/demandas/${nota.demandaId}?${params.toString()}`;
 }
 
 export interface TarefaCadeia {
@@ -291,7 +322,19 @@ export function hora(iso: string): string {
   return new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
 
+export function diaCurto(iso: string): string {
+  return new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+}
+
+export function horaCurta(iso: string): string {
+  return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+}
+
 export function quandoAtende(iso: string | null): string {
   if (!iso) return "Ainda sem data";
   return new Date(iso).toLocaleString("pt-BR", { weekday: "short", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+}
+
+export function relogioInformado(valor: string): string {
+  return valor.length === 16 ? `${valor}:00` : valor;
 }

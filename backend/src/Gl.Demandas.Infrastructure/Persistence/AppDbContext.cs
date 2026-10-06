@@ -291,7 +291,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             b.Property(x => x.Tipo).HasColumnName("SG_Tipo_Midia").HasMaxLength(120);
             b.Property(x => x.Tamanho).HasColumnName("MD_Tamanho_Bytes");
             b.Property(x => x.EnviadoEm).HasColumnName("DT_Envio");
+            b.Property(x => x.Finalidade).HasColumnName("SG_Finalidade").HasMaxLength(20).HasDefaultValue("documento");
+            b.Property(x => x.MensagemIdInterno).HasColumnName("ID_Mensagem");
             b.HasOne(x => x.Demanda).WithMany(x => x.Anexos).HasForeignKey(x => x.DemandaIdInterno).OnDelete(DeleteBehavior.Cascade);
+            b.HasOne(x => x.Mensagem).WithMany().HasForeignKey(x => x.MensagemIdInterno).OnDelete(DeleteBehavior.NoAction);
         });
 
         modelBuilder.Entity<HistoricoRegistro>(b =>
@@ -419,8 +422,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             b.Property(x => x.Texto).HasColumnName("DS_Texto").HasMaxLength(500);
             b.Property(x => x.Leitura).HasColumnName("SG_Leitura").HasMaxLength(20);
             b.Property(x => x.CriadaEm).HasColumnName("DT_Criacao");
+            b.Property(x => x.MensagemIdInterno).HasColumnName("ID_Mensagem");
             b.HasOne(x => x.Demanda).WithMany().HasForeignKey(x => x.DemandaIdInterno).OnDelete(DeleteBehavior.Cascade);
             b.HasOne(x => x.Usuario).WithMany().HasForeignKey(x => x.UsuarioIdInterno).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne(x => x.Mensagem).WithMany().HasForeignKey(x => x.MensagemIdInterno).OnDelete(DeleteBehavior.NoAction);
         });
 
         modelBuilder.Entity<InscricaoPushRegistro>(b =>

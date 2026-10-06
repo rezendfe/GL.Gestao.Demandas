@@ -1,7 +1,9 @@
 import { useState } from "react";
 import type { Anexo, DetalheDemanda, Historico, Mensagem } from "../../domain/types";
 import { hora } from "../../domain/types";
-import { api } from "../../infrastructure/api/client";
+import { avisoSemAlteracao } from "../../domain/recorte";
+import { MidiaAnexo, SeletorAnexo } from "./ConversaChat";
+import { VisualizadorArquivo } from "./VisualizadorArquivo";
 
 const VERBOS: Record<string, string> = {
   ABERTURA: "abriu o chamado",
@@ -19,6 +21,7 @@ const MESES = ["jan.", "fev.", "mar.", "abr.", "mai.", "jun.", "jul.", "ago.", "
 
 interface Cartao {
   id: string;
+  demandaId: string;
   quando: string;
   autor: string;
   tipo: string;
@@ -27,20 +30,30 @@ interface Cartao {
   fala: boolean;
   etiquetas: string[];
   anexo: Anexo | null;
+  anexoId: string | null;
 }
 
 export function LinhaDoTempoAtendimento({
   dados,
   mensagem,
   onMensagem,
+  arquivo,
+  onArquivo,
+  onErro,
   onEnviar,
+  encerrado = false,
 }: {
   dados: DetalheDemanda;
   mensagem: string;
   onMensagem: (valor: string) => void;
+  arquivo: File | null;
+  onArquivo: (arquivo: File | null) => void;
+  onErro: (mensagem: string | null) => void;
   onEnviar: () => void;
+  encerrado?: boolean;
 }) {
   const cartoes = montarCartoes(dados);
+  const [anexoAberto, setAnexoAberto] = useState<Anexo | null>(null);
   let anoAnterior: number | null = null;
 
   return (
@@ -63,7 +76,7 @@ export function LinhaDoTempoAtendimento({
           const mostraAno = ano !== anoAnterior;
           anoAnterior = ano;
           return (
-            <ItemAno key={cartao.id} cartao={cartao} ano={mostraAno ? ano : null} dados={dados} />
+            <ItemAno key={cartao.id} cartao={cartao} ano={mostraAno ? ano : null} onAbrirAnexo={setAnexoAberto} />
           );
         })}
         <li className="lt-item lt-escrever">
@@ -73,6 +86,11 @@ export function LinhaDoTempoAtendimento({
               <Icone tipo="MENSAGEM" />
             </span>
           </div>
+          {encerrado ? (
+            <article className="lt-card">
+              <p className="note">{avisoSemAlteracao(dados.situacao)}</p>
+            </article>
+          ) : (
           <form
             className="lt-card"
             onSubmit={(event) => {
@@ -89,19 +107,27 @@ export function LinhaDoTempoAtendimento({
                 placeholder="Escreva uma mensagem"
               />
             </label>
-            <div className="lt-rodape">
-              <button className="btn" type="submit" disabled={mensagem.trim().length === 0}>
+            <SeletorAnexo arquivo={arquivo} onArquivo={onArquivo} onErro={onErro}>
+              <button className="btn" type="submit" disabled={mensagem.trim().length === 0 && !arquivo}>
                 Enviar mensagem
               </button>
-            </div>
+            </SeletorAnexo>
           </form>
+          )}
         </li>
       </ol>
+      <VisualizadorArquivo
+        demandaId={dados.id}
+        anexos={dados.anexos}
+        alvo={anexoAberto}
+        onAlvo={setAnexoAberto}
+        onFechar={() => setAnexoAberto(null)}
+      />
     </section>
   );
 }
 
-function ItemAno({ cartao, ano, dados }: { cartao: Cartao; ano: number | null; dados: DetalheDemanda }) {
+function ItemAno({ cartao, ano, onAbrirAnexo }: { cartao: Cartao; ano: number | null; onAbrirAnexo: (anexo: Anexo) => void }) {
   return (
     <>
       {ano !== null && (
@@ -134,6 +160,9 @@ function ItemAno({ cartao, ano, dados }: { cartao: Cartao; ano: number | null; d
                 {cartao.titulo ? <> <strong>{cartao.titulo}</strong></> : null}
               </p>
               <p className="note">{hora(cartao.quando)}</p>
+              {cartao.anexoId && cartao.anexo && (
+                <MidiaAnexo demandaId={cartao.demandaId} anexo={cartao.anexo} onAbrir={() => onAbrirAnexo(cartao.anexo!)} />
+              )}
               {cartao.texto && (
                 cartao.fala ? <p className="lt-fala">{cartao.texto}</p> : <TextoLongo texto={cartao.texto} />
               )}
@@ -146,12 +175,12 @@ function ItemAno({ cartao, ano, dados }: { cartao: Cartao; ano: number | null; d
               ))}
             </div>
           )}
-          {cartao.anexo && (
+          {cartao.anexo && !cartao.anexoId && (
             <div className="lt-rodape">
               <button
                 className="btn secondary"
                 type="button"
-                onClick={() => void api.baixarAnexo(dados.id, cartao.anexo!.id, cartao.anexo!.nome)}
+                onClick={() => onAbrirAnexo(cartao.anexo!)}
               >
                 {cartao.anexo.nome}
               </button>
@@ -187,7 +216,7 @@ function montarCartoes(dados: DetalheDemanda): Cartao[] {
 
   for (const item of dados.mensagens) {
     if (usadas.has(item.id)) continue;
-    cartoes.push(cartaoDeMensagem(item));
+    cartoes.push(cartaoDeMensagem(item, dados));
   }
 
   return cartoes.sort((a, b) => new Date(b.quando).getTime() - new Date(a.quando).getTime());
@@ -208,9 +237,10 @@ function cartaoDeEvento(evento: Historico, dados: DetalheDemanda, usadas: Set<st
   }
   if (mensagem && evento.tipo === "MENSAGEM") etiquetas.push(mensagem.canal);
 
+  const imagem = evento.tipo === "MENSAGEM" ? anexoDaMensagem(mensagem, dados.anexos) : null;
   const anexo = evento.tipo === "ANEXO"
     ? dados.anexos.find((item) => evento.comentario.includes(item.nome)) ?? null
-    : null;
+    : imagem;
 
   const texto = evento.tipo === "ABERTURA"
     ? dados.descricao
@@ -226,6 +256,7 @@ function cartaoDeEvento(evento: Historico, dados: DetalheDemanda, usadas: Set<st
 
   return {
     id: evento.id,
+    demandaId: dados.id,
     quando: evento.eventoEm,
     autor: evento.autor,
     tipo: evento.tipo,
@@ -234,12 +265,15 @@ function cartaoDeEvento(evento: Historico, dados: DetalheDemanda, usadas: Set<st
     fala: evento.tipo === "MENSAGEM",
     etiquetas,
     anexo,
+    anexoId: imagem?.id ?? null,
   };
 }
 
-function cartaoDeMensagem(item: Mensagem): Cartao {
+function cartaoDeMensagem(item: Mensagem, dados: DetalheDemanda): Cartao {
+  const imagem = anexoDaMensagem(item, dados.anexos);
   return {
     id: item.id,
+    demandaId: dados.id,
     quando: item.enviadaEm,
     autor: item.autor,
     tipo: "MENSAGEM",
@@ -247,8 +281,14 @@ function cartaoDeMensagem(item: Mensagem): Cartao {
     texto: item.texto,
     fala: true,
     etiquetas: [item.canal],
-    anexo: null,
+    anexo: imagem,
+    anexoId: imagem?.id ?? null,
   };
+}
+
+function anexoDaMensagem(item: Mensagem | null, anexos: Anexo[]) {
+  if (!item?.anexoId) return null;
+  return anexos.find((anexo) => anexo.id === item.anexoId) ?? null;
 }
 
 function consumirMensagem(evento: Historico, mensagens: Mensagem[], usadas: Set<string>): Mensagem | null {

@@ -18,7 +18,15 @@ public sealed class AtendimentoAplicacao(
     private const long TamanhoMaximo = 5 * 1024 * 1024;
     private static readonly HashSet<string> Extensoes = new(StringComparer.OrdinalIgnoreCase)
     {
-        ".jpg", ".jpeg", ".png", ".webp", ".pdf"
+        ".jpg", ".jpeg", ".png", ".webp", ".gif", ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".mp3", ".wav", ".m4a", ".ogg", ".webm"
+    };
+    private static readonly HashSet<string> Audios = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".mp3", ".wav", ".m4a", ".ogg", ".webm"
+    };
+    private static readonly HashSet<string> Imagens = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".jpg", ".jpeg", ".png", ".webp", ".gif"
     };
 
     public async Task<SugestaoDto> Sugerir(string texto, CancellationToken ct)
@@ -137,7 +145,8 @@ public sealed class AtendimentoAplicacao(
                 d.ComentarioAvaliacao,
                 d.SubcategoriaId,
                 prazos.GetValueOrDefault(d.CategoriaId),
-                d.Sala))
+                d.Sala,
+                d.Mensagens.Count == 0 ? null : d.Mensagens.Max(m => m.EnviadaEm)))
             .ToArray();
     }
 
@@ -248,17 +257,20 @@ public sealed class AtendimentoAplicacao(
             comando.Comentario,
             relogio.UtcNow);
 
+        var avisos = new List<(string Texto, Guid MensagemId)>();
         if (entrouEmAtendimento)
         {
             var agora = relogio.UtcNow;
             var textoPortal = $"Sua solicitação {demanda.Protocolo} está em atendimento.";
             var textoMensageria = $"Sua solicitação {demanda.Protocolo} teve uma atualização. Acompanhe os detalhes no portal GL.";
-            await RegistrarAviso(demanda, textoPortal, ct);
-            demanda.IncluirMensagem(ator.Id, textoMensageria, "MENSAGERIA", agora);
+            var mensagem = demanda.IncluirMensagem(ator.Id, textoMensageria, "MENSAGERIA", agora);
             demanda.RegistrarEvento(ator.Id, "Notificação complementar registrada para o cessionário.", "NOTIFICACAO", agora);
+            avisos.Add((textoPortal, mensagem.Id));
         }
 
         await demandas.Salvar(demanda, ct);
+        foreach (var aviso in avisos)
+            await RegistrarAviso(demanda, aviso.Texto, aviso.MensagemId, ct);
         await PublicarAvisos(demanda, ct);
         return await Detalhe(demanda, ct);
     }
@@ -283,23 +295,28 @@ public sealed class AtendimentoAplicacao(
             relogio.UtcNow,
             ator.EmpresaId);
 
+        var avisos = new List<(string Texto, Guid MensagemId)>();
         if (resultado.EntrouEmAtendimento)
         {
+            var agora = relogio.UtcNow;
             var texto = $"Sua solicitação {demanda.Protocolo} está em atendimento.";
-            await RegistrarAviso(demanda, texto, ct);
-            demanda.IncluirMensagem(ator.Id, texto, "MENSAGERIA", relogio.UtcNow);
-            demanda.RegistrarEvento(ator.Id, "Notificação complementar registrada para o cessionário.", "NOTIFICACAO", relogio.UtcNow);
+            var mensagem = demanda.IncluirMensagem(ator.Id, texto, "MENSAGERIA", agora);
+            demanda.RegistrarEvento(ator.Id, "Notificação complementar registrada para o cessionário.", "NOTIFICACAO", agora);
+            avisos.Add((texto, mensagem.Id));
         }
 
         if (resultado.AguardaValidacao)
         {
+            var agora = relogio.UtcNow;
             var texto = $"Sua solicitação {demanda.Protocolo} aguarda a sua validação.";
-            await RegistrarAviso(demanda, texto, ct);
-            demanda.IncluirMensagem(ator.Id, texto, "MENSAGERIA", relogio.UtcNow);
-            demanda.RegistrarEvento(ator.Id, "Validação do Cessionário solicitada.", "NOTIFICACAO", relogio.UtcNow);
+            var mensagem = demanda.IncluirMensagem(ator.Id, texto, "MENSAGERIA", agora);
+            demanda.RegistrarEvento(ator.Id, "Validação do Cessionário solicitada.", "NOTIFICACAO", agora);
+            avisos.Add((texto, mensagem.Id));
         }
 
         await demandas.Salvar(demanda, ct);
+        foreach (var aviso in avisos)
+            await RegistrarAviso(demanda, aviso.Texto, aviso.MensagemId, ct);
         await PublicarAvisos(demanda, ct);
         return await Detalhe(demanda, ct);
     }
@@ -324,9 +341,36 @@ public sealed class AtendimentoAplicacao(
             ExigirPermissao(ator, PermissaoCessionario.ResponderComplementar);
         }
         var finalidade = comando.Complemento ? "complemento" : "mensagem";
-        demanda.AdicionarMensagem(ator.Perfil, ator.Id, ator.AreaId, comando.Texto, "PORTAL", relogio.UtcNow, finalidade, ator.EmpresaId);
-        await AvisarCelular(demanda, ator.Id, comando.Texto, ct);
+        var mensagem = demanda.AdicionarMensagem(ator.Perfil, ator.Id, ator.AreaId, comando.Texto, "PORTAL", relogio.UtcNow, finalidade, ator.EmpresaId);
         await demandas.Salvar(demanda, ct);
+        await AvisarCelular(demanda, ator.Id, comando.Texto, mensagem.Id, ct);
+        await PublicarAvisos(demanda, ct);
+        return await Detalhe(demanda, ct);
+    }
+
+    public async Task<DetalheDemandaDto> MensagemComAnexo(Ator ator, Guid id, string? texto, string nome, string tipo, Stream conteudo, long tamanho, CancellationToken ct)
+    {
+        var demanda = await Exigir(id, ct);
+        if (ator.Perfil == Perfil.Cessionario)
+        {
+            ExigirEmpresaDaDemanda(ator, demanda);
+            ExigirPermissao(ator, PermissaoCessionario.ResponderComplementar);
+            ExigirPermissao(ator, PermissaoCessionario.AnexarDocumento);
+        }
+
+        var extensao = Path.GetExtension(nome);
+        if (!Extensoes.Contains(extensao))
+            throw new RegraNegocioException("Envie uma imagem, PDF, Word, Excel ou áudio.");
+        if (tamanho <= 0 || tamanho > TamanhoMaximo)
+            throw new RegraNegocioException("O arquivo deve ter até 5 MB.");
+
+        var legenda = texto?.Trim() ?? "";
+        var mensagem = demanda.AdicionarMensagem(ator.Perfil, ator.Id, ator.AreaId, legenda, "PORTAL", relogio.UtcNow, "mensagem", ator.EmpresaId, comAnexo: true);
+        var caminho = await armazenamento.Salvar(demanda.Id, nome, conteudo, ct);
+        var anexo = new Anexo(Guid.NewGuid(), Path.GetFileName(nome), caminho, TipoMidia(extensao, tipo), tamanho, relogio.UtcNow, mensagem.Id);
+        demanda.IncluirAnexoDaMensagem(ator.Perfil, ator.Id, ator.AreaId, anexo, ator.EmpresaId);
+        await demandas.Salvar(demanda, ct);
+        await AvisarCelular(demanda, ator.Id, legenda.Length == 0 ? AvisoDoAnexo(extensao) : legenda, mensagem.Id, ct);
         await PublicarAvisos(demanda, ct);
         return await Detalhe(demanda, ct);
     }
@@ -344,7 +388,7 @@ public sealed class AtendimentoAplicacao(
         if (nota.UsuarioId == ator.Id)
             nota.MarcarLida(ator.Id);
         if (!demanda.EmAberto)
-            throw new RegraNegocioException("Este chamado já foi encerrado.");
+            throw new RegraNegocioException("Este chamado já foi encerrado e não aceita alterações.");
 
         demanda.AdicionarMensagem(ator.Perfil, ator.Id, ator.AreaId, comando.Texto, "CELULAR", relogio.UtcNow, empresaCessionariaId: ator.EmpresaId);
         await demandas.Salvar(demanda, ct);
@@ -352,7 +396,7 @@ public sealed class AtendimentoAplicacao(
         return await Detalhe(demanda, ct);
     }
 
-    public async Task<DetalheDemandaDto> Anexar(Ator ator, Guid id, string nome, string tipo, Stream conteudo, long tamanho, CancellationToken ct)
+    public async Task<DetalheDemandaDto> Anexar(Ator ator, Guid id, string nome, string tipo, Stream conteudo, long tamanho, CancellationToken ct, string finalidade = "documento")
     {
         var demanda = await Exigir(id, ct);
         if (ator.Perfil == Perfil.Cessionario)
@@ -360,14 +404,19 @@ public sealed class AtendimentoAplicacao(
             ExigirEmpresaDaDemanda(ator, demanda);
             ExigirPermissao(ator, PermissaoCessionario.AnexarDocumento);
         }
+        var uso = string.IsNullOrWhiteSpace(finalidade) ? "documento" : finalidade.Trim().ToLowerInvariant();
+        if (uso is not ("documento" or "obra"))
+            throw new RegraNegocioException("O anexo não tem essa finalidade.");
         var extensao = Path.GetExtension(nome);
+        if (uso == "obra" && !Imagens.Contains(extensao))
+            throw new RegraNegocioException("A foto da obra executada precisa ser uma imagem.");
         if (!Extensoes.Contains(extensao))
-            throw new RegraNegocioException("Envie uma foto JPG, PNG, WEBP ou um PDF.");
+            throw new RegraNegocioException("Envie uma imagem, PDF, Word, Excel ou áudio.");
         if (tamanho <= 0 || tamanho > TamanhoMaximo)
             throw new RegraNegocioException("O arquivo deve ter até 5 MB.");
 
         var caminho = await armazenamento.Salvar(demanda.Id, nome, conteudo, ct);
-        var anexo = new Anexo(Guid.NewGuid(), Path.GetFileName(nome), caminho, tipo, tamanho, relogio.UtcNow);
+        var anexo = new Anexo(Guid.NewGuid(), Path.GetFileName(nome), caminho, string.IsNullOrWhiteSpace(tipo) ? "application/octet-stream" : tipo, tamanho, relogio.UtcNow, finalidade: uso);
         demanda.AdicionarAnexo(ator.Perfil, ator.Id, ator.AreaId, anexo, relogio.UtcNow, ator.EmpresaId);
         await demandas.Salvar(demanda, ct);
         return await Detalhe(demanda, ct);
@@ -423,7 +472,35 @@ public sealed class AtendimentoAplicacao(
         return await Detalhe(demanda, ct);
     }
 
-    private async Task AvisarCelular(Demanda demanda, Guid autorId, string texto, CancellationToken ct)
+    private static string AvisoDoAnexo(string extensao)
+    {
+        if (Imagens.Contains(extensao)) return "Imagem enviada.";
+        if (Audios.Contains(extensao)) return "Áudio enviado.";
+        return "Arquivo enviado.";
+    }
+
+    private static string TipoMidia(string extensao, string tipo)
+    {
+        if (!string.IsNullOrWhiteSpace(tipo) && !tipo.Equals("application/octet-stream", StringComparison.OrdinalIgnoreCase))
+            return tipo.Split(';')[0];
+        return extensao.ToLowerInvariant() switch
+        {
+            ".png" => "image/png",
+            ".webp" => "image/webp",
+            ".gif" => "image/gif",
+            ".pdf" => "application/pdf",
+            ".mp3" => "audio/mpeg",
+            ".wav" => "audio/wav",
+            ".m4a" => "audio/mp4",
+            ".ogg" => "audio/ogg",
+            ".webm" => "audio/webm",
+            ".docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            ".xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            _ => "application/octet-stream"
+        };
+    }
+
+    private async Task AvisarCelular(Demanda demanda, Guid autorId, string texto, Guid mensagemId, CancellationToken ct)
     {
         if (autorId == demanda.CessionarioId || !demanda.EmAberto)
             return;
@@ -431,12 +508,12 @@ public sealed class AtendimentoAplicacao(
         var aviso = texto.Trim();
         if (aviso.Length > 500)
             aviso = aviso[..500];
-        await RegistrarAviso(demanda, aviso, ct);
+        await RegistrarAviso(demanda, aviso, mensagemId, ct);
     }
 
-    private async Task RegistrarAviso(Demanda demanda, string texto, CancellationToken ct)
+    private async Task RegistrarAviso(Demanda demanda, string texto, Guid mensagemId, CancellationToken ct)
     {
-        var nota = Notificacao.Criar(demanda.Id, demanda.CessionarioId, texto, relogio.UtcNow);
+        var nota = Notificacao.Criar(demanda.Id, demanda.CessionarioId, texto, relogio.UtcNow, mensagemId);
         await notificacoes.Adicionar(nota, ct);
         avisosPendentes.Add(nota);
     }
@@ -447,8 +524,11 @@ public sealed class AtendimentoAplicacao(
         avisosPendentes.Clear();
         foreach (var nota in pendentes)
         {
+            var destino = nota.MensagemId is Guid mensagemId
+                ? $"/demandas/{demanda.Id}?aba=comunicacao&mensagem={mensagemId:D}"
+                : $"/demandas/{demanda.Id}?aba=comunicacao";
             await envioPush.Enviar(
-                new NotificacaoPush(nota.UsuarioId, nota.Id, demanda.Id, demanda.Protocolo, nota.Texto),
+                new NotificacaoPush(nota.UsuarioId, nota.Id, demanda.Id, demanda.Protocolo, nota.Texto, destino),
                 ct);
         }
     }
@@ -496,11 +576,18 @@ public sealed class AtendimentoAplicacao(
             demanda.PrevisaoAtendimento,
             demanda.Mensagens
                 .OrderBy(m => m.EnviadaEm)
-                .Select(m => new MensagemDto(m.Id, pessoas[m.AutorId].Nome, m.Texto, m.Canal, m.EnviadaEm, m.Finalidade))
+                .Select(m => new MensagemDto(
+                    m.Id,
+                    pessoas[m.AutorId].Nome,
+                    m.Texto,
+                    m.Canal,
+                    m.EnviadaEm,
+                    m.Finalidade,
+                    demanda.Anexos.Where(a => a.MensagemId == m.Id).Select(a => (Guid?)a.Id).FirstOrDefault()))
                 .ToArray(),
             demanda.Anexos
                 .OrderBy(a => a.EnviadoEm)
-                .Select(a => new AnexoDto(a.Id, a.Nome, a.Tipo, a.Tamanho))
+                .Select(a => new AnexoDto(a.Id, a.Nome, a.Tipo, a.Tamanho, a.Finalidade))
                 .ToArray(),
             demanda.Historico
                 .OrderBy(h => h.EventoEm)

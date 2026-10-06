@@ -1,0 +1,9 @@
+{
+  "name": "GL Events",
+  "short_name": "GL Events",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#3d2a6d",
+  "lang": "pt-BR"
+}

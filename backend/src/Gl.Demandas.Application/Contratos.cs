@@ -82,13 +82,14 @@ public sealed record FilaItemDto(
     string? ComentarioAvaliacao,
     Guid SubcategoriaId,
     int? PrazoCategoriaHoras,
-    string Local);
+    string Local,
+    DateTime? UltimaMensagemEm);
 
 public sealed record PessoaDto(Guid Id, string Nome, string? Empresa, string? Sala);
 
-public sealed record MensagemDto(Guid Id, string Autor, string Texto, string Canal, DateTime EnviadaEm, string Finalidade);
+public sealed record MensagemDto(Guid Id, string Autor, string Texto, string Canal, DateTime EnviadaEm, string Finalidade, Guid? AnexoId);
 
-public sealed record AnexoDto(Guid Id, string Nome, string Tipo, long Tamanho);
+public sealed record AnexoDto(Guid Id, string Nome, string Tipo, long Tamanho, string Finalidade);
 
 public sealed record HistoricoDto(
     Guid Id,
@@ -138,7 +139,7 @@ public sealed record SubcategoriaDto(Guid Id, string Nome, Guid AreaId, string F
 
 public sealed record AreaDto(Guid Id, string Nome, bool Ativa);
 
-public sealed record ResponsavelDto(Guid Id, string Nome, string Email, Guid? AreaId, bool Ativo);
+public sealed record ResponsavelDto(Guid Id, string Nome, string Email, Guid? AreaId, bool Ativo, string? Foto);
 
 public sealed record CatalogoDto(
     IReadOnlyList<CategoriaDto> Categorias,
@@ -163,7 +164,7 @@ public sealed record ObraDto(
 
 public sealed record ItemAgendaDto(string Origem, Guid Id, string Titulo, string Situacao, string Marco, DateOnly Data);
 
-public sealed record NotificacaoDto(Guid Id, Guid DemandaId, string Protocolo, string Texto, bool Lida, DateTime CriadaEm);
+public sealed record NotificacaoDto(Guid Id, Guid DemandaId, string Protocolo, string Texto, bool Lida, DateTime CriadaEm, Guid? MensagemId);
 
 public sealed record ChavePushDto(string ChavePublica);
 
@@ -188,3 +189,19 @@ public sealed record ComunicadoDetalheDto(
     IReadOnlyList<EventoComunicadoDto> Historico);
 
 public sealed record AnexoConteudo(string Nome, string Tipo, Stream Conteudo);
+
+public sealed record EventoAuditoriaDto(
+    Guid Id,
+    string Origem,
+    Guid? AlvoId,
+    string Referencia,
+    Guid AutorId,
+    string Autor,
+    string Perfil,
+    string Tipo,
+    string Comentario,
+    string? StatusAnterior,
+    string StatusNovo,
+    DateTime EventoEm);
+
+public sealed record PessoaAuditoriaDto(Guid Id, string Nome, string Perfil);
