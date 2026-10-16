@@ -4,7 +4,7 @@ Fonte: [spec.md](spec.md). Não tratar o contato WhatsApp do representante como 
 
 ## Feitas
 
-Nenhuma. O contato do representante existe em [EF-14](../EF-14-representantes/spec.md) e não dispara mensagem.
+- [x] T404 No aviso de status, manter a frase, acrescentar o texto da alteração, enviar foto e áudio dessa alteração e o link do chamado no portal (RF-04.4). O contato do representante em [EF-14](../EF-14-representantes/spec.md) continua sem disparar mensagem.
 
 ## Em aberto
 

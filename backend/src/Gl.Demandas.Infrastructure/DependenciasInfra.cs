@@ -38,10 +38,11 @@ public static class DependenciasInfra
         services.AddScoped<IEventosWhatsApp>(sp => sp.GetRequiredService<GlRepositorio>());
         services.AddScoped<WebhookWhatsAppAplicacao>();
         services.AddScoped<IAvisoWhatsApp, AvisoWhatsAppEtapa>();
+        services.AddSingleton<IEnderecoPortal, EnderecoPortal>();
         services.AddHttpClient<IEnvioWhatsApp, EnvioWhatsAppMeta>(cliente =>
         {
             cliente.BaseAddress = new Uri("https://graph.facebook.com/");
-            cliente.Timeout = TimeSpan.FromSeconds(20);
+            cliente.Timeout = TimeSpan.FromSeconds(60);
         });
         services.AddScoped<IInventarioEspacos>(sp => sp.GetRequiredService<GlRepositorio>());
         services.AddScoped<IGestaoCessionarios>(sp => sp.GetRequiredService<GlRepositorio>());

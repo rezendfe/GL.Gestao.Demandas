@@ -43,6 +43,63 @@ public class WhatsAppEtapaTests
     }
 
     [Fact]
+    public void Aviso_mantem_a_frase_e_acrescenta_alteracao_e_link()
+    {
+        var id = Guid.Parse("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
+        var link = LinkChamado.Montar(null, id);
+        var texto = TextoWhatsAppDemanda.MontarAviso(
+            "GL-2026-00132",
+            "Fibra",
+            "Liberado para execução",
+            VinculoWhatsApp.Abriu,
+            "pode executar",
+            link);
+
+        Assert.StartsWith("Chamado GL-2026-00132 (Fibra), que você abriu, está com o status Liberado para execução.", texto);
+        Assert.Contains("pode executar", texto);
+        Assert.Contains($"Abrir o chamado: {LinkChamado.PortalPadrao}/demandas/{id}", texto);
+        Assert.Null(ComplementoWhatsApp.Texto("Aprovada."));
+        Assert.Equal("pode executar", ComplementoWhatsApp.Texto("Aprovada. pode executar"));
+        Assert.Null(ComplementoWhatsApp.Texto("Avançou para Atendimento."));
+    }
+
+    [Fact]
+    public void Midia_de_imagem_e_audio_reproduzivel_tem_o_tipo_do_provedor()
+    {
+        var foto = CorpoMensagemWhatsApp.JsonMidia("5521994684864", "image", "midia-1", "obra.jpg");
+        var audio = CorpoMensagemWhatsApp.JsonMidia("5521994684864", "audio", "midia-2", "fala.mp3");
+        var arquivo = CorpoMensagemWhatsApp.JsonMidia("5521994684864", "document", "midia-3", "fala webm.webm");
+
+        Assert.Contains("\"type\":\"image\"", foto);
+        Assert.Contains("\"type\":\"audio\"", audio);
+        Assert.Contains("\"filename\":\"fala-webm.webm\"", arquivo);
+        var um = new byte[] { 1 };
+        Assert.Equal("image", CorpoMensagemWhatsApp.TipoDeEnvio(new MidiaWhatsApp("obra.jpg", "image/jpeg", um, false)));
+        Assert.Equal("audio", CorpoMensagemWhatsApp.TipoDeEnvio(new MidiaWhatsApp("fala.mp3", "audio/mpeg", um, true)));
+        Assert.Equal("document", CorpoMensagemWhatsApp.TipoDeEnvio(new MidiaWhatsApp("fala.webm", "audio/webm", um, true)));
+    }
+
+    [Fact]
+    public void Anexos_da_alteracao_ficam_na_janela_da_mudanca()
+    {
+        var agora = new DateTime(2026, 10, 16, 15, 0, 0, DateTimeKind.Utc);
+        var historico = new[]
+        {
+            new HistoricoDemanda(Guid.NewGuid(), Guid.NewGuid(), "Aguardando aprovação", "Liberado para execução", "Aprovada. pode executar", "APROVACAO", agora)
+        };
+        var foto = new Anexo(Guid.NewGuid(), "obra.jpg", "obra.jpg", "image/jpeg", 10, agora.AddSeconds(-20));
+        var audio = new Anexo(Guid.NewGuid(), "fala.mp3", "fala.mp3", "audio/mpeg", 10, agora.AddSeconds(-10));
+        var antigo = new Anexo(Guid.NewGuid(), "velha.jpg", "velha.jpg", "image/jpeg", 10, agora.AddMinutes(-10));
+
+        var anexos = ComplementoWhatsApp.AnexosDaMudanca(historico, [foto, audio, antigo]);
+
+        Assert.Equal("pode executar", ComplementoWhatsApp.ComentarioDaMudanca(historico));
+        Assert.Equal(2, anexos.Count);
+        Assert.Contains(anexos, item => item.Nome == "obra.jpg");
+        Assert.Contains(anexos, item => item.Nome == "fala.mp3");
+    }
+
+    [Fact]
     public void Corpo_da_mensagem_usa_o_telefone_e_o_texto_do_status()
     {
         var json = CorpoMensagemWhatsApp.Json("5521994684864", "Chamado GL-2026-00134 está com o status Em andamento.");
@@ -111,6 +168,42 @@ public class WhatsAppEtapaTests
     }
 
     [Fact]
+    public async Task Publicar_envia_alteracao_link_foto_e_audio_depois_da_frase()
+    {
+        var enviados = new List<(string Telefone, string Texto)>();
+        var midias = new List<(string Telefone, string Nome)>();
+        var aviso = new AvisoWhatsAppEtapa(
+            new DestinosFixos([new DestinoWhatsApp(Guid.NewGuid(), "5521994684864", VinculoWhatsApp.Abriu)]),
+            new EnvioMemoria(enviados, midias));
+
+        await aviso.Publicar(
+            new AvisoDemandaWhatsApp(
+                "GL-2026-00132",
+                "Fibra",
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                "pode executar",
+                "https://gray-bay-0ad3ef71e.1.azurestaticapps.net/demandas/abc",
+                [
+                    new MidiaWhatsApp("obra.jpg", "image/jpeg", new byte[] { 1 }, false),
+                    new MidiaWhatsApp("fala.mp3", "audio/mpeg", new byte[] { 1 }, true)
+                ]),
+            SituacaoDemanda.AguardandoAprovacao,
+            SituacaoDemanda.LiberadoParaExecucao,
+            Cadeia(),
+            false,
+            CancellationToken.None);
+
+        var texto = Assert.Single(enviados).Texto;
+        Assert.StartsWith("Chamado GL-2026-00132 (Fibra), que você abriu, está com o status Liberado para execução.", texto);
+        Assert.Contains("pode executar", texto);
+        Assert.Contains("Abrir o chamado: https://gray-bay-0ad3ef71e.1.azurestaticapps.net/demandas/abc", texto);
+        Assert.Equal(["obra.jpg", "fala.mp3"], midias.Select(item => item.Nome).ToArray());
+    }
+
+    [Fact]
     public async Task Publicar_envia_o_status_para_os_demandantes_mesmo_sem_marca_na_etapa()
     {
         var enviados = new List<(string Telefone, string Texto)>();
@@ -163,11 +256,17 @@ public class WhatsAppEtapaTests
             Task.FromResult(destinos);
     }
 
-    private sealed class EnvioMemoria(List<(string Telefone, string Texto)> enviados) : IEnvioWhatsApp
+    private sealed class EnvioMemoria(List<(string Telefone, string Texto)> enviados, List<(string Telefone, string Nome)>? midias = null) : IEnvioWhatsApp
     {
         public Task Enviar(string telefone, string texto, CancellationToken ct)
         {
             enviados.Add((telefone, texto));
+            return Task.CompletedTask;
+        }
+
+        public Task EnviarMidia(string telefone, MidiaWhatsApp midia, CancellationToken ct)
+        {
+            midias?.Add((telefone, midia.Nome));
             return Task.CompletedTask;
         }
     }

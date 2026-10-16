@@ -13,7 +13,8 @@ public sealed class AtendimentoAplicacao(
     IExtratorSolicitacao extrator,
     ICadeia cadeia,
     IEnvioPush envioPush,
-    IAvisoWhatsApp? avisoWhatsApp = null)
+    IAvisoWhatsApp? avisoWhatsApp = null,
+    IEnderecoPortal? portal = null)
 {
     private readonly List<Notificacao> avisosPendentes = [];
     private const long TamanhoMaximo = 5 * 1024 * 1024;
@@ -336,8 +337,20 @@ public sealed class AtendimentoAplicacao(
             return;
 
         var etapas = await cadeia.Obter(demanda.SubcategoriaId, ct);
+        var alteracao = ComplementoWhatsApp.ComentarioDaMudanca(demanda.Historico);
+        var link = LinkChamado.Montar(portal?.BaseUrl, demanda.Id);
+        var midias = await ComplementoWhatsApp.Carregar(demanda.Historico, demanda.Anexos, armazenamento, ct);
         await avisoWhatsApp.Publicar(
-            new AvisoDemandaWhatsApp(demanda.Protocolo, demanda.Servico, demanda.CessionarioId, demanda.EmpresaCessionariaId, demanda.ResponsavelId, demanda.AreaId),
+            new AvisoDemandaWhatsApp(
+                demanda.Protocolo,
+                demanda.Servico,
+                demanda.CessionarioId,
+                demanda.EmpresaCessionariaId,
+                demanda.ResponsavelId,
+                demanda.AreaId,
+                alteracao,
+                link,
+                midias),
             anterior,
             demanda.Situacao,
             etapas,

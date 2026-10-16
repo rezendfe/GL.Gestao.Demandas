@@ -12,13 +12,18 @@ public enum VinculoWhatsApp
 
 public sealed record DestinoWhatsApp(Guid UsuarioId, string Telefone, VinculoWhatsApp Vinculo);
 
+public sealed record MidiaWhatsApp(string Nome, string Tipo, byte[] Conteudo, bool Audio);
+
 public sealed record AvisoDemandaWhatsApp(
     string Protocolo,
     string Servico,
     Guid CessionarioId,
     Guid? EmpresaId,
     Guid? ResponsavelId,
-    Guid AreaId);
+    Guid AreaId,
+    string? TextoAlteracao = null,
+    string? Link = null,
+    IReadOnlyList<MidiaWhatsApp>? Midias = null);
 
 public sealed record EventoEtapaWhatsApp(string Nome, bool Aberta);
 
@@ -35,6 +40,12 @@ public interface IDestinosWhatsApp
 public interface IEnvioWhatsApp
 {
     Task Enviar(string telefone, string texto, CancellationToken ct);
+    Task EnviarMidia(string telefone, MidiaWhatsApp midia, CancellationToken ct);
+}
+
+public interface IEnderecoPortal
+{
+    string? BaseUrl { get; }
 }
 
 public interface IAvisoWhatsApp
@@ -78,6 +89,16 @@ public static class TextoWhatsAppDemanda
         return $"Chamado {protocolo} ({servico}), {relacao}, está com o status {status}.";
     }
 
+    public static string MontarAviso(string protocolo, string servico, string status, VinculoWhatsApp vinculo, string? alteracao, string? link)
+    {
+        var texto = MontarStatus(protocolo, servico, status, vinculo);
+        if (!string.IsNullOrWhiteSpace(alteracao))
+            texto += $"{Environment.NewLine}{Environment.NewLine}{alteracao.Trim()}";
+        if (!string.IsNullOrWhiteSpace(link))
+            texto += $"{Environment.NewLine}{Environment.NewLine}Abrir o chamado: {link.Trim()}";
+        return texto;
+    }
+
     public static string Montar(string protocolo, string servico, string status, EventoEtapaWhatsApp evento, VinculoWhatsApp vinculo)
     {
         var passo = evento.Aberta
@@ -97,6 +118,177 @@ public static class CorpoMensagemWhatsApp
             type = "text",
             text = new { body = texto }
         });
+
+    public static string JsonMidia(string telefone, string tipo, string idMidia, string? nomeArquivo)
+    {
+        if (tipo == "document")
+        {
+            return JsonSerializer.Serialize(new
+            {
+                messaging_product = "whatsapp",
+                to = telefone,
+                type = "document",
+                document = new { id = idMidia, filename = NomeArquivo(nomeArquivo) }
+            });
+        }
+
+        if (tipo == "audio")
+        {
+            return JsonSerializer.Serialize(new
+            {
+                messaging_product = "whatsapp",
+                to = telefone,
+                type = "audio",
+                audio = new { id = idMidia }
+            });
+        }
+
+        return JsonSerializer.Serialize(new
+        {
+            messaging_product = "whatsapp",
+            to = telefone,
+            type = "image",
+            image = new { id = idMidia }
+        });
+    }
+
+    public static string TipoDeEnvio(MidiaWhatsApp midia)
+    {
+        if (!midia.Audio)
+            return "image";
+        var mime = Mime(midia.Tipo);
+        return mime is "audio/mpeg" or "audio/mp4" or "audio/ogg" or "audio/aac" or "audio/amr"
+            ? "audio"
+            : "document";
+    }
+
+    public static string Mime(string? tipo)
+    {
+        if (string.IsNullOrWhiteSpace(tipo))
+            return "application/octet-stream";
+        var mime = tipo.Split(';')[0].Trim().ToLowerInvariant();
+        return mime.Length == 0 ? "application/octet-stream" : mime;
+    }
+
+    private static string NomeArquivo(string? nome)
+    {
+        var arquivo = string.IsNullOrWhiteSpace(nome) ? "audio" : Path.GetFileName(nome.Trim());
+        var limpo = new string(arquivo.Select(caractere => char.IsLetterOrDigit(caractere) || caractere is '.' or '-' or '_' ? caractere : '-').ToArray());
+        return string.IsNullOrWhiteSpace(limpo) ? "audio" : limpo;
+    }
+}
+
+public static class LinkChamado
+{
+    public const string PortalPadrao = "https://gray-bay-0ad3ef71e.1.azurestaticapps.net";
+
+    public static string Montar(string? baseUrl, Guid demandaId)
+    {
+        var raiz = string.IsNullOrWhiteSpace(baseUrl) ? PortalPadrao : baseUrl.Trim().TrimEnd('/');
+        return $"{raiz}/demandas/{demandaId}";
+    }
+}
+
+public static class ComplementoWhatsApp
+{
+    public static string? Texto(string? comentario)
+    {
+        if (string.IsNullOrWhiteSpace(comentario))
+            return null;
+        var texto = comentario.Trim();
+        if (texto is "Chamado aberto." or "Chamado encerrado." or "Aprovada.")
+            return null;
+        if (texto.StartsWith("Avançou para ", StringComparison.Ordinal) && texto.EndsWith('.'))
+            return null;
+        if (texto.EndsWith(" automática.", StringComparison.Ordinal))
+            return null;
+
+        foreach (var prefixo in new[] { "Aprovada. ", "Ajuste solicitado. ", "Reprovada. " })
+        {
+            if (texto.StartsWith(prefixo, StringComparison.Ordinal))
+            {
+                var resto = texto[prefixo.Length..].Trim();
+                return resto.Length == 0 ? null : resto;
+            }
+        }
+
+        return texto;
+    }
+
+    public static string? ComentarioDaMudanca(IEnumerable<HistoricoDemanda> historico)
+    {
+        var evento = Mudanca(historico);
+        return evento is null ? null : Texto(evento.Comentario);
+    }
+
+    public static IReadOnlyList<Anexo> AnexosDaMudanca(IEnumerable<HistoricoDemanda> historico, IEnumerable<Anexo> anexos)
+    {
+        var evento = Mudanca(historico);
+        if (evento is null)
+            return [];
+
+        var inicio = evento.EventoEm.AddMinutes(-2);
+        var fim = evento.EventoEm.AddSeconds(30);
+        var fotos = anexos
+            .Where(anexo => anexo.EnviadoEm >= inicio && anexo.EnviadoEm <= fim && EhImagem(anexo))
+            .OrderBy(anexo => anexo.EnviadoEm)
+            .Take(8);
+        var audios = anexos
+            .Where(anexo => anexo.EnviadoEm >= inicio && anexo.EnviadoEm <= fim && EhAudio(anexo))
+            .OrderBy(anexo => anexo.EnviadoEm)
+            .Take(3);
+        return fotos.Concat(audios).ToArray();
+    }
+
+    public static async Task<IReadOnlyList<MidiaWhatsApp>> Carregar(
+        IEnumerable<HistoricoDemanda> historico,
+        IEnumerable<Anexo> anexos,
+        IAnexoStorage armazenamento,
+        CancellationToken ct)
+    {
+        var midias = new List<MidiaWhatsApp>();
+        foreach (var anexo in AnexosDaMudanca(historico, anexos))
+        {
+            ct.ThrowIfCancellationRequested();
+            var stream = await armazenamento.Abrir(anexo.Caminho, ct);
+            if (stream is null)
+                continue;
+            await using (stream)
+            {
+                using var memoria = new MemoryStream();
+                await stream.CopyToAsync(memoria, ct);
+                if (memoria.Length == 0)
+                    continue;
+                midias.Add(new MidiaWhatsApp(anexo.Nome, anexo.Tipo, memoria.ToArray(), EhAudio(anexo)));
+            }
+        }
+
+        return midias;
+    }
+
+    public static bool EhImagem(Anexo anexo)
+    {
+        if (anexo.Tipo.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+            return true;
+        var nome = anexo.Nome.ToLowerInvariant();
+        return nome.EndsWith(".jpg") || nome.EndsWith(".jpeg") || nome.EndsWith(".png") || nome.EndsWith(".webp") || nome.EndsWith(".gif");
+    }
+
+    public static bool EhAudio(Anexo anexo)
+    {
+        if (EhImagem(anexo))
+            return false;
+        if (anexo.Tipo.StartsWith("audio/", StringComparison.OrdinalIgnoreCase))
+            return true;
+        var nome = anexo.Nome.ToLowerInvariant();
+        return nome.EndsWith(".mp3") || nome.EndsWith(".wav") || nome.EndsWith(".m4a") || nome.EndsWith(".ogg") || nome.EndsWith(".webm");
+    }
+
+    private static HistoricoDemanda? Mudanca(IEnumerable<HistoricoDemanda> historico) =>
+        historico
+            .Where(item => !string.Equals(item.StatusAnterior, item.StatusNovo, StringComparison.Ordinal))
+            .OrderByDescending(item => item.EventoEm)
+            .FirstOrDefault();
 }
 
 public static class MudancaDeEtapa
@@ -181,11 +373,17 @@ public sealed class AvisoWhatsAppEtapa(IDestinosWhatsApp destinos, IEnvioWhatsAp
             return;
 
         var status = atual.ParaTexto();
+        var midias = demanda.Midias ?? [];
         foreach (var pessoa in demandantes)
         {
             ct.ThrowIfCancellationRequested();
-            var texto = TextoWhatsAppDemanda.MontarStatus(demanda.Protocolo, demanda.Servico, status, pessoa.Vinculo);
+            var texto = TextoWhatsAppDemanda.MontarAviso(demanda.Protocolo, demanda.Servico, status, pessoa.Vinculo, demanda.TextoAlteracao, demanda.Link);
             await envio.Enviar(pessoa.Telefone, texto, ct);
+            foreach (var midia in midias)
+            {
+                ct.ThrowIfCancellationRequested();
+                await envio.EnviarMidia(pessoa.Telefone, midia, ct);
+            }
         }
     }
 

@@ -303,6 +303,7 @@ EF-23 aplica-se a toda jornada já especificada: achar o objeto, ver o estado e 
 - RF-04.1 Cadastro de números por categoria/subcategoria.
 - RF-04.2 Envio assíncrono via fila Azure na criação (e eventos configuráveis).
 - RF-04.3 Registro de sucesso/falha da notificação no histórico.
+- RF-04.4 Quando o status do chamado muda, o WhatsApp de quem abriu ou acompanha mantém a frase do status. Em seguida entra o texto escrito nessa alteração, quando houver. As fotos e os áudios anexados ao chamado nos dois minutos anteriores a essa mudança seguem na mesma conversa. A mensagem termina com o link que abre esse chamado no portal. Sem texto, foto ou áudio, a frase e o link continuam.
 
 ### EF-05 Obras
 
@@ -677,6 +678,7 @@ Padrão recomendado: **Transactional Outbox** no serviço de origem antes de pub
 ### CA — WhatsApp
 
 - Dado demanda criada, quando o evento é processado, então notificação é enviada aos WhatsApps da categoria e o envio fica no histórico.
+- Dado a mudança de status com observação, foto e áudio anexados na hora, quando o WhatsApp chega a quem abriu o chamado, então a mensagem começa pela frase do status, traz o texto da alteração e o link do chamado no portal, e a foto e o áudio seguem nessa conversa. Dado a mesma mudança sem texto, foto ou áudio, quando o WhatsApp chega, então a frase do status e o link continuam.
 
 ### CA — Obras
 
