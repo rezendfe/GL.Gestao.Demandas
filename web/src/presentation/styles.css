@@ -2254,6 +2254,13 @@ tr.clickable:hover { background: #fafbfc; }
   cursor: pointer;
 }
 .fluxo-marca.opcional { background: #f3f0ff; color: var(--red-dark); }
+.fluxo-whatsapp {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+}
 .fluxo-itens { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .fluxo-itens li {
   display: grid;

@@ -66,7 +66,7 @@ public static class TelefoneWhatsApp
 
 public static class TextoWhatsAppDemanda
 {
-    public static string Montar(string protocolo, string servico, string status, EventoEtapaWhatsApp evento, VinculoWhatsApp vinculo)
+    public static string MontarStatus(string protocolo, string servico, string status, VinculoWhatsApp vinculo)
     {
         var relacao = vinculo switch
         {
@@ -75,10 +75,15 @@ public static class TextoWhatsAppDemanda
             VinculoWhatsApp.Trabalha => "que você está trabalhando",
             _ => "em que você participa"
         };
+        return $"Chamado {protocolo} ({servico}), {relacao}, está com o status {status}.";
+    }
+
+    public static string Montar(string protocolo, string servico, string status, EventoEtapaWhatsApp evento, VinculoWhatsApp vinculo)
+    {
         var passo = evento.Aberta
             ? $"A etapa {evento.Nome} foi aberta."
             : $"A etapa {evento.Nome} foi concluída.";
-        return $"Chamado {protocolo} ({servico}), {relacao}, está com o status {status}. {passo}";
+        return $"{MontarStatus(protocolo, servico, status, vinculo)} {passo}";
     }
 }
 
@@ -160,23 +165,34 @@ public sealed class AvisoWhatsAppEtapa(IDestinosWhatsApp destinos, IEnvioWhatsAp
         bool percorrerAutomaticas,
         CancellationToken ct)
     {
-        var eventos = MudancaDeEtapa.Listar(anterior, atual, etapas, percorrerAutomaticas);
-        if (eventos.Count == 0)
+        if (anterior == atual)
             return;
 
+        _ = etapas;
+        _ = percorrerAutomaticas;
+
         var pessoas = await destinos.DaDemanda(demanda.CessionarioId, demanda.EmpresaId, demanda.ResponsavelId, demanda.AreaId, ct);
-        if (pessoas.Count == 0)
+        var demandantes = pessoas
+            .Where(pessoa => pessoa.Vinculo is VinculoWhatsApp.Abriu or VinculoWhatsApp.Acompanha)
+            .GroupBy(pessoa => pessoa.Telefone)
+            .Select(grupo => grupo.OrderByDescending(pessoa => Preferencia(pessoa.Vinculo)).First())
+            .ToList();
+        if (demandantes.Count == 0)
             return;
 
         var status = atual.ParaTexto();
-        foreach (var evento in eventos)
+        foreach (var pessoa in demandantes)
         {
-            foreach (var pessoa in pessoas)
-            {
-                ct.ThrowIfCancellationRequested();
-                var texto = TextoWhatsAppDemanda.Montar(demanda.Protocolo, demanda.Servico, status, evento, pessoa.Vinculo);
-                await envio.Enviar(pessoa.Telefone, texto, ct);
-            }
+            ct.ThrowIfCancellationRequested();
+            var texto = TextoWhatsAppDemanda.MontarStatus(demanda.Protocolo, demanda.Servico, status, pessoa.Vinculo);
+            await envio.Enviar(pessoa.Telefone, texto, ct);
         }
     }
+
+    private static int Preferencia(VinculoWhatsApp vinculo) => vinculo switch
+    {
+        VinculoWhatsApp.Abriu => 2,
+        VinculoWhatsApp.Acompanha => 1,
+        _ => 0
+    };
 }

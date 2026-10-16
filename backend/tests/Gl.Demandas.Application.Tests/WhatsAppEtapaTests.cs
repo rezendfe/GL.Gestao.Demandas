@@ -28,20 +28,17 @@ public class WhatsAppEtapaTests
     [Fact]
     public void Texto_traz_o_status_e_o_vinculo_de_quem_recebe()
     {
-        var aberta = new EventoEtapaWhatsApp("Validação do cliente", true);
-        var texto = TextoWhatsAppDemanda.Montar("GL-2026-00134", "Correspondências", "Aguardando validação", aberta, VinculoWhatsApp.Abriu);
+        var texto = TextoWhatsAppDemanda.MontarStatus("GL-2026-00134", "Correspondências", "Aguardando validação", VinculoWhatsApp.Abriu);
 
         Assert.Contains("GL-2026-00134", texto);
         Assert.Contains("status Aguardando validação", texto);
         Assert.Contains("que você abriu", texto);
-        Assert.Contains("A etapa Validação do cliente foi aberta.", texto);
+        Assert.DoesNotContain("A etapa", texto);
 
-        var concluida = new EventoEtapaWhatsApp("Atendimento", false);
-        var doResponsavel = TextoWhatsAppDemanda.Montar("GL-2026-00134", "Correspondências", "Aguardando validação", concluida, VinculoWhatsApp.Trabalha);
+        var doResponsavel = TextoWhatsAppDemanda.MontarStatus("GL-2026-00134", "Correspondências", "Aguardando validação", VinculoWhatsApp.Trabalha);
         Assert.Contains("que você está trabalhando", doResponsavel);
-        Assert.Contains("A etapa Atendimento foi concluída.", doResponsavel);
 
-        var acompanhando = TextoWhatsAppDemanda.Montar("GL-2026-00134", "Correspondências", "Em andamento", aberta, VinculoWhatsApp.Acompanha);
+        var acompanhando = TextoWhatsAppDemanda.MontarStatus("GL-2026-00134", "Correspondências", "Em andamento", VinculoWhatsApp.Acompanha);
         Assert.Contains("que você está acompanhando", acompanhando);
     }
 
@@ -114,7 +111,7 @@ public class WhatsAppEtapaTests
     }
 
     [Fact]
-    public async Task Publicar_envia_o_status_para_quem_abriu_acompanha_ou_trabalha()
+    public async Task Publicar_envia_o_status_para_os_demandantes_mesmo_sem_marca_na_etapa()
     {
         var enviados = new List<(string Telefone, string Texto)>();
         var aviso = new AvisoWhatsAppEtapa(
@@ -130,14 +127,34 @@ public class WhatsAppEtapaTests
             new AvisoDemandaWhatsApp("GL-2026-00134", "Correspondências", Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid()),
             SituacaoDemanda.EmAndamento,
             SituacaoDemanda.AguardandoValidacao,
-            Cadeia(concluirAtendimento: true),
+            Cadeia(),
             true,
             CancellationToken.None);
 
-        Assert.Equal(3, enviados.Count);
+        Assert.Equal(2, enviados.Count);
         Assert.Contains(enviados, item => item.Telefone == "5521994684864" && item.Texto.Contains("que você abriu") && item.Texto.Contains("Aguardando validação"));
         Assert.Contains(enviados, item => item.Telefone == "5521988887777" && item.Texto.Contains("que você está acompanhando"));
-        Assert.Contains(enviados, item => item.Telefone == "5521977776666" && item.Texto.Contains("que você está trabalhando"));
+        Assert.DoesNotContain(enviados, item => item.Telefone == "5521977776666");
+        Assert.All(enviados, item => Assert.DoesNotContain("A etapa", item.Texto));
+    }
+
+    [Fact]
+    public async Task Publicar_nao_reenvia_quando_o_status_nao_muda()
+    {
+        var enviados = new List<(string Telefone, string Texto)>();
+        var aviso = new AvisoWhatsAppEtapa(
+            new DestinosFixos([new DestinoWhatsApp(Guid.NewGuid(), "5521994684864", VinculoWhatsApp.Abriu)]),
+            new EnvioMemoria(enviados));
+
+        await aviso.Publicar(
+            new AvisoDemandaWhatsApp("GL-2026-00134", "Correspondências", Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid()),
+            SituacaoDemanda.EmAndamento,
+            SituacaoDemanda.EmAndamento,
+            Cadeia(abrirAtendimento: true),
+            false,
+            CancellationToken.None);
+
+        Assert.Empty(enviados);
     }
 
     private sealed class DestinosFixos(IReadOnlyList<DestinoWhatsApp> destinos) : IDestinosWhatsApp

@@ -299,6 +299,8 @@ export interface EtapaCadeia {
   automatica: boolean;
   campos: string[];
   tarefas: TarefaCadeia[];
+  enviarAoAbrir: boolean;
+  enviarAoConcluir: boolean;
 }
 
 export interface CadeiaTipo {

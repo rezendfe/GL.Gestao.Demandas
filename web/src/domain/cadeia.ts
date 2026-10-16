@@ -50,6 +50,8 @@ export function etapasPadrao(): EtapaCadeia[] {
       nome: coluna.nome,
       ordem: indice + 1,
       automatica: false,
+      enviarAoAbrir: false,
+      enviarAoConcluir: false,
       campos,
       tarefas: campos.map((codigo) => ({ codigo, obrigatoria: true })),
     };

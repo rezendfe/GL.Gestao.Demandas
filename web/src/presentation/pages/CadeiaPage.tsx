@@ -18,6 +18,8 @@ type Rascunho = {
   nome: string;
   fixa: boolean;
   obrigatoria: boolean;
+  enviarAoAbrir: boolean;
+  enviarAoConcluir: boolean;
   campos: string[];
   tarefas: TarefaCadeia[];
   texto: string;
@@ -94,6 +96,8 @@ export function CadeiaPage() {
       nome: etapa.nome,
       fixa,
       obrigatoria: fixa || !opcional,
+      enviarAoAbrir: etapa.enviarAoAbrir,
+      enviarAoConcluir: etapa.enviarAoConcluir,
       campos: tarefasDa(etapa).map((tarefa) => tarefa.codigo),
       tarefas: tarefasDa(etapa).map((tarefa) => ({ ...tarefa })),
       texto: "",
@@ -191,6 +195,8 @@ export function CadeiaPage() {
     if (!rascunho) return;
     alterar(rascunho.codigo, {
       automatica: rascunho.fixa ? false : !rascunho.obrigatoria,
+      enviarAoAbrir: rascunho.enviarAoAbrir,
+      enviarAoConcluir: rascunho.enviarAoConcluir,
       campos: rascunho.tarefas.map((tarefa) => tarefa.codigo),
       tarefas: rascunho.tarefas,
     });
@@ -207,6 +213,8 @@ export function CadeiaPage() {
         return {
           codigo: etapa.codigo,
           automatica: etapa.automatica,
+          enviarAoAbrir: etapa.enviarAoAbrir,
+          enviarAoConcluir: etapa.enviarAoConcluir,
           campos: tarefas.map((tarefa) => tarefa.codigo),
           tarefas,
         };
@@ -276,6 +284,22 @@ export function CadeiaPage() {
                   <button type="button" className={etapa.automatica ? "fluxo-marca opcional" : "fluxo-marca"} onClick={() => abrir(etapa, etapa.automatica)}>
                     {etapa.automatica ? "Opcional" : "Obrigatória"}
                   </button>
+                  <label className="fluxo-whatsapp">
+                    <input
+                      type="checkbox"
+                      checked={etapa.enviarAoAbrir}
+                      onChange={(event) => alterar(etapa.codigo, { enviarAoAbrir: event.target.checked })}
+                    />
+                    WhatsApp ao abrir
+                  </label>
+                  <label className="fluxo-whatsapp">
+                    <input
+                      type="checkbox"
+                      checked={etapa.enviarAoConcluir}
+                      onChange={(event) => alterar(etapa.codigo, { enviarAoConcluir: event.target.checked })}
+                    />
+                    WhatsApp ao concluir
+                  </label>
                   <ul className="fluxo-itens">
                     {tarefas.length === 0 && <li className="fluxo-vazio">Sem informação extra.</li>}
                     {tarefas.map((tarefa) => {
@@ -497,6 +521,25 @@ function PerguntaEtapa({
           </label>
         </fieldset>
         {rascunho.fixa && <p className="note">Solicitação e Conclusão permanecem obrigatórias na cadeia.</p>}
+        <fieldset className="escolha">
+          <legend>WhatsApp para o cliente</legend>
+          <label className="fluxo-whatsapp">
+            <input
+              type="checkbox"
+              checked={rascunho.enviarAoAbrir}
+              onChange={(event) => onChange({ ...rascunho, enviarAoAbrir: event.target.checked })}
+            />
+            Enviar quando a etapa for aberta
+          </label>
+          <label className="fluxo-whatsapp">
+            <input
+              type="checkbox"
+              checked={rascunho.enviarAoConcluir}
+              onChange={(event) => onChange({ ...rascunho, enviarAoConcluir: event.target.checked })}
+            />
+            Enviar quando a etapa for concluída
+          </label>
+        </fieldset>
         <div className="fluxo-bloco">
           <strong>Informações deste passo</strong>
           <ul className="fluxo-itens">

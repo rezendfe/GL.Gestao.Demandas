@@ -214,7 +214,7 @@ export const api = {
       body: JSON.stringify({ termino }),
     }),
   cadeia: () => request<CadeiaTipo[]>("/api/cadeia"),
-  salvarCadeia: (subcategoriaId: string, etapas: { codigo: string; automatica: boolean; campos: string[]; tarefas: { codigo: string; obrigatoria: boolean }[] }[]) =>
+  salvarCadeia: (subcategoriaId: string, etapas: { codigo: string; automatica: boolean; campos: string[]; tarefas: { codigo: string; obrigatoria: boolean }[]; enviarAoAbrir: boolean; enviarAoConcluir: boolean }[]) =>
     request<EtapaCadeia[]>("/api/cadeia", { method: "PUT", body: JSON.stringify({ subcategoriaId, etapas }) }),
   avancar: (id: string, payload: { comentario?: string | null; previsao?: string | null; confirmacao?: boolean | null }) =>
     request<DetalheDemanda>(`/api/demandas/${id}/avancar`, { method: "POST", body: JSON.stringify(payload) }),
