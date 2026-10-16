@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Gl.Demandas.Infrastructure.Persistence;
 
-public sealed class GlRepositorio(AppDbContext db) : IUsuarios, ICatalogo, IDemandas, IObras, INotificacoes, IInscricoesPush, ICadeia, IInventarioEspacos, IGestaoCessionarios, IComunicados, IAuditoria
+public sealed class GlRepositorio(AppDbContext db) : IUsuarios, ICatalogo, IDemandas, IObras, INotificacoes, IInscricoesPush, ICadeia, IInventarioEspacos, IGestaoCessionarios, IComunicados, IAuditoria, IDestinosWhatsApp, IEventosWhatsApp
 {
     public async Task<IReadOnlyList<EmpresaCadastro>> ListarEmpresasAdministracao(CancellationToken ct)
     {
@@ -830,6 +830,8 @@ public sealed class GlRepositorio(AppDbContext db) : IUsuarios, ICatalogo, IDema
             Nome = etapa.Nome,
             Ordem = etapa.Ordem,
             Automatica = etapa.Automatica,
+            EnviarAoAbrir = etapa.EnviarAoAbrir,
+            EnviarAoConcluir = etapa.EnviarAoConcluir,
             Campos = string.Join(',', etapa.Tarefas.Select(tarefa => $"{tarefa.Codigo}:{(tarefa.Obrigatoria ? "1" : "0")}"))
         }));
         await db.SaveChangesAsync(ct);
@@ -1009,6 +1011,144 @@ public sealed class GlRepositorio(AppDbContext db) : IUsuarios, ICatalogo, IDema
         }
     }
 
+    public async Task Guardar(IReadOnlyList<EventoWhatsAppRecebido> eventos, CancellationToken ct)
+    {
+        var comId = eventos.Where(evento => !string.IsNullOrWhiteSpace(evento.IdMensagem)).Select(evento => evento.IdMensagem!).Distinct().ToArray();
+        var jaGuardados = comId.Length == 0
+            ? []
+            : await db.EventosWhatsApp
+                .Where(evento => evento.IdMensagem != null && comId.Contains(evento.IdMensagem))
+                .Select(evento => new { evento.IdMensagem, evento.Tipo, evento.Status })
+                .ToListAsync(ct);
+        var chaves = jaGuardados
+            .Select(evento => Chave(evento.IdMensagem, evento.Tipo, evento.Status))
+            .ToHashSet(StringComparer.Ordinal);
+
+        var agora = DateTime.UtcNow;
+        foreach (var evento in eventos)
+        {
+            var chave = Chave(evento.IdMensagem, evento.Tipo, evento.Status);
+            if (evento.IdMensagem is not null && !chaves.Add(chave))
+                continue;
+
+            db.EventosWhatsApp.Add(new EventoWhatsAppRegistro
+            {
+                Id = Guid.NewGuid(),
+                Tipo = Limitar(evento.Tipo, 20),
+                IdMensagem = LimitarOuNulo(evento.IdMensagem, 180),
+                Telefone = LimitarOuNulo(evento.Telefone, 20),
+                Nome = LimitarOuNulo(evento.Nome, 200),
+                Texto = LimitarOuNulo(evento.Texto, 4000),
+                Status = Limitar(evento.Status?.Trim() ?? "", 20),
+                PhoneNumberId = LimitarOuNulo(evento.PhoneNumberId, 40),
+                EventoEm = evento.EventoEm,
+                RecebidoEm = agora,
+                Payload = evento.Payload
+            });
+        }
+
+        await db.SaveChangesAsync(ct);
+    }
+
+    private static string Chave(string? idMensagem, string tipo, string? status) =>
+        $"{idMensagem}|{tipo}|{status ?? ""}";
+
+    private static string Limitar(string valor, int maximo) =>
+        valor.Length <= maximo ? valor : valor[..maximo];
+
+    private static string? LimitarOuNulo(string? valor, int maximo) =>
+        string.IsNullOrWhiteSpace(valor) ? null : Limitar(valor.Trim(), maximo);
+
+    public async Task<IReadOnlyList<DestinoWhatsApp>> DaDemanda(
+        Guid cessionarioId,
+        Guid? empresaId,
+        Guid? responsavelId,
+        Guid areaId,
+        CancellationToken ct)
+    {
+        var vinculos = new Dictionary<Guid, VinculoWhatsApp>();
+        Definir(vinculos, cessionarioId, VinculoWhatsApp.Abriu);
+
+        if (empresaId is Guid empresa)
+        {
+            var acompanhantes = await db.Usuarios
+                .Where(usuario => usuario.Status == "ATIVO"
+                    && usuario.Perfil == PerfilTexto.ParaCodigo(Perfil.Cessionario)
+                    && usuario.EmpresaCessionaria != null
+                    && usuario.EmpresaCessionaria.Id == empresa
+                    && usuario.Id != cessionarioId)
+                .Select(usuario => usuario.Id)
+                .ToListAsync(ct);
+            foreach (var id in acompanhantes)
+                Definir(vinculos, id, VinculoWhatsApp.Acompanha);
+        }
+
+        if (responsavelId is Guid responsavel)
+            Definir(vinculos, responsavel, VinculoWhatsApp.Trabalha);
+        else
+        {
+            var daArea = await db.Usuarios
+                .Where(usuario => usuario.Status == "ATIVO"
+                    && usuario.Perfil == PerfilTexto.ParaCodigo(Perfil.ResponsavelArea)
+                    && usuario.Area != null
+                    && usuario.Area.Id == areaId)
+                .Select(usuario => usuario.Id)
+                .ToListAsync(ct);
+            foreach (var id in daArea)
+                Definir(vinculos, id, VinculoWhatsApp.Trabalha);
+        }
+
+        if (vinculos.Count == 0)
+            return [];
+
+        var ids = vinculos.Keys.ToArray();
+        var usuarios = await db.Usuarios.Where(usuario => ids.Contains(usuario.Id))
+            .Select(usuario => new { usuario.Id, usuario.IdInterno })
+            .ToListAsync(ct);
+        var internos = usuarios.Select(usuario => usuario.IdInterno).ToArray();
+        var contatos = await db.ContatosRepresentante
+            .Where(contato => internos.Contains(contato.UsuarioIdInterno))
+            .ToListAsync(ct);
+
+        var destinos = new List<DestinoWhatsApp>();
+        foreach (var usuario in usuarios)
+        {
+            var telefone = EscolherTelefone(contatos.Where(contato => contato.UsuarioIdInterno == usuario.IdInterno));
+            if (telefone is null)
+                continue;
+            destinos.Add(new DestinoWhatsApp(usuario.Id, telefone, vinculos[usuario.Id]));
+        }
+
+        return destinos;
+    }
+
+    private static void Definir(Dictionary<Guid, VinculoWhatsApp> vinculos, Guid usuarioId, VinculoWhatsApp vinculo)
+    {
+        if (!vinculos.TryGetValue(usuarioId, out var atual) || Preferencia(vinculo) > Preferencia(atual))
+            vinculos[usuarioId] = vinculo;
+    }
+
+    private static int Preferencia(VinculoWhatsApp vinculo) => vinculo switch
+    {
+        VinculoWhatsApp.Trabalha => 3,
+        VinculoWhatsApp.Abriu => 2,
+        _ => 1
+    };
+
+    private static string? EscolherTelefone(IEnumerable<RepresentanteContatoRegistro> contatos)
+    {
+        var lista = contatos.ToList();
+        var whatsApp = lista
+            .Where(contato => contato.Canal.Equals("WHATSAPP", StringComparison.OrdinalIgnoreCase))
+            .OrderByDescending(contato => contato.Principal)
+            .FirstOrDefault();
+        var telefone = lista
+            .Where(contato => contato.Canal.Equals("TELEFONE", StringComparison.OrdinalIgnoreCase))
+            .OrderByDescending(contato => contato.Principal)
+            .FirstOrDefault();
+        return TelefoneWhatsApp.Normalizar((whatsApp ?? telefone)?.Valor);
+    }
+
     private static EtapaCadeia MapearEtapa(EtapaCadeiaRegistro row)
     {
         var tarefas = row.Campos
@@ -1020,6 +1160,14 @@ public sealed class GlRepositorio(AppDbContext db) : IUsuarios, ICatalogo, IDema
                 return new TarefaCadeia(pedacos[0], obrigatoria);
             })
             .ToArray();
-        return new EtapaCadeia(row.Codigo, row.Nome, row.Ordem, row.Automatica, tarefas.Select(tarefa => tarefa.Codigo).ToArray(), tarefas);
+        return new EtapaCadeia(
+            row.Codigo,
+            row.Nome,
+            row.Ordem,
+            row.Automatica,
+            tarefas.Select(tarefa => tarefa.Codigo).ToArray(),
+            tarefas,
+            row.EnviarAoAbrir,
+            row.EnviarAoConcluir);
     }
 }

@@ -34,7 +34,9 @@ public sealed class CadeiaAplicacao(ICadeia cadeia, ICatalogo catalogo)
                 etapa.Ordem,
                 etapa.Automatica,
                 etapa.Tarefas.Count > 0 ? etapa.Tarefas.Select(tarefa => tarefa.Codigo).ToArray() : etapa.Campos,
-                etapa.Tarefas.Select(tarefa => new TarefaCadeia(tarefa.Codigo, tarefa.Obrigatoria)).ToArray()))
+                etapa.Tarefas.Select(tarefa => new TarefaCadeia(tarefa.Codigo, tarefa.Obrigatoria)).ToArray(),
+                etapa.EnviarAoAbrir,
+                etapa.EnviarAoConcluir))
             .ToArray());
         await cadeia.Salvar(subcategoriaId, normalizada, ct);
         return normalizada.Select(Mapear).ToArray();
@@ -47,5 +49,7 @@ public sealed class CadeiaAplicacao(ICadeia cadeia, ICatalogo catalogo)
             etapa.Ordem,
             etapa.Automatica,
             etapa.Campos,
-            etapa.Tarefas.Select(tarefa => new TarefaCadeiaDto(tarefa.Codigo, tarefa.Obrigatoria)).ToArray());
+            etapa.Tarefas.Select(tarefa => new TarefaCadeiaDto(tarefa.Codigo, tarefa.Obrigatoria)).ToArray(),
+            etapa.EnviarAoAbrir,
+            etapa.EnviarAoConcluir);
 }

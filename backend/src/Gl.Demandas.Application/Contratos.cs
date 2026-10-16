@@ -47,7 +47,15 @@ public sealed record AvancarComando(string? Comentario, DateTime? Previsao, bool
 
 public sealed record TarefaCadeiaDto(string Codigo, bool Obrigatoria);
 
-public sealed record EtapaCadeiaDto(string Codigo, string Nome, int Ordem, bool Automatica, IReadOnlyList<string> Campos, IReadOnlyList<TarefaCadeiaDto> Tarefas);
+public sealed record EtapaCadeiaDto(
+    string Codigo,
+    string Nome,
+    int Ordem,
+    bool Automatica,
+    IReadOnlyList<string> Campos,
+    IReadOnlyList<TarefaCadeiaDto> Tarefas,
+    bool EnviarAoAbrir = false,
+    bool EnviarAoConcluir = false);
 
 public sealed record CadeiaTipoDto(Guid SubcategoriaId, string Categoria, string Tipo, IReadOnlyList<EtapaCadeiaDto> Etapas);
 

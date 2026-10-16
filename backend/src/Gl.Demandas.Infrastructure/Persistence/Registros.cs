@@ -334,6 +334,22 @@ internal sealed class InscricaoPushRegistro
     public DateTime CriadaEm { get; set; }
 }
 
+internal sealed class EventoWhatsAppRegistro
+{
+    public long IdInterno { get; set; }
+    public Guid Id { get; set; }
+    public string Tipo { get; set; } = "";
+    public string? IdMensagem { get; set; }
+    public string? Telefone { get; set; }
+    public string? Nome { get; set; }
+    public string? Texto { get; set; }
+    public string Status { get; set; } = "";
+    public string? PhoneNumberId { get; set; }
+    public DateTime? EventoEm { get; set; }
+    public DateTime RecebidoEm { get; set; }
+    public string Payload { get; set; } = "";
+}
+
 internal sealed class EtapaCadeiaRegistro
 {
     public long IdInterno { get; set; }
@@ -343,5 +359,7 @@ internal sealed class EtapaCadeiaRegistro
     public string Nome { get; set; } = "";
     public int Ordem { get; set; }
     public bool Automatica { get; set; }
+    public bool EnviarAoAbrir { get; set; }
+    public bool EnviarAoConcluir { get; set; }
     public string Campos { get; set; } = "";
 }

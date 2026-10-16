@@ -14,12 +14,16 @@ public sealed class EtapaCadeia
         int ordem,
         bool automatica,
         IReadOnlyList<string> campos,
-        IReadOnlyList<TarefaCadeia>? tarefas = null)
+        IReadOnlyList<TarefaCadeia>? tarefas = null,
+        bool enviarAoAbrir = false,
+        bool enviarAoConcluir = false)
     {
         Codigo = codigo;
         Nome = nome;
         Ordem = ordem;
         Automatica = automatica;
+        EnviarAoAbrir = enviarAoAbrir;
+        EnviarAoConcluir = enviarAoConcluir;
         Tarefas = tarefas is { Count: > 0 }
             ? tarefas
             : campos.Select(campo => new TarefaCadeia(campo, true)).ToArray();
@@ -29,6 +33,8 @@ public sealed class EtapaCadeia
     public string Nome { get; }
     public int Ordem { get; }
     public bool Automatica { get; }
+    public bool EnviarAoAbrir { get; }
+    public bool EnviarAoConcluir { get; }
     public IReadOnlyList<TarefaCadeia> Tarefas { get; }
     public IReadOnlyList<string> Campos => Tarefas.Select(tarefa => tarefa.Codigo).ToArray();
 }
@@ -89,7 +95,15 @@ public static class CadeiaAtendimento
             var exigida = tarefas.FirstOrDefault(tarefa => tarefa.Obrigatoria);
             if (etapa.Automatica && exigida is not null)
                 throw new RegraNegocioException($"A etapa {NomeDe(codigo)} é automática e não pode exigir a tarefa {NomeTarefa(exigida.Codigo)}.");
-            return new EtapaCadeia(codigo, NomeDe(codigo), indice + 1, etapa.Automatica, tarefas.Select(tarefa => tarefa.Codigo).ToArray(), tarefas);
+            return new EtapaCadeia(
+                codigo,
+                NomeDe(codigo),
+                indice + 1,
+                etapa.Automatica,
+                tarefas.Select(tarefa => tarefa.Codigo).ToArray(),
+                tarefas,
+                etapa.EnviarAoAbrir,
+                etapa.EnviarAoConcluir);
         }).ToArray();
     }
 

@@ -1,6 +1,7 @@
 using Gl.Demandas.Application;
 using Gl.Demandas.Infrastructure.Persistence;
 using Gl.Demandas.Infrastructure.Push;
+using Gl.Demandas.Infrastructure.WhatsApp;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -33,6 +34,15 @@ public static class DependenciasInfra
         services.AddSingleton<IConfiguracaoPush, ConfiguracaoPush>();
         services.AddScoped<IEnvioPush, EnvioPushWeb>();
         services.AddScoped<ICadeia>(sp => sp.GetRequiredService<GlRepositorio>());
+        services.AddScoped<IDestinosWhatsApp>(sp => sp.GetRequiredService<GlRepositorio>());
+        services.AddScoped<IEventosWhatsApp>(sp => sp.GetRequiredService<GlRepositorio>());
+        services.AddScoped<WebhookWhatsAppAplicacao>();
+        services.AddScoped<IAvisoWhatsApp, AvisoWhatsAppEtapa>();
+        services.AddHttpClient<IEnvioWhatsApp, EnvioWhatsAppMeta>(cliente =>
+        {
+            cliente.BaseAddress = new Uri("https://graph.facebook.com/");
+            cliente.Timeout = TimeSpan.FromSeconds(20);
+        });
         services.AddScoped<IInventarioEspacos>(sp => sp.GetRequiredService<GlRepositorio>());
         services.AddScoped<IGestaoCessionarios>(sp => sp.GetRequiredService<GlRepositorio>());
         services.AddScoped<IClassificadorDemanda, ClassificadorDemanda>();

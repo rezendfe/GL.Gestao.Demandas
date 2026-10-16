@@ -71,13 +71,15 @@ if (!desenvolvimento)
     {
         o.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
         o.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(ctx =>
-            RateLimitPartition.GetFixedWindowLimiter(
-                ctx.Connection.RemoteIpAddress?.ToString() ?? "local",
-                _ => new FixedWindowRateLimiterOptions
-                {
-                    PermitLimit = 120,
-                    Window = TimeSpan.FromMinutes(1)
-                }));
+            ctx.Request.Path.StartsWithSegments("/api/whatsapp/webhook")
+                ? RateLimitPartition.GetNoLimiter("whatsapp-webhook")
+                : RateLimitPartition.GetFixedWindowLimiter(
+                    ctx.Connection.RemoteIpAddress?.ToString() ?? "local",
+                    _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = 120,
+                        Window = TimeSpan.FromMinutes(1)
+                    }));
     });
 }
 

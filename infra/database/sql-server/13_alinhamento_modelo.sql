@@ -49,6 +49,8 @@ BEGIN
         NM_Etapa NVARCHAR(80) NOT NULL,
         NR_Ordem INT NOT NULL,
         FL_Automatica BIT NOT NULL,
+        FL_Enviar_Ao_Abrir BIT NOT NULL CONSTRAINT DF_Etapa_Cadeia_Enviar_Ao_Abrir DEFAULT (0),
+        FL_Enviar_Ao_Concluir BIT NOT NULL CONSTRAINT DF_Etapa_Cadeia_Enviar_Ao_Concluir DEFAULT (0),
         DS_Campos NVARCHAR(200) NOT NULL,
         CONSTRAINT PK_Etapa_Cadeia PRIMARY KEY (ID_Etapa_Cadeia),
         CONSTRAINT UK_Etapa_Cadeia_Tipo_Etapa UNIQUE (ID_Subcategoria, SG_Etapa),

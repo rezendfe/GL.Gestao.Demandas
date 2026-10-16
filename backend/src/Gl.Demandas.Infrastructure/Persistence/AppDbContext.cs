@@ -29,6 +29,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     internal DbSet<NotificacaoRegistro> Notificacoes => Set<NotificacaoRegistro>();
     internal DbSet<InscricaoPushRegistro> InscricoesPush => Set<InscricaoPushRegistro>();
     internal DbSet<EtapaCadeiaRegistro> EtapasCadeia => Set<EtapaCadeiaRegistro>();
+    internal DbSet<EventoWhatsAppRegistro> EventosWhatsApp => Set<EventoWhatsAppRegistro>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -457,7 +458,32 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             b.Property(x => x.Nome).HasColumnName("NM_Etapa").HasMaxLength(80);
             b.Property(x => x.Ordem).HasColumnName("NR_Ordem");
             b.Property(x => x.Automatica).HasColumnName("FL_Automatica");
+            b.Property(x => x.EnviarAoAbrir).HasColumnName("FL_Enviar_Ao_Abrir");
+            b.Property(x => x.EnviarAoConcluir).HasColumnName("FL_Enviar_Ao_Concluir");
             b.Property(x => x.Campos).HasColumnName("DS_Campos").HasMaxLength(200);
+        });
+
+        modelBuilder.Entity<EventoWhatsAppRegistro>(b =>
+        {
+            b.ToTable("WhatsApp_Evento");
+            b.HasKey(x => x.IdInterno);
+            b.Property(x => x.IdInterno).HasColumnName("ID_WhatsApp_Evento").UseIdentityColumn();
+            b.Property(x => x.Id).HasColumnName("CD_WhatsApp_Evento");
+            b.HasIndex(x => x.Id).IsUnique().HasDatabaseName("UK_WhatsApp_Evento_CD");
+            b.Property(x => x.Tipo).HasColumnName("SG_Tipo").HasMaxLength(20);
+            b.Property(x => x.IdMensagem).HasColumnName("DS_Id_Mensagem").HasMaxLength(180);
+            b.Property(x => x.Telefone).HasColumnName("DS_Telefone").HasMaxLength(20);
+            b.Property(x => x.Nome).HasColumnName("NM_Contato").HasMaxLength(200);
+            b.Property(x => x.Texto).HasColumnName("DS_Texto").HasMaxLength(4000);
+            b.Property(x => x.Status).HasColumnName("SG_Status").HasMaxLength(20);
+            b.Property(x => x.PhoneNumberId).HasColumnName("DS_Phone_Number_Id").HasMaxLength(40);
+            b.Property(x => x.EventoEm).HasColumnName("DT_Evento");
+            b.Property(x => x.RecebidoEm).HasColumnName("DT_Recebido");
+            b.Property(x => x.Payload).HasColumnName("DS_Payload");
+            b.HasIndex(x => new { x.IdMensagem, x.Tipo, x.Status })
+                .IsUnique()
+                .HasFilter("[DS_Id_Mensagem] IS NOT NULL")
+                .HasDatabaseName("UK_WhatsApp_Evento_Chave");
         });
     }
 }

@@ -12,7 +12,8 @@ public sealed class AtendimentoAplicacao(
     IClassificadorDemanda classificador,
     IExtratorSolicitacao extrator,
     ICadeia cadeia,
-    IEnvioPush envioPush)
+    IEnvioPush envioPush,
+    IAvisoWhatsApp? avisoWhatsApp = null)
 {
     private readonly List<Notificacao> avisosPendentes = [];
     private const long TamanhoMaximo = 5 * 1024 * 1024;
@@ -111,6 +112,7 @@ public sealed class AtendimentoAplicacao(
             ator.EmpresaId);
 
         await demandas.Adicionar(demanda, ct);
+        await PublicarWhatsApp(demanda, null, false, ct);
         return await Detalhe(demanda, ct);
     }
 
@@ -248,6 +250,7 @@ public sealed class AtendimentoAplicacao(
     public async Task<DetalheDemandaDto> Andamento(Ator ator, Guid id, AndamentoComando comando, CancellationToken ct)
     {
         var demanda = await Exigir(id, ct);
+        var anterior = demanda.Situacao;
         var nova = SituacaoDemandaTexto.ParaSituacao(comando.Situacao);
         var entrouEmAtendimento = demanda.RegistrarAndamento(
             ator.Perfil,
@@ -272,12 +275,14 @@ public sealed class AtendimentoAplicacao(
         foreach (var aviso in avisos)
             await RegistrarAviso(demanda, aviso.Texto, aviso.MensagemId, ct);
         await PublicarAvisos(demanda, ct);
+        await PublicarWhatsApp(demanda, anterior, false, ct);
         return await Detalhe(demanda, ct);
     }
 
     public async Task<DetalheDemandaDto> Avancar(Ator ator, Guid id, AvancarComando comando, CancellationToken ct)
     {
         var demanda = await Exigir(id, ct);
+        var anterior = demanda.Situacao;
         if (ator.Perfil == Perfil.Cessionario)
         {
             ExigirEmpresaDaDemanda(ator, demanda);
@@ -318,11 +323,27 @@ public sealed class AtendimentoAplicacao(
         foreach (var aviso in avisos)
             await RegistrarAviso(demanda, aviso.Texto, aviso.MensagemId, ct);
         await PublicarAvisos(demanda, ct);
+        await PublicarWhatsApp(demanda, anterior, true, ct);
         return await Detalhe(demanda, ct);
     }
 
     private async Task<bool> AprovacaoAutomatica(Guid subcategoriaId, CancellationToken ct) =>
         (await cadeia.Obter(subcategoriaId, ct)).First(etapa => etapa.Codigo == CadeiaAtendimento.Aprovacao).Automatica;
+
+    private async Task PublicarWhatsApp(Demanda demanda, SituacaoDemanda? anterior, bool percorrerAutomaticas, CancellationToken ct)
+    {
+        if (avisoWhatsApp is null)
+            return;
+
+        var etapas = await cadeia.Obter(demanda.SubcategoriaId, ct);
+        await avisoWhatsApp.Publicar(
+            new AvisoDemandaWhatsApp(demanda.Protocolo, demanda.Servico, demanda.CessionarioId, demanda.EmpresaCessionariaId, demanda.ResponsavelId, demanda.AreaId),
+            anterior,
+            demanda.Situacao,
+            etapas,
+            percorrerAutomaticas,
+            ct);
+    }
 
     public async Task<DetalheDemandaDto> DefinirPrevisao(Ator ator, Guid id, PrevisaoComando comando, CancellationToken ct)
     {
@@ -438,8 +459,10 @@ public sealed class AtendimentoAplicacao(
     public async Task<DetalheDemandaDto> Aprovar(Ator ator, Guid id, AprovacaoComando comando, CancellationToken ct)
     {
         var demanda = await Exigir(id, ct);
+        var anterior = demanda.Situacao;
         demanda.Decidir(ator.Perfil, ator.Id, comando.Decisao, comando.Motivo, relogio.UtcNow);
         await demandas.Salvar(demanda, ct);
+        await PublicarWhatsApp(demanda, anterior, false, ct);
         return await Detalhe(demanda, ct);
     }
 
@@ -454,8 +477,10 @@ public sealed class AtendimentoAplicacao(
     public async Task<DetalheDemandaDto> Cancelar(Ator ator, Guid id, CancelamentoComando comando, CancellationToken ct)
     {
         var demanda = await Exigir(id, ct);
+        var anterior = demanda.Situacao;
         demanda.Cancelar(ator.Perfil, ator.Id, comando.Motivo, relogio.UtcNow);
         await demandas.Salvar(demanda, ct);
+        await PublicarWhatsApp(demanda, anterior, false, ct);
         return await Detalhe(demanda, ct);
     }
 

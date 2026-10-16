@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Security.Claims;
 using Gl.Demandas.Application;
 using Gl.Demandas.Domain;
@@ -241,7 +242,15 @@ public static class Endpoints
                     var tarefas = etapa.Tarefas is { Count: > 0 }
                         ? etapa.Tarefas.Select(tarefa => new TarefaCadeiaDto(tarefa.Codigo, tarefa.Obrigatoria)).ToArray()
                         : (etapa.Campos ?? []).Select(campo => new TarefaCadeiaDto(campo, true)).ToArray();
-                    return new EtapaCadeiaDto(etapa.Codigo, etapa.Codigo, 0, etapa.Automatica, tarefas.Select(tarefa => tarefa.Codigo).ToArray(), tarefas);
+                    return new EtapaCadeiaDto(
+                        etapa.Codigo,
+                        etapa.Codigo,
+                        0,
+                        etapa.Automatica,
+                        tarefas.Select(tarefa => tarefa.Codigo).ToArray(),
+                        tarefas,
+                        etapa.EnviarAoAbrir,
+                        etapa.EnviarAoConcluir);
                 }).ToArray(),
                 ct)))
             .WithName("SalvarCadeia")
@@ -374,6 +383,46 @@ public static class Endpoints
             Results.Ok(await appCaso.Pesquisar(await AtorAtual(user, usuarios, config, ct), de, ate, autorId, texto, ct)))
             .WithName("PesquisarAuditoria")
             .WithSummary("Pesquisa as ações do intervalo, com no máximo 3 meses. Somente GL / Administrador.");
+
+        var whatsapp = app.MapGroup("/api/whatsapp").WithTags("WhatsApp").AllowAnonymous();
+        whatsapp.MapGet("/webhook", (HttpRequest request, IConfiguration config) =>
+        {
+            var desafio = LeituraWebhookWhatsApp.Desafio(
+                request.Query["hub.mode"],
+                request.Query["hub.verify_token"],
+                request.Query["hub.challenge"],
+                config["WhatsApp:VerifyToken"]);
+            return desafio is null
+                ? Results.StatusCode(StatusCodes.Status403Forbidden)
+                : Results.Text(desafio, "text/plain");
+        })
+            .WithName("VerificarWebhookWhatsApp")
+            .WithSummary("Confirma o webhook para a Meta com o token de verificação.");
+
+        whatsapp.MapPost("/webhook", async (HttpRequest request, IConfiguration config, WebhookWhatsAppAplicacao webhook, CancellationToken ct) =>
+        {
+            string corpo;
+            using (var leitor = new StreamReader(request.Body))
+                corpo = await leitor.ReadToEndAsync(ct);
+
+            var segredo = config["WhatsApp:AppSecret"];
+            if (!string.IsNullOrWhiteSpace(segredo)
+                && !AssinaturaWhatsApp.Confere(request.Headers["X-Hub-Signature-256"], corpo, segredo))
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
+
+            try
+            {
+                await webhook.Receber(corpo, ct);
+            }
+            catch (JsonException)
+            {
+                return Results.Ok();
+            }
+
+            return Results.Ok();
+        })
+            .WithName("ReceberWebhookWhatsApp")
+            .WithSummary("Recebe mensagens e status enviados pela Meta.");
     }
 
     private static async Task<Ator> AtorAtual(ClaimsPrincipal user, IUsuarios usuarios, IConfiguration config, CancellationToken ct)
@@ -446,7 +495,13 @@ public sealed record RedirecionarPedido(Guid AreaId, Guid? ResponsavelId);
 public sealed record AndamentoPedido(string Comentario, string Situacao);
 public sealed record AvancarPedido(string? Comentario, DateTime? Previsao, bool? Confirmacao);
 public sealed record TarefaCadeiaPedido(string Codigo, bool Obrigatoria);
-public sealed record EtapaCadeiaPedido(string Codigo, bool Automatica, IReadOnlyList<string>? Campos, IReadOnlyList<TarefaCadeiaPedido>? Tarefas);
+public sealed record EtapaCadeiaPedido(
+    string Codigo,
+    bool Automatica,
+    IReadOnlyList<string>? Campos,
+    IReadOnlyList<TarefaCadeiaPedido>? Tarefas,
+    bool EnviarAoAbrir = false,
+    bool EnviarAoConcluir = false);
 public sealed record CadeiaPedido(Guid SubcategoriaId, IReadOnlyList<EtapaCadeiaPedido> Etapas);
 public sealed record AreaCadastroPedido(Guid? Id, string Nome, bool Ativa);
 public sealed record ResponsavelCadastroPedido(Guid? Id, string Nome, string Email, Guid AreaId, bool Ativo);
